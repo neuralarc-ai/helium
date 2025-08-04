@@ -205,3 +205,5 @@ dump.rdb
 
 # CodeWebChat state and logs (auto-added)
 .cwc/
+
+node_modules/
