@@ -58,7 +58,7 @@ class SandboxWebSearchTool(SandboxToolsBase):
     @usage_example('''
         <function_calls>
         <invoke name="web_search">
-        <parameter name="query">what is Kortix AI and what are they building?</parameter>
+        <parameter name="query">what is Neural Arc Inc. and what are they building?</parameter>
         <parameter name="num_results">20</parameter>
         </invoke>
         </function_calls>
@@ -157,7 +157,7 @@ class SandboxWebSearchTool(SandboxToolsBase):
     @usage_example('''
         <function_calls>
         <invoke name="scrape_webpage">
-        <parameter name="urls">https://www.kortix.ai/,https://github.com/kortix-ai/suna</parameter>
+        <parameter name="urls">https://www.neuralarc.ai/,https://github.com</parameter>
         </invoke>
         </function_calls>
         ''')

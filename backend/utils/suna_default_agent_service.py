@@ -39,7 +39,7 @@ class SunaDefaultAgentService:
         }
     
     async def install_suna_agent_for_user(self, account_id: str, replace_existing: bool = False) -> Optional[str]:
-        logger.info(f"🔄 Installing Suna agent for user: {account_id}")
+        logger.info(f"🔄 Installing Helium agent for user: {account_id}")
         
         try:
             if replace_existing:
@@ -47,17 +47,17 @@ class SunaDefaultAgentService:
                 existing = next((a for a in agents if a.account_id == account_id), None)
                 if existing:
                     await self._sync_service.repository.delete_agent(existing.agent_id)
-                    logger.info(f"Deleted existing Suna agent for replacement")
+                    logger.info(f"Deleted existing Helium agent for replacement")
             else:
                 agents = await self._sync_service.repository.find_all_suna_agents()
                 existing = next((a for a in agents if a.account_id == account_id), None)
                 if existing:
-                    logger.info(f"User {account_id} already has Suna agent: {existing.agent_id}")
+                    logger.info(f"User {account_id} already has Helium agent: {existing.agent_id}")
                     return existing.agent_id
 
             agent_id = await self._sync_service.repository.create_suna_agent_simple(account_id)
             
-            logger.info(f"Successfully installed Suna agent {agent_id} for user {account_id}")
+            logger.info(f"Successfully installed Helium agent {agent_id} for user {account_id}")
             return agent_id
                 
         except Exception as e:

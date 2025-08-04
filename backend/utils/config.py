@@ -207,8 +207,8 @@ class Configuration:
     MORPH_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     OPENROUTER_API_BASE: Optional[str] = "https://openrouter.ai/api/v1"
-    OR_SITE_URL: Optional[str] = "https://kortix.ai"
-    OR_APP_NAME: Optional[str] = "Kortix AI"    
+    OR_SITE_URL: Optional[str] = "https://he2.ai"
+    OR_APP_NAME: Optional[str] = "Helium AI"    
     
     # AWS Bedrock credentials
     AWS_ACCESS_KEY_ID: Optional[str] = None
@@ -216,7 +216,7 @@ class Configuration:
     AWS_REGION_NAME: Optional[str] = None
     
     # Model configuration
-    MODEL_TO_USE: Optional[str] = "anthropic/claude-sonnet-4-20250514"
+    MODEL_TO_USE: Optional[str] = "openrouter/deepseek/deepseek-chat-v3-0324:free"
     
     # Supabase configuration
     SUPABASE_URL: str
@@ -317,6 +317,10 @@ class Configuration:
                 else:
                     # String or other type
                     setattr(self, key, env_val)
+                
+                # Log API key loading (without exposing the full key)
+                if 'API_KEY' in key and env_val:
+                    logger.info(f"Loaded {key} from environment (length: {len(env_val)})")
     
     def _validate(self):
         """Validate configuration based on type hints."""

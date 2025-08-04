@@ -1,8 +1,6 @@
 ---
-description: docker, infrastructure
-alwaysApply: false
+alwaysApply: true
 ---
-
 # Infrastructure & DevOps Guidelines
 
 ## Docker & Containerization

@@ -42,14 +42,23 @@ def setup_api_keys() -> None:
     for provider in providers:
         key = getattr(config, f'{provider}_API_KEY')
         if key:
-            logger.debug(f"API key set for provider: {provider}")
+            # Set the environment variable that LiteLLM expects
+            os.environ[f'{provider}_API_KEY'] = key
+            logger.info(f"API key set for provider: {provider} (length: {len(key)}, starts with: {key[:10]}...)")
         else:
             logger.warning(f"No API key found for provider: {provider}")
 
     # Set up OpenRouter API base if not already set
     if config.OPENROUTER_API_KEY and config.OPENROUTER_API_BASE:
         os.environ['OPENROUTER_API_BASE'] = config.OPENROUTER_API_BASE
-        logger.debug(f"Set OPENROUTER_API_BASE to {config.OPENROUTER_API_BASE}")
+        logger.info(f"Set OPENROUTER_API_BASE to {config.OPENROUTER_API_BASE}")
+    
+    # Debug: Check if OpenRouter API key is available in environment
+    openrouter_key = os.environ.get('OPENROUTER_API_KEY')
+    if openrouter_key:
+        logger.info(f"OpenRouter API key found in environment (length: {len(openrouter_key)}, starts with: {openrouter_key[:10]}...)")
+    else:
+        logger.error("OpenRouter API key NOT found in environment variables!")
 
     # Set up AWS Bedrock credentials
     aws_access_key = config.AWS_ACCESS_KEY_ID
@@ -73,10 +82,9 @@ def get_openrouter_fallback(model_name: str) -> Optional[str]:
     
     # Map models to their OpenRouter equivalents
     fallback_mapping = {
-        "anthropic/claude-3-7-sonnet-latest": "openrouter/anthropic/claude-3.7-sonnet",
-        "anthropic/claude-sonnet-4-20250514": "openrouter/anthropic/claude-sonnet-4",
-        "xai/grok-4": "openrouter/x-ai/grok-4",
-        "gemini/gemini-2.5-pro": "openrouter/google/gemini-2.5-pro",
+        "deepseek/deepseek-chat-v3-0324:free": "openrouter/deepseek/deepseek-chat-v3-0324:free",
+        "qwen/qwen3-coder:free": "openrouter/qwen/qwen3-coder:free",
+        "gemini/gemini-2.0-flash-exp:free": "openrouter/google/gemini-2.0-flash-exp:free",
     }
     
     # Check for exact match first
@@ -166,7 +174,23 @@ def prepare_params(
 
     # Add OpenRouter-specific parameters
     if model_name.startswith("openrouter/"):
-        logger.debug(f"Preparing OpenRouter parameters for model: {model_name}")
+        logger.info(f"Preparing OpenRouter parameters for model: {model_name}")
+
+        # Set OpenRouter API key if not already provided
+        if not api_key and config.OPENROUTER_API_KEY:
+            params["api_key"] = config.OPENROUTER_API_KEY
+            logger.info(f"Set OpenRouter API key from config (length: {len(config.OPENROUTER_API_KEY)}, starts with: {config.OPENROUTER_API_KEY[:10]}...)")
+        elif api_key:
+            logger.info(f"Using provided API key for OpenRouter (length: {len(api_key)}, starts with: {api_key[:10]}...)")
+        else:
+            logger.error("No OpenRouter API key available!")
+            # Check environment variable as fallback
+            env_key = os.environ.get('OPENROUTER_API_KEY')
+            if env_key:
+                params["api_key"] = env_key
+                logger.info(f"Using OpenRouter API key from environment (length: {len(env_key)}, starts with: {env_key[:10]}...)")
+            else:
+                logger.error("OpenRouter API key not found in config or environment!")
 
         # Add optional site URL and app name from config
         site_url = config.OR_SITE_URL
@@ -175,10 +199,17 @@ def prepare_params(
             extra_headers = params.get("extra_headers", {})
             if site_url:
                 extra_headers["HTTP-Referer"] = site_url
+                logger.debug(f"Added HTTP-Referer header: {site_url}")
             if app_name:
                 extra_headers["X-Title"] = app_name
+                logger.debug(f"Added X-Title header: {app_name}")
             params["extra_headers"] = extra_headers
-            logger.debug(f"Added OpenRouter site URL and app name to headers")
+        
+        # Ensure the API key is explicitly passed to LiteLLM
+        if "api_key" not in params:
+            logger.error("OpenRouter API key not set in params - this will cause authentication failure!")
+        else:
+            logger.info(f"OpenRouter API key confirmed in params (length: {len(params['api_key'])}, starts with: {params['api_key'][:10]}...)")
 
     # Add Bedrock-specific parameters
     if model_name.startswith("bedrock/"):
@@ -325,6 +356,12 @@ async def make_llm_api_call(
         try:
             logger.debug(f"Attempt {attempt + 1}/{MAX_RETRIES}")
             # logger.debug(f"API request parameters: {json.dumps(params, indent=2)}")
+            
+            # Debug: Log the API key being used
+            if "api_key" in params:
+                logger.info(f"Making LiteLLM call with API key (length: {len(params['api_key'])}, starts with: {params['api_key'][:10]}...)")
+            else:
+                logger.error("No API key found in params for LiteLLM call!")
 
             response = await litellm.acompletion(**params)
             logger.debug(f"Successfully received API response from {model_name}")

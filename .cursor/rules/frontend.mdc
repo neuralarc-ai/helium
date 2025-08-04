@@ -1,8 +1,6 @@
 ---
-globs: frontend/**/*
-alwaysApply: false
+alwaysApply: true
 ---
-
 # Frontend Development Guidelines
 
 ## TypeScript Standards

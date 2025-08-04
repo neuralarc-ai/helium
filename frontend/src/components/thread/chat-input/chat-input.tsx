@@ -194,7 +194,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
         if (!selectedAgentId && !hasAgentIdInUrl) {
           const savedAgentId = localStorage.getItem('lastSelectedAgentId');
           if (savedAgentId) {
-            if (savedAgentId === 'suna') {
+            if (savedAgentId === 'o1') {
               const defaultSunaAgent = agents.find(agent => agent.metadata?.is_suna_default);
               if (defaultSunaAgent) {
                 onAgentSelect(defaultSunaAgent.agent_id);
@@ -236,7 +236,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
         const isSunaAgent = selectedAgent?.metadata?.is_suna_default || selectedAgentId === undefined;
         
         // Use 'suna' as a special key for the Suna default agent
-        const keyToStore = isSunaAgent ? 'suna' : selectedAgentId;
+        const keyToStore = isSunaAgent ? 'o1' : selectedAgentId;
         console.log('Saving selected agent to localStorage:', keyToStore, 'for selectedAgentId:', selectedAgentId);
         localStorage.setItem('lastSelectedAgentId', keyToStore);
       }

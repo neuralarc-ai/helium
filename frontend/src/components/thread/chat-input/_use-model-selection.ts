@@ -7,9 +7,9 @@ import { useAvailableModels } from '@/hooks/react-query/subscriptions/use-model'
 
 export const STORAGE_KEY_MODEL = 'suna-preferred-model-v3';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
-export const DEFAULT_PREMIUM_MODEL_ID = 'claude-sonnet-4';
+export const DEFAULT_PREMIUM_MODEL_ID = 'openrouter/deepseek/deepseek-chat-v3-0324:free';
 // export const DEFAULT_FREE_MODEL_ID = 'moonshotai/kimi-k2';
-export const DEFAULT_FREE_MODEL_ID = 'claude-sonnet-4';
+export const DEFAULT_FREE_MODEL_ID = 'openrouter/deepseek/deepseek-chat-v3-0324:free';
 
 export type SubscriptionStatus = 'no_subscription' | 'active';
 
@@ -52,60 +52,72 @@ export const MODELS = {
   // },
 
   // Premium/Paid tier models (require subscription) - except specific free models
-  'moonshotai/kimi-k2': { 
+  'moonshotai/kimi-k2:free': { 
     tier: 'free', 
     priority: 99,
     recommended: false,
     lowQuality: false
   },
-  'grok-4': { 
-    tier: 'premium', 
+  'openrouter/horizon-beta': { 
+    tier: 'free', 
     priority: 98,
     recommended: false,
     lowQuality: false
   },
-  'sonnet-3.7': { 
-    tier: 'premium', 
-    priority: 97, 
+  'z-ai/glm-4.5-air:free': { 
+    tier: 'free', 
+    priority: 97,
     recommended: false,
     lowQuality: false
   },
-  'google/gemini-2.5-pro': { 
-    tier: 'premium', 
-    priority: 96,
-    recommended: false,
-    lowQuality: false
-  },
-  'gpt-4.1': { 
-    tier: 'premium', 
-    priority: 96,
-    recommended: false,
-    lowQuality: false
-  },
-  'sonnet-3.5': { 
-    tier: 'premium', 
-    priority: 90,
-    recommended: false,
-    lowQuality: false
-  },
-  'gpt-4o': { 
-    tier: 'premium', 
-    priority: 88,
-    recommended: false,
-    lowQuality: false
-  },
-  'gemini-2.5-flash:thinking': { 
-    tier: 'premium', 
-    priority: 84,
-    recommended: false,
-    lowQuality: false
-  },
-  // 'deepseek/deepseek-chat-v3-0324': { 
-  //   tier: 'free', 
-  //   priority: 75,
+  // 'grok-4': { 
+  //   tier: 'premium', 
+  //   priority: 98,
   //   recommended: false,
   //   lowQuality: false
   // },
+  // 'sonnet-3.7': { 
+  //   tier: 'premium', 
+  //   priority: 97, 
+  //   recommended: false,
+  //   lowQuality: false
+  // },
+  // 'google/gemini-2.5-pro': { 
+  //   tier: 'premium', 
+  //   priority: 96,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
+  // 'gpt-4.1': { 
+  //   tier: 'premium', 
+  //   priority: 96,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
+  // 'sonnet-3.5': { 
+  //   tier: 'premium', 
+  //   priority: 90,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
+  // 'gpt-4o': { 
+  //   tier: 'premium', 
+  //   priority: 88,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
+  // 'gemini-2.5-flash:thinking': { 
+  //   tier: 'premium', 
+  //   priority: 84,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
+  'openrouter/deepseek/deepseek-chat-v3-0324:free': { 
+    tier: 'free', 
+    priority: 75,
+    recommended: false,
+    lowQuality: false
+  },
 };
 
 // Helper to check if a user can access a model based on subscription status

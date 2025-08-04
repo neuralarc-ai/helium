@@ -130,13 +130,13 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
     const defaultAgent = allAgents[0];
     const isDefaultAgentSuna = defaultAgent?.metadata?.is_suna_default || false;
     return {
-      name: defaultAgent?.name || 'Suna',
+      name: defaultAgent?.name || 'o1',
       icon: isDefaultAgentSuna ? <KortixLogo size={16} /> : (defaultAgent?.icon || <KortixLogo size={16} />)
     };
   };
 
   const handleAgentSelect = (agentId: string | undefined) => {
-    console.log('Agent selected:', agentId === undefined ? 'Suna (default)' : agentId);
+    console.log('Agent selected:', agentId === undefined ? 'o1 - God Mode' : agentId);
     onAgentSelect?.(agentId);
     setIsOpen(false);
   };

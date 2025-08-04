@@ -4,14 +4,14 @@ import { siteConfig } from '@/lib/site';
 export const metadata: Metadata = {
   title: siteConfig.name,
   description: siteConfig.description,
-  keywords: ['Kortix Suna', 'AI', 'Agent'],
+  keywords: ['Helium AI', 'AI Agent', 'Enterprise AI', 'AI Orchestration'],
   authors: [
     {
-      name: 'Kortix AI Corp',
-      url: 'https://kortix.ai',
+      name: 'Neural Arc Inc.',
+      url: 'https://neuralarc.ai',
     },
   ],
-  creator: 'Kortix AI Corp',
+  creator: 'Neural Arc Inc.',
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: siteConfig.name,
     description: siteConfig.description,
-    creator: '@kortixai',
+    creator: '@neuralarc_ai',
   },
   robots: {
     index: true,

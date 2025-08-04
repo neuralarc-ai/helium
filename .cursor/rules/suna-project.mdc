@@ -2,11 +2,11 @@
 alwaysApply: true
 ---
 
-# Suna AI Agent Project - Cursor Rules
+# Helium AI Agent Project - Cursor Rules
 
 ## Project Overview
 
-Suna is an open-source generalist AI agent with a full-stack architecture:
+Helium AI is an God Mode agent with a full-stack architecture:
 
 - **Frontend**: Next.js 15+ with TypeScript, Tailwind CSS, Radix UI, React Query
 - **Backend**: Python 3.11+ with FastAPI, Supabase, Redis, LiteLLM, Dramatiq

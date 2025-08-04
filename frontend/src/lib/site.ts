@@ -1,11 +1,11 @@
 export const siteConfig = {
-  name: 'Kortix Suna',
-  url: 'https://suna.so/',
-  description: 'Kortix AI',
+  name: 'Helium AI',
+  url: 'https://he2.ai/',
+  description: 'Helium AI',
   links: {
-    twitter: 'https://x.com/kortixai',
-    github: 'https://github.com/kortix-ai/',
-    linkedin: 'https://www.linkedin.com/company/kortix/',
+    twitter: 'https://x.com/neuralarc_ai',
+    github: 'https://github.com/neuralarc-ai/helium',
+    linkedin: 'https://www.linkedin.com/company/neuralarcsai/',
   },
 };
 

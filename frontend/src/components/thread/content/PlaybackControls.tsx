@@ -426,7 +426,7 @@ export const PlaybackControls = ({
                 <Link href="/">
                   <img
                     src="/kortix-symbol.svg"
-                    alt="Kortix"
+                    alt="Helium AI"
                     width={16}
                     height={16}
                     className="object-contain"

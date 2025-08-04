@@ -686,7 +686,7 @@ async def execute_agent_workflow(
     account_id = agent_result.data[0]['account_id']
     
     # Validate permissions
-    model_name = config.MODEL_TO_USE or "anthropic/claude-sonnet-4-20250514"
+    model_name = config.MODEL_TO_USE or "openrouter/deepseek/deepseek-chat-v3-0324:free"
     can_use, model_message, allowed_models = await can_use_model(client, account_id, model_name)
     if not can_use:
         raise HTTPException(status_code=403, detail={"message": model_message, "allowed_models": allowed_models})

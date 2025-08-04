@@ -41,5 +41,5 @@ services:
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "5901"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 3

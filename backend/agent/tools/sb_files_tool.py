@@ -361,23 +361,23 @@ class SandboxFilesTool(SandboxToolsBase):
                 logger.debug("Using direct Morph API for file editing.")
                 client = openai.AsyncOpenAI(
                     api_key=morph_api_key,
-                    base_url="https://api.morphllm.com/v1"
+                    base_url="https://openrouter.ai/api/v1"
                 )
                 response = await client.chat.completions.create(
-                    model="morph-v3-large",
+                    model="openrouter/qwen/qwen3-coder:free",
                     messages=messages,
                     temperature=0.0,
-                    timeout=30.0
+                    timeout=120.0
                 )
             elif openrouter_key:
                 logger.debug("Morph API key not set, falling back to OpenRouter for file editing via litellm.")
                 response = await litellm.acompletion(
-                    model="openrouter/morph/morph-v3-large",
+                    model="openrouter/qwen/qwen3-coder:free",
                     messages=messages,
                     api_key=openrouter_key,
                     api_base="https://openrouter.ai/api/v1",
                     temperature=0.0,
-                    timeout=30.0
+                    timeout=120.0
                 )
             else:
                 error_msg = "No Morph or OpenRouter API key found, cannot perform AI edit."

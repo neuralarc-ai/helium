@@ -1,4 +1,4 @@
-# Suna Frontend
+# Helium Frontend
 
 ## Quick Setup
 

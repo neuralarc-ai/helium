@@ -44,7 +44,7 @@ export function KortixProcessModal() {
                   src={
                     isDarkMode ? '/kortix-logo-white.svg' : '/kortix-logo.svg'
                   }
-                  alt="Kortix Logo"
+                  alt="Helium AI Logo"
                   width={60}
                   height={21}
                   className="h-6 w-auto"

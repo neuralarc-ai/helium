@@ -16,14 +16,14 @@ export const generateThreadName = async (message: string): Promise<string> => {
       return defaultName;
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://openrouter.ai/api/v1', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'openrouter/deepseek/deepseek-chat-v3-0324:free',
         messages: [
           {
             role: 'system',
@@ -42,7 +42,7 @@ export const generateThreadName = async (message: string): Promise<string> => {
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('OpenAI API error:', errorData);
+      console.error('OpenRouter API error:', errorData);
       return defaultName;
     }
 

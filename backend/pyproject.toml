@@ -1,8 +1,8 @@
 [project]
-name = "suna"
+name = "helium"
 version = "1.0"
-description = "open source generalist AI Agent"
-authors = [{ name = "marko-kraemer", email = "mail@markokraemer.com" }]
+description = "The God Mode Agent"
+authors = [{ name = "neuralarc", email = "support@neuralarc.ai" }]
 readme = "README.md"
 license = { text = "Apache-2.0" }
 classifiers = [
@@ -69,8 +69,8 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://www.suna.so/"
-repository = "https://github.com/kortix-ai/suna"
+homepage = "https://www.he2.ai/"
+repository = "https://github.com/neuralarc-ai/helium"
 
 [tool.uv]
 package = false
