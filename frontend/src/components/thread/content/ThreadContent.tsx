@@ -12,7 +12,7 @@ import {
     getUserFriendlyToolName,
     safeJsonParse,
 } from '@/components/thread/utils';
-import { KortixLogo } from '@/components/sidebar/kortix-logo';
+import { HeliumLogo } from '@/components/sidebar/helium-logo';
 import { AgentLoader } from './loader';
 import { parseXmlToolCalls, isNewXmlFormat } from '@/components/thread/tool-views/xml-parser';
 import { ShowToolStream } from './ShowToolStream';
@@ -332,7 +332,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     debugMode = false,
     isPreviewMode = false,
     agentName = 'Helium',
-    agentAvatar = <KortixLogo size={16} />,
+    agentAvatar = <HeliumLogo size={16} />,
     emptyStateComponent,
     threadMetadata,
 }) => {
@@ -389,7 +389,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 <>
                     {isSunaAgent ? (
                         <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
-                            <KortixLogo size={16} />
+                            <HeliumLogo size={16} />
                         </div>
                     ) : (
                         <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
@@ -399,7 +399,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 </>
             ) : (
                 <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
-                    <KortixLogo size={16} />
+                    <HeliumLogo size={16} />
                 </div>
             );
             return {

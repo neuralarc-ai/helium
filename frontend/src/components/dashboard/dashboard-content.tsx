@@ -31,7 +31,7 @@ import { useModal } from '@/hooks/use-modal-store';
 import { Examples } from './examples';
 import { useThreadQuery } from '@/hooks/react-query/threads/use-threads';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
-import { KortixLogo } from '../sidebar/kortix-logo';
+import { HeliumLogo } from '../sidebar/helium-logo';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
@@ -214,7 +214,7 @@ export function DashboardContent() {
                 {displayName}
                 {isSunaAgent ? (
                   <span className="ml-2 flex items-center">
-                    <KortixLogo size={24} />
+                    <HeliumLogo size={24} />
                   </span>
                 ) : agentAvatar && (
                   <span className="text-muted-foreground ml-2">

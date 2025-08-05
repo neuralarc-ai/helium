@@ -100,10 +100,10 @@ export function Navbar() {
   const handleOverlayClick = () => setIsDrawerOpen(false);
 
   const logoSrc = !mounted
-    ? '/kortix-logo.svg'
+    ? '/helium-logo.svg'
     : resolvedTheme === 'dark'
-      ? '/kortix-logo-white.svg'
-      : '/kortix-logo.svg';
+      ? '/helium-logo-white.svg'
+      : '/helium-logo.svg';
 
   return (
     <header

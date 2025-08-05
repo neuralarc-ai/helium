@@ -42,7 +42,7 @@ export function KortixProcessModal() {
               <div className="mb-8 mt-0 flex-shrink-0">
                 <Image
                   src={
-                    isDarkMode ? '/kortix-logo-white.svg' : '/kortix-logo.svg'
+                    isDarkMode ? '/helium-logo-white.svg' : '/helium-logo.svg'
                   }
                   alt="Helium AI Logo"
                   width={60}

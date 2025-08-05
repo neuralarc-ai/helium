@@ -5,7 +5,7 @@ import { EditableText } from '@/components/ui/editable';
 import { StylePicker } from '../style-picker';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { KortixLogo } from '@/components/sidebar/kortix-logo';
+import { HeliumLogo } from '@/components/sidebar/helium-logo';
 
 interface AgentHeaderProps {
   agentId: string;
@@ -60,8 +60,8 @@ export function AgentHeader({
       <div className="flex items-center gap-3">
         <div className="relative">
           {isSunaAgent ? (
-            <div className="h-9 w-9 bg-background rounded-lg bg-muted border border flex items-center justify-center">
-              <KortixLogo size={16} />
+            <div className="h-9 w-9 bg-background rounded-lg border-border flex items-center justify-center">
+              <HeliumLogo size={16} />
             </div>
           ) : (
             <StylePicker

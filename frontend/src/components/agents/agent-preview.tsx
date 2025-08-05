@@ -15,7 +15,7 @@ import { useAddUserMessageMutation } from '@/hooks/react-query/threads/use-messa
 import { useStartAgentMutation, useStopAgentMutation } from '@/hooks/react-query/threads/use-agent-run';
 import { BillingError } from '@/lib/api';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
-import { KortixLogo } from '../sidebar/kortix-logo';
+import { HeliumLogo } from '../sidebar/helium-logo';
 
 interface Agent {
   agent_id: string;
@@ -337,8 +337,8 @@ export const AgentPreview = ({ agent, agentMetadata }: AgentPreviewProps) => {
     <div className="h-full flex flex-col bg-muted dark:bg-muted/30">
       <div className="flex-shrink-0 flex items-center gap-3 p-8">
         {isSunaAgent ? (
-          <div className="h-10 w-10 bg-background rounded-lg bg-muted border border flex items-center justify-center">
-            <KortixLogo size={16} />
+          <div className="h-10 w-10 bg-background rounded-lg border-border flex items-center justify-center">
+            <HeliumLogo size={16} />
           </div>
         ) : (
           <div
@@ -370,7 +370,7 @@ export const AgentPreview = ({ agent, agentMetadata }: AgentPreviewProps) => {
               <div className="flex flex-col items-center text-center text-muted-foreground/80">
                 <div className="flex w-20 aspect-square items-center justify-center rounded-2xl bg-muted-foreground/10 p-4 mb-4">
                   {isSunaAgent ? (
-                    <KortixLogo size={36} />
+                    <HeliumLogo size={36} />
                   ) : (
                     <div className="text-4xl">{avatar}</div>
                   )}

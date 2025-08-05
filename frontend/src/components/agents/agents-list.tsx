@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { KortixLogo } from '@/components/sidebar/kortix-logo';
+import { HeliumLogo } from '@/components/sidebar/helium-logo';
 
 interface Agent {
   agent_id: string;
@@ -58,7 +58,7 @@ export const AgentsList = ({
                     <span className="line-clamp-2">{agent.name}</span>
                     {agent.metadata?.is_suna_default && (
                       <div className="h-4 w-4 flex items-center justify-center">
-                        <KortixLogo size={12} />
+                        <HeliumLogo size={12} />
                       </div>
                     )}
                   </div>

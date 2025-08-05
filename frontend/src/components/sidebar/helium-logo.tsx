@@ -4,10 +4,10 @@ import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
-interface KortixLogoProps {
+interface HeliumLogoProps {
   size?: number;
 }
-export function KortixLogo({ size = 24 }: KortixLogoProps) {
+export function HeliumLogo({ size = 24 }: HeliumLogoProps) {
   const { theme, systemTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -22,7 +22,7 @@ export function KortixLogo({ size = 24 }: KortixLogoProps) {
 
   return (
     <Image
-        src="/kortix-symbol.svg"
+        src="/helium-symbol.svg"
         alt="Helium AI"
         width={size}
         height={size}

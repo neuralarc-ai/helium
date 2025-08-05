@@ -490,7 +490,7 @@ export default function AgentsPage() {
       <div className="container mx-auto max-w-7xl px-4 py-8">
         <AgentsPageHeader />
       </div>
-      <div className="sticky top-0 z-50 relative">
+      <div className="sticky top-0 z-50">
         <div className="absolute inset-0 backdrop-blur-md" style={{
           maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
           WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)'

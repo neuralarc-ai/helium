@@ -446,7 +446,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
               </CardContent>
 
               {enableAdvancedConfig && selectedAgentId && (
-              <div className="w-full border-t border-border/30 bg-muted/20 px-4 py-1.5 rounded-b-3xl border-l border-r border-b border-border">
+              <div className="w-full border-t bg-muted/20 px-4 py-1.5 rounded-b-3xl border-l border-r border-b border-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none">
                     <button
