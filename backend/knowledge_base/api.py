@@ -1,8 +1,9 @@
 import json
+import uuid
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, BackgroundTasks
-from pydantic import BaseModel, Field, HttpUrl
-from utils.auth_utils import get_current_user_id_from_jwt, verify_agent_access
+from pydantic import BaseModel, Field, HttpUrl, field_validator
+from utils.auth_utils import get_current_user_id_from_jwt
 from services.supabase import DBConnection
 from knowledge_base.file_processor import FileProcessor
 from utils.logger import logger
@@ -10,10 +11,129 @@ from flags.flags import is_enabled
 
 router = APIRouter(prefix="/knowledge-base", tags=["knowledge-base"])
 
+# Helper function to get account_id for a user
+async def get_user_account_id(client, user_id: str) -> str:
+    """
+    Get the account_id for a user. For personal accounts, this is the same as user_id.
+    If no personal account is found, it attempts to create one.
+    """
+    try:
+        logger.info(f"Getting account_id for user {user_id}")
+        
+        # First try to get the personal account for this user
+        try:
+            result = await client.table('basejump.accounts').select('id').eq('primary_owner_user_id', user_id).eq('personal_account', True).execute()
+            
+            logger.info(f"Query result: {result.data}")
+            
+            if result.data and len(result.data) > 0:
+                account_id = result.data[0]['id']
+                logger.info(f"Found personal account: {account_id}")
+                return account_id
+        except Exception as table_error:
+            logger.warning(f"Basejump accounts table may not exist yet: {str(table_error)}")
+            # If the table doesn't exist, we need to handle this differently
+            # For now, let's check if there are any global knowledge base entries and use their account_id
+            try:
+                # First, try to find an account_id that has entries with the user_id in the name or content
+                # This is a heuristic to match the user to their account
+                result = await client.table('global_knowledge_base_entries').select('account_id, name, content').execute()
+                if result.data:
+                    # Look for entries that might belong to this user
+                    for entry in result.data:
+                        entry_name = entry.get('name', '').lower()
+                        entry_content = entry.get('content', '').lower()
+                        user_id_lower = user_id.lower()
+                        
+                        # If the entry name or content contains the user_id, use this account_id
+                        if user_id_lower in entry_name or user_id_lower in entry_content:
+                            account_id = entry['account_id']
+                            logger.info(f"Found matching account_id for user {user_id}: {account_id}")
+                            return account_id
+                    
+                    # If no direct match found, check if 86A document exists and use its account_id
+                    for entry in result.data:
+                        if '86a' in entry.get('name', '').lower():
+                            account_id = entry['account_id']
+                            logger.info(f"Found 86A document, using its account_id: {account_id}")
+                            return account_id
+                    
+                    # CRITICAL FIX: Don't use the first account_id as fallback - this causes cross-account data leakage
+                    # Instead, generate a unique UUID based on the user_id to ensure proper isolation
+                    import uuid
+                    # Generate a deterministic UUID based on the user_id
+                    unique_account_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, user_id))
+                    logger.info(f"Generated unique account_id for user {user_id}: {unique_account_id}")
+                    return unique_account_id
+                else:
+                    # Generate a unique UUID based on the user_id
+                    import uuid
+                    unique_account_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, user_id))
+                    logger.info(f"Generated unique account_id for user {user_id} since no global entries exist: {unique_account_id}")
+                    return unique_account_id
+            except Exception as e:
+                logger.warning(f"Error checking global knowledge base entries: {str(e)}")
+                # Generate a unique UUID based on the user_id
+                import uuid
+                unique_account_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, user_id))
+                logger.info(f"Generated unique account_id for user {user_id} as fallback: {unique_account_id}")
+                return unique_account_id
+        
+        # If no personal account found, try to create one
+        logger.info(f"No personal account found, attempting to create one for user: {user_id}")
+        try:
+            # Create a personal account for this user
+            import uuid
+            unique_account_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, user_id))
+            create_result = await client.table('basejump.accounts').insert({
+                'id': unique_account_id,  # Use generated UUID as account_id for personal accounts
+                'primary_owner_user_id': user_id,
+                'personal_account': True,
+                'name': f"Personal Account ({user_id[:8]})"
+            }).execute()
+            
+            if create_result.data:
+                logger.info(f"Created personal account: {unique_account_id}")
+                
+                # Also ensure the user has a role on this account
+                try:
+                    await client.table('basejump.account_user').insert({
+                        'account_id': unique_account_id,
+                        'user_id': user_id,
+                        'role': 'owner'
+                    }).execute()
+                    logger.info(f"Added user {user_id} as owner to account {unique_account_id}")
+                except Exception as role_error:
+                    logger.warning(f"Could not add user role (may already exist): {str(role_error)}")
+                
+                return unique_account_id
+            else:
+                logger.error("Failed to create personal account")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to create user account. Please try again or contact support."
+                )
+                
+        except Exception as create_error:
+            logger.error(f"Error creating personal account: {str(create_error)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to create user account. Please try again or contact support."
+            )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting account_id for user {user_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Database error. Please try again or contact support."
+        )
+
 class KnowledgeBaseEntry(BaseModel):
     entry_id: Optional[str] = None
     name: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
+    description: str = Field(..., min_length=1, max_length=1000)
     content: str = Field(..., min_length=1)
     usage_context: str = Field(default="always", pattern="^(always|on_request|contextual)$")
     is_active: bool = True
@@ -21,7 +141,7 @@ class KnowledgeBaseEntry(BaseModel):
 class KnowledgeBaseEntryResponse(BaseModel):
     entry_id: str
     name: str
-    description: Optional[str]
+    description: str
     content: str
     usage_context: str
     is_active: bool
@@ -40,9 +160,24 @@ class KnowledgeBaseListResponse(BaseModel):
 
 class CreateKnowledgeBaseEntryRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
+    description: str = Field(..., min_length=1, max_length=1000)
     content: str = Field(..., min_length=1)
     usage_context: str = Field(default="always", pattern="^(always|on_request|contextual)$")
+    is_active: bool = True
+    
+    @field_validator('content')
+    @classmethod
+    def validate_content(cls, v):
+        if isinstance(v, str):
+            # Check for null bytes
+            if '\u0000' in v:
+                raise ValueError("Content contains null bytes which are not allowed")
+            # Check for other problematic control characters
+            problematic_chars = [chr(i) for i in range(32) if i not in [9, 10]]  # Allow tab and newline
+            for char in problematic_chars:
+                if char in v:
+                    raise ValueError(f"Content contains invalid control character: {repr(char)}")
+        return v
 
 class UpdateKnowledgeBaseEntryRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
@@ -50,6 +185,21 @@ class UpdateKnowledgeBaseEntryRequest(BaseModel):
     content: Optional[str] = Field(None, min_length=1)
     usage_context: Optional[str] = Field(None, pattern="^(always|on_request|contextual)$")
     is_active: Optional[bool] = None
+
+class ExtractThreadKnowledgeRequest(BaseModel):
+    thread_id: str
+    entry_name: str
+    description: Optional[str] = None
+    usage_context: str = Field(default="always", pattern="^(always|on_request|contextual)$")
+    include_messages: bool = True
+    include_agent_runs: bool = True
+    max_messages: int = Field(default=50, ge=1, le=200)
+
+class GitRepositoryRequest(BaseModel):
+    git_url: HttpUrl
+    branch: str = "main"
+    include_patterns: Optional[List[str]] = None
+    exclude_patterns: Optional[List[str]] = None
 
 class ProcessingJobResponse(BaseModel):
     job_id: str
@@ -65,6 +215,759 @@ class ProcessingJobResponse(BaseModel):
 
 db = DBConnection()
 
+# Global Knowledge Base Endpoints
+
+@router.get("/global", response_model=KnowledgeBaseListResponse)
+async def get_global_knowledge_base(
+    include_inactive: bool = False,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Get all global knowledge base entries for the current user's account"""
+    try:
+        client = await db.client
+        
+        # Get the proper account_id for this user
+        account_id = await get_user_account_id(client, user_id)
+        
+        # Query the table directly instead of using the function
+        query = client.table('global_knowledge_base_entries').select('*').eq('account_id', account_id)
+        
+        if not include_inactive:
+            query = query.eq('is_active', True)
+        
+        result = await query.order('created_at', desc=True).execute()
+        
+        entries = []
+        total_tokens = 0
+        
+        for entry in result.data or []:
+            entries.append(KnowledgeBaseEntryResponse(
+                entry_id=entry['entry_id'],
+                name=entry['name'],
+                description=entry['description'],
+                content=entry['content'],
+                usage_context=entry['usage_context'],
+                is_active=entry['is_active'],
+                content_tokens=entry.get('content_tokens'),
+                created_at=entry['created_at'],
+                updated_at=entry.get('updated_at', entry['created_at']),
+                source_type=None,
+                source_metadata=None,
+                file_size=None,
+                file_mime_type=None
+            ))
+            # Estimate tokens if not set
+            estimated_tokens = entry.get('content_tokens') or len(entry['content']) // 4
+            total_tokens += estimated_tokens
+        
+        return KnowledgeBaseListResponse(
+            entries=entries,
+            total_count=len(entries),
+            total_tokens=total_tokens
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting global knowledge base: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve global knowledge base")
+
+@router.post("/global", response_model=KnowledgeBaseEntryResponse)
+async def create_global_knowledge_base_entry(
+    entry_data: CreateKnowledgeBaseEntryRequest,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Create a new global knowledge base entry"""
+    try:
+        client = await db.client
+        
+        # Get the proper account_id for this user
+        account_id = await get_user_account_id(client, user_id)
+        logger.info(f"Using account_id: {account_id} for user: {user_id}")
+        
+        # Sanitize content to remove problematic characters
+        sanitized_content = entry_data.content
+        if isinstance(sanitized_content, str):
+            # Remove null bytes and other problematic Unicode characters
+            sanitized_content = sanitized_content.replace('\u0000', '')
+            # Remove other control characters except newlines and tabs
+            sanitized_content = ''.join(char for char in sanitized_content if ord(char) >= 32 or char in '\n\t')
+            # Normalize line endings
+            sanitized_content = sanitized_content.replace('\r\n', '\n').replace('\r', '\n')
+        
+        # Prepare the insert data
+        insert_data = {
+            'account_id': account_id,
+            'name': entry_data.name,
+            'description': entry_data.description,
+            'content': sanitized_content,
+            'usage_context': entry_data.usage_context,
+            'is_active': entry_data.is_active
+        }
+        
+        logger.info(f"Inserting data: {insert_data}")
+        
+        # Create the entry
+        result = await client.table('global_knowledge_base_entries').insert(insert_data).execute()
+        
+        logger.info(f"Insert result: {result.data}")
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create knowledge base entry")
+        
+        entry = result.data[0]
+        logger.info(f"Created entry: {entry}")
+        
+        return KnowledgeBaseEntryResponse(
+            entry_id=entry['entry_id'],
+            name=entry['name'],
+            description=entry['description'],
+            content=entry['content'],
+            usage_context=entry['usage_context'],
+            is_active=entry['is_active'],
+            content_tokens=entry.get('content_tokens'),
+            created_at=entry['created_at'],
+            updated_at=entry.get('updated_at', entry['created_at']),
+            source_type=None,
+            source_metadata=None,
+            file_size=None,
+            file_mime_type=None
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"Error creating global knowledge base entry: {error_msg}")
+        
+        # Check if it's a foreign key constraint error
+        if "foreign key constraint" in error_msg.lower() or "23503" in error_msg:
+            logger.error("Foreign key constraint error detected. This indicates the accounts table is missing.")
+            raise HTTPException(
+                status_code=500, 
+                detail="Knowledge base setup incomplete. Please contact support to complete the database setup."
+            )
+        
+        # Check if it's a Unicode error
+        if "unicode escape sequence" in error_msg.lower() or "22P05" in error_msg or "\\u0000" in error_msg:
+            logger.error("Unicode error detected. Content contains invalid characters.")
+            raise HTTPException(
+                status_code=400, 
+                detail="The uploaded content contains invalid characters. Please try uploading a different file or check the file content."
+            )
+        
+        raise HTTPException(status_code=500, detail="Failed to create global knowledge base entry")
+
+@router.get("/global/context")
+async def get_global_knowledge_base_context(
+    max_tokens: int = 4000,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Get global knowledge base context for agent prompts"""
+    try:
+        client = await db.client
+        
+        # Get the proper account_id for this user
+        account_id = await get_user_account_id(client, user_id)
+        
+        # Query the table directly instead of using the function
+        result = await client.table('global_knowledge_base_entries').select('*').eq('account_id', account_id).eq('is_active', True).in_('usage_context', ['always', 'contextual']).order('created_at', desc=True).execute()
+        
+        context_text = ''
+        current_tokens = 0
+        
+        for entry in result.data or []:
+            # Estimate tokens if not set
+            estimated_tokens = entry.get('content_tokens') or len(entry['content']) // 4
+            
+            # Check if adding this entry would exceed the limit
+            if current_tokens + estimated_tokens > max_tokens:
+                break
+            
+            # Add entry to context
+            context_text += f'\n\n## {entry["name"]}'
+            if entry.get('description'):
+                context_text += f'\n\n{entry["description"]}'
+            context_text += f'\n\n{entry["content"]}'
+            
+            current_tokens += estimated_tokens
+        
+        context = context_text.strip() if context_text.strip() else None
+        
+        return {
+            "context": context,
+            "max_tokens": max_tokens,
+            "account_id": account_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting global knowledge base context: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve global knowledge base context")
+
+@router.put("/global/{entry_id}", response_model=KnowledgeBaseEntryResponse)
+async def update_global_knowledge_base_entry(
+    entry_id: str,
+    entry_data: UpdateKnowledgeBaseEntryRequest,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Update an existing global knowledge base entry"""
+    try:
+        client = await db.client
+        
+        # Get the proper account_id for this user
+        account_id = await get_user_account_id(client, user_id)
+        
+        # Build update data
+        update_data = {}
+        if entry_data.name is not None:
+            update_data['name'] = entry_data.name
+        if entry_data.description is not None:
+            update_data['description'] = entry_data.description
+        if entry_data.content is not None:
+            update_data['content'] = entry_data.content
+        if entry_data.usage_context is not None:
+            update_data['usage_context'] = entry_data.usage_context
+        if entry_data.is_active is not None:
+            update_data['is_active'] = entry_data.is_active
+        
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No fields to update")
+        
+        # Update the entry
+        result = await client.table('global_knowledge_base_entries').update(update_data).eq('entry_id', entry_id).eq('account_id', account_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Global knowledge base entry not found")
+        
+        entry = result.data[0]
+        
+        return KnowledgeBaseEntryResponse(
+            entry_id=entry['entry_id'],
+            name=entry['name'],
+            description=entry['description'],
+            content=entry['content'],
+            usage_context=entry['usage_context'],
+            is_active=entry['is_active'],
+            content_tokens=entry.get('content_tokens'),
+            created_at=entry['created_at'],
+            updated_at=entry.get('updated_at', entry['created_at']),
+            source_type=None,
+            source_metadata=None,
+            file_size=None,
+            file_mime_type=None
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating global knowledge base entry: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update global knowledge base entry")
+
+@router.delete("/global/{entry_id}")
+async def delete_global_knowledge_base_entry(
+    entry_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Delete a global knowledge base entry"""
+    try:
+        client = await db.client
+        
+        # Get the proper account_id for this user
+        account_id = await get_user_account_id(client, user_id)
+        
+        # Delete the entry
+        result = await client.table('global_knowledge_base_entries').delete().eq('entry_id', entry_id).eq('account_id', account_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Global knowledge base entry not found")
+        
+        return {"message": "Global knowledge base entry deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting global knowledge base entry: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete global knowledge base entry")
+
+@router.post("/global/upload-file")
+async def upload_file_to_global_kb(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Upload and process a file for global knowledge base"""
+    try:
+        client = await db.client
+        account_id = await get_user_account_id(client, user_id)
+        
+        file_content = await file.read()
+        
+        # Process the file using the same FileProcessor as thread knowledge base
+        processor = FileProcessor()
+        result = await processor.process_global_file_upload(
+            account_id, file_content, file.filename, file.content_type or 'application/octet-stream'
+        )
+        
+        if result['success']:
+            return {
+                "success": True,
+                "entry_id": result['entry_id'],
+                "filename": file.filename,
+                "content_length": result['content_length'],
+                "extraction_method": result['extraction_method'],
+                "message": "File processed and added to global knowledge base"
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result.get('error', 'Failed to process file'))
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading file to global KB: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to upload file")
+
+@router.get("/global/{entry_id}", response_model=KnowledgeBaseEntryResponse)
+async def get_global_knowledge_base_entry(
+    entry_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Get a specific global knowledge base entry"""
+    try:
+        client = await db.client
+        
+        # Get the proper account_id for this user
+        account_id = await get_user_account_id(client, user_id)
+        
+        # Get the entry
+        result = await client.table('global_knowledge_base_entries').select('*').eq('entry_id', entry_id).eq('account_id', account_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Global knowledge base entry not found")
+        
+        entry = result.data[0]
+        
+        return KnowledgeBaseEntryResponse(
+            entry_id=entry['entry_id'],
+            name=entry['name'],
+            description=entry['description'],
+            content=entry['content'],
+            usage_context=entry['usage_context'],
+            is_active=entry['is_active'],
+            content_tokens=entry.get('content_tokens'),
+            created_at=entry['created_at'],
+            updated_at=entry.get('updated_at', entry['created_at']),
+            source_type=None,
+            source_metadata=None,
+            file_size=None,
+            file_mime_type=None
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting global knowledge base entry: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve global knowledge base entry")
+
+# Test endpoint to check table accessibility
+@router.get("/global/test")
+async def test_global_knowledge_base_access(
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    """Test endpoint to check if global knowledge base table is accessible"""
+    try:
+        client = await db.client
+        
+        # Get the proper account_id for this user
+        account_id = await get_user_account_id(client, user_id)
+        
+        # Check if user has a personal account
+        personal_account_result = None
+        try:
+            personal_account_result = await client.table('basejump.accounts').select('*').eq('primary_owner_user_id', user_id).eq('personal_account', True).execute()
+        except Exception as e:
+            personal_account_result = {"error": str(e)}
+        
+        # Check if user is in account_user table
+        account_user_result = None
+        try:
+            account_user_result = await client.table('basejump.account_user').select('*').eq('user_id', user_id).execute()
+        except Exception as e:
+            account_user_result = {"error": str(e)}
+        
+        # Try to select from the global knowledge base table
+        kb_result = await client.table('global_knowledge_base_entries').select('entry_id').limit(1).execute()
+        
+        # Try to insert a test entry (then delete it)
+        test_insert_result = None
+        test_entry_id = None
+        try:
+            test_insert_result = await client.table('global_knowledge_base_entries').insert({
+                'account_id': account_id,
+                'name': 'TEST_ENTRY_DELETE_ME',
+                'content': 'This is a test entry that should be deleted',
+                'usage_context': 'always',
+                'is_active': False
+            }).execute()
+            
+            # Delete the test entry
+            if test_insert_result.data:
+                test_entry_id = test_insert_result.data[0]['entry_id']
+                await client.table('global_knowledge_base_entries').delete().eq('entry_id', test_entry_id).execute()
+        except Exception as e:
+            test_insert_result = {"error": str(e)}
+        
+        return {
+            "status": "success",
+            "account_id": account_id,
+            "user_id": user_id,
+            "table_accessible": True,
+            "personal_accounts": personal_account_result,
+            "account_users": account_user_result,
+            "kb_result": kb_result.data,
+            "test_insert_successful": bool(test_insert_result and not isinstance(test_insert_result, dict)),
+            "test_insert_error": test_insert_result.get("error") if isinstance(test_insert_result, dict) else None
+        }
+        
+    except Exception as e:
+        logger.error(f"Test failed: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        return {
+            "status": "error",
+            "error": str(e),
+            "account_id": account_id if 'account_id' in locals() else None,
+            "user_id": user_id,
+            "table_accessible": False,
+            "personal_accounts": personal_account_result.data if 'personal_account_result' in locals() and hasattr(personal_account_result, 'data') else None,
+            "account_users": account_user_result.data if 'account_user_result' in locals() and hasattr(account_user_result, 'data') else None
+        }
+
+# Thread Knowledge Base Endpoints
+
+@router.get("/threads/{thread_id}", response_model=KnowledgeBaseListResponse)
+async def get_thread_knowledge_base(
+    thread_id: str,
+    include_inactive: bool = False,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Get all knowledge base entries for a thread"""
+    try:
+        client = await db.client
+
+        thread_result = await client.table('threads').select('*').eq('thread_id', thread_id).execute()
+        if not thread_result.data:
+            raise HTTPException(status_code=404, detail="Thread not found")
+
+        result = await client.rpc('get_thread_knowledge_base', {
+            'p_thread_id': thread_id,
+            'p_include_inactive': include_inactive
+        }).execute()
+        
+        entries = []
+        total_tokens = 0
+        
+        for entry_data in result.data or []:
+            entry = KnowledgeBaseEntryResponse(
+                entry_id=entry_data['entry_id'],
+                name=entry_data['name'],
+                description=entry_data['description'],
+                content=entry_data['content'],
+                usage_context=entry_data['usage_context'],
+                is_active=entry_data['is_active'],
+                content_tokens=entry_data.get('content_tokens'),
+                created_at=entry_data['created_at'],
+                updated_at=entry_data.get('updated_at', entry_data['created_at'])
+            )
+            entries.append(entry)
+            total_tokens += entry_data.get('content_tokens', 0) or 0
+        
+        return KnowledgeBaseListResponse(
+            entries=entries,
+            total_count=len(entries),
+            total_tokens=total_tokens
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting knowledge base for thread {thread_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve knowledge base")
+
+@router.post("/threads/{thread_id}/upload-file")
+async def upload_file_to_thread_kb(
+    thread_id: str,
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Upload and process a file for thread knowledge base"""
+    try:
+        client = await db.client
+        
+        # Verify thread exists and user has access
+        thread_result = await client.table('threads').select('project_id').eq('thread_id', thread_id).execute()
+        if not thread_result.data:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        
+        # Get account_id from the thread's project
+        project_id = thread_result.data[0]['project_id']
+        project_result = await client.table('projects').select('account_id').eq('project_id', project_id).execute()
+        if not project_result.data:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        account_id = project_result.data[0]['account_id']
+        
+        file_content = await file.read()
+        
+        # Process the file directly
+        processor = FileProcessor()
+        result = await processor.process_thread_file_upload(
+            thread_id, account_id, file_content, file.filename, file.content_type or 'application/octet-stream'
+        )
+        
+        if result['success']:
+            return {
+                "success": True,
+                "entry_id": result['entry_id'],
+                "filename": file.filename,
+                "content_length": result['content_length'],
+                "extraction_method": result['extraction_method'],
+                "message": "File processed and added to thread knowledge base"
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result.get('error', 'Failed to process file'))
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading file to thread KB: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to upload file")
+
+@router.post("/threads/{thread_id}", response_model=KnowledgeBaseEntryResponse)
+async def create_knowledge_base_entry(
+    thread_id: str,
+    entry_data: CreateKnowledgeBaseEntryRequest,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Create a new knowledge base entry for a thread"""
+    try:
+        client = await db.client
+        thread_result = await client.table('threads').select('account_id').eq('thread_id', thread_id).execute()
+        if not thread_result.data:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        
+        account_id = thread_result.data[0]['account_id']
+        
+        insert_data = {
+            'thread_id': thread_id,
+            'account_id': account_id,
+            'name': entry_data.name,
+            'description': entry_data.description,
+            'content': entry_data.content,
+            'usage_context': entry_data.usage_context
+        }
+        
+        result = await client.table('knowledge_base_entries').insert(insert_data).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create knowledge base entry")
+        
+        created_entry = result.data[0]
+        
+        return KnowledgeBaseEntryResponse(
+            entry_id=created_entry['entry_id'],
+            name=created_entry['name'],
+            description=created_entry['description'],
+            content=created_entry['content'],
+            usage_context=created_entry['usage_context'],
+            is_active=created_entry['is_active'],
+            content_tokens=created_entry.get('content_tokens'),
+            created_at=created_entry['created_at'],
+            updated_at=created_entry['updated_at']
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating knowledge base entry for thread {thread_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create knowledge base entry")
+
+@router.post("/threads/{thread_id}/extract-knowledge", response_model=KnowledgeBaseEntryResponse)
+async def extract_thread_knowledge(
+    thread_id: str,
+    data: ExtractThreadKnowledgeRequest,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Extract knowledge from a thread's messages and agent runs"""
+    try:
+        client = await db.client
+        
+        # Verify thread exists and user has access
+        thread_result = await client.table('threads').select('*').eq('thread_id', thread_id).eq('user_id', user_id).execute()
+        if not thread_result.data:
+            raise HTTPException(status_code=404, detail="Thread not found or access denied")
+        
+        # Get messages from the thread
+        messages_query = client.table('messages').select('*').eq('thread_id', thread_id).order('created_at', desc=True).limit(data.max_messages)
+        messages_result = await messages_query.execute()
+        
+        # Get agent runs if requested
+        agent_runs = []
+        if data.include_agent_runs:
+            runs_query = client.table('agent_runs').select('*').eq('thread_id', thread_id).order('created_at', desc=True).limit(data.max_messages)
+            runs_result = await runs_query.execute()
+            agent_runs = runs_result.data or []
+        
+        # Build knowledge content
+        knowledge_parts = []
+        
+        if data.include_messages and messages_result.data:
+            messages = list(reversed(messages_result.data))  # Reverse to get chronological order
+            knowledge_parts.append("## Thread Messages")
+            for msg in messages:
+                role = msg.get('role', 'unknown')
+                content = msg.get('content', '')
+                if content and content.strip():
+                    knowledge_parts.append(f"### {role.title()}")
+                    knowledge_parts.append(content.strip())
+                    knowledge_parts.append("")
+        
+        if data.include_agent_runs and agent_runs:
+            knowledge_parts.append("## Agent Runs")
+            for run in agent_runs:
+                run_name = run.get('name', 'Unknown Run')
+                run_status = run.get('status', 'unknown')
+                run_result = run.get('result', '')
+                if run_result and run_result.strip():
+                    knowledge_parts.append(f"### {run_name} ({run_status})")
+                    knowledge_parts.append(run_result.strip())
+                    knowledge_parts.append("")
+        
+        if not knowledge_parts:
+            raise HTTPException(status_code=400, detail="No extractable content found in thread")
+        
+        # Combine all knowledge parts
+        knowledge_content = "\n".join(knowledge_parts)
+        
+        # Truncate if too long (max 100k characters)
+        if len(knowledge_content) > 100000:
+            knowledge_content = knowledge_content[:100000] + "\n\n[Content truncated due to length]"
+        
+        # Create knowledge base entry
+        entry_data = {
+            'thread_id': thread_id,
+            'name': data.entry_name,
+            'description': data.description or f"Knowledge extracted from thread {thread_id}",
+            'content': knowledge_content,
+            'usage_context': data.usage_context,
+            'is_active': True,
+            'source_type': 'thread_extraction',
+            'source_metadata': {
+                'thread_id': thread_id,
+                'messages_count': len(messages_result.data) if messages_result.data else 0,
+                'agent_runs_count': len(agent_runs),
+                'extraction_method': 'thread_analysis',
+                'include_messages': data.include_messages,
+                'include_agent_runs': data.include_agent_runs,
+                'max_messages': data.max_messages
+            }
+        }
+        
+        result = await client.table('knowledge_base_entries').insert(entry_data).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create knowledge base entry")
+        
+        created_entry = result.data[0]
+        
+        return KnowledgeBaseEntryResponse(
+            entry_id=created_entry['entry_id'],
+            name=created_entry['name'],
+            description=created_entry['description'],
+            content=created_entry['content'],
+            usage_context=created_entry['usage_context'],
+            is_active=created_entry['is_active'],
+            content_tokens=created_entry.get('content_tokens'),
+            created_at=created_entry['created_at'],
+            updated_at=created_entry['updated_at'],
+            source_type=created_entry.get('source_type'),
+            source_metadata=created_entry.get('source_metadata'),
+            file_size=None,
+            file_mime_type=None
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error extracting knowledge from thread {thread_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to extract knowledge from thread")
 
 @router.get("/agents/{agent_id}", response_model=KnowledgeBaseListResponse)
 async def get_agent_knowledge_base(
@@ -82,8 +985,9 @@ async def get_agent_knowledge_base(
     try:
         client = await db.client
 
-        # Verify agent access
-        await verify_agent_access(client, agent_id, user_id)
+        agent_result = await client.table('agents').select('*').eq('agent_id', agent_id).eq('account_id', user_id).execute()
+        if not agent_result.data:
+            raise HTTPException(status_code=404, detail="Agent not found or access denied")
 
         result = await client.rpc('get_agent_knowledge_base', {
             'p_agent_id': agent_id,
@@ -140,9 +1044,11 @@ async def create_agent_knowledge_base_entry(
     try:
         client = await db.client
         
-        # Verify agent access and get agent data
-        agent_data = await verify_agent_access(client, agent_id, user_id)
-        account_id = agent_data['account_id']
+        agent_result = await client.table('agents').select('account_id').eq('agent_id', agent_id).eq('account_id', user_id).execute()
+        if not agent_result.data:
+            raise HTTPException(status_code=404, detail="Agent not found or access denied")
+        
+        account_id = agent_result.data[0]['account_id']
         
         insert_data = {
             'agent_id': agent_id,
@@ -195,9 +1101,11 @@ async def upload_file_to_agent_kb(
     try:
         client = await db.client
         
-        # Verify agent access and get agent data
-        agent_data = await verify_agent_access(client, agent_id, user_id)
-        account_id = agent_data['account_id']
+        agent_result = await client.table('agents').select('account_id').eq('agent_id', agent_id).eq('account_id', user_id).execute()
+        if not agent_result.data:
+            raise HTTPException(status_code=404, detail="Agent not found or access denied")
+        
+        account_id = agent_result.data[0]['account_id']
         
         file_content = await file.read()
         job_id = await client.rpc('create_agent_kb_processing_job', {
@@ -238,171 +1146,6 @@ async def upload_file_to_agent_kb(
         raise HTTPException(status_code=500, detail="Failed to upload file")
 
 
-@router.put("/{entry_id}", response_model=KnowledgeBaseEntryResponse)
-async def update_knowledge_base_entry(
-    entry_id: str,
-    entry_data: UpdateKnowledgeBaseEntryRequest,
-    user_id: str = Depends(get_current_user_id_from_jwt)
-):
-    if not await is_enabled("knowledge_base"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    
-    """Update an agent knowledge base entry"""
-    try:
-        client = await db.client
-        
-        # Get the entry and verify it exists in agent_knowledge_base_entries table
-        entry_result = await client.table('agent_knowledge_base_entries').select('*').eq('entry_id', entry_id).execute()
-            
-        if not entry_result.data:
-            raise HTTPException(status_code=404, detail="Knowledge base entry not found")
-        
-        entry = entry_result.data[0]
-        agent_id = entry['agent_id']
-        
-        # Verify agent access
-        await verify_agent_access(client, agent_id, user_id)
-        
-        update_data = {}
-        if entry_data.name is not None:
-            update_data['name'] = entry_data.name
-        if entry_data.description is not None:
-            update_data['description'] = entry_data.description
-        if entry_data.content is not None:
-            update_data['content'] = entry_data.content
-        if entry_data.usage_context is not None:
-            update_data['usage_context'] = entry_data.usage_context
-        if entry_data.is_active is not None:
-            update_data['is_active'] = entry_data.is_active
-        
-        if not update_data:
-            raise HTTPException(status_code=400, detail="No fields to update")
-        
-        result = await client.table('agent_knowledge_base_entries').update(update_data).eq('entry_id', entry_id).execute()
-        
-        if not result.data:
-            raise HTTPException(status_code=500, detail="Failed to update knowledge base entry")
-        
-        updated_entry = result.data[0]
-        
-        logger.info(f"Updated agent knowledge base entry {entry_id} for agent {agent_id}")
-        
-        return KnowledgeBaseEntryResponse(
-            entry_id=updated_entry['entry_id'],
-            name=updated_entry['name'],
-            description=updated_entry['description'],
-            content=updated_entry['content'],
-            usage_context=updated_entry['usage_context'],
-            is_active=updated_entry['is_active'],
-            content_tokens=updated_entry.get('content_tokens'),
-            created_at=updated_entry['created_at'],
-            updated_at=updated_entry['updated_at'],
-            source_type=updated_entry.get('source_type'),
-            source_metadata=updated_entry.get('source_metadata'),
-            file_size=updated_entry.get('file_size'),
-            file_mime_type=updated_entry.get('file_mime_type')
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error updating knowledge base entry {entry_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to update knowledge base entry")
-
-@router.delete("/{entry_id}")
-async def delete_knowledge_base_entry(
-    entry_id: str,
-    user_id: str = Depends(get_current_user_id_from_jwt)
-):
-    if not await is_enabled("knowledge_base"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-
-    """Delete an agent knowledge base entry"""
-    try:
-        client = await db.client
-        
-        # Get the entry and verify it exists in agent_knowledge_base_entries table
-        entry_result = await client.table('agent_knowledge_base_entries').select('entry_id, agent_id').eq('entry_id', entry_id).execute()
-            
-        if not entry_result.data:
-            raise HTTPException(status_code=404, detail="Knowledge base entry not found")
-        
-        entry = entry_result.data[0]
-        agent_id = entry['agent_id']
-        
-        # Verify agent access
-        await verify_agent_access(client, agent_id, user_id)
-        
-        result = await client.table('agent_knowledge_base_entries').delete().eq('entry_id', entry_id).execute()
-        
-        logger.info(f"Deleted agent knowledge base entry {entry_id} for agent {agent_id}")
-        
-        return {"message": "Knowledge base entry deleted successfully"}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting knowledge base entry {entry_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to delete knowledge base entry")
-
-
-@router.get("/{entry_id}", response_model=KnowledgeBaseEntryResponse)
-async def get_knowledge_base_entry(
-    entry_id: str,
-    user_id: str = Depends(get_current_user_id_from_jwt)
-):
-    if not await is_enabled("knowledge_base"):
-        raise HTTPException(
-            status_code=403, 
-            detail="This feature is not available at the moment."
-        )
-    """Get a specific agent knowledge base entry"""
-    try:
-        client = await db.client
-        
-        # Get the entry from agent_knowledge_base_entries table only
-        result = await client.table('agent_knowledge_base_entries').select('*').eq('entry_id', entry_id).execute()
-        
-        if not result.data:
-            raise HTTPException(status_code=404, detail="Knowledge base entry not found")
-        
-        entry = result.data[0]
-        agent_id = entry['agent_id']
-        
-        # Verify agent access
-        await verify_agent_access(client, agent_id, user_id)
-        
-        logger.info(f"Retrieved agent knowledge base entry {entry_id} for agent {agent_id}")
-        
-        return KnowledgeBaseEntryResponse(
-            entry_id=entry['entry_id'],
-            name=entry['name'],
-            description=entry['description'],
-            content=entry['content'],
-            usage_context=entry['usage_context'],
-            is_active=entry['is_active'],
-            content_tokens=entry.get('content_tokens'),
-            created_at=entry['created_at'],
-            updated_at=entry['updated_at'],
-            source_type=entry.get('source_type'),
-            source_metadata=entry.get('source_metadata'),
-            file_size=entry.get('file_size'),
-            file_mime_type=entry.get('file_mime_type')
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting knowledge base entry {entry_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve knowledge base entry")
-
-
 @router.get("/agents/{agent_id}/processing-jobs", response_model=List[ProcessingJobResponse])
 async def get_agent_processing_jobs(
     agent_id: str,
@@ -419,8 +1162,9 @@ async def get_agent_processing_jobs(
     try:
         client = await db.client
 
-        # Verify agent access
-        await verify_agent_access(client, agent_id, user_id)
+        agent_result = await client.table('agents').select('account_id').eq('agent_id', agent_id).eq('account_id', user_id).execute()
+        if not agent_result.data:
+            raise HTTPException(status_code=404, detail="Agent not found or access denied")
         
         result = await client.rpc('get_agent_kb_processing_jobs', {
             'p_agent_id': agent_id,
@@ -516,8 +1260,9 @@ async def get_agent_knowledge_base_context(
     try:
         client = await db.client
         
-        # Verify agent access
-        await verify_agent_access(client, agent_id, user_id)
+        agent_result = await client.table('agents').select('agent_id').eq('agent_id', agent_id).eq('account_id', user_id).execute()
+        if not agent_result.data:
+            raise HTTPException(status_code=404, detail="Agent not found or access denied")
         
         result = await client.rpc('get_agent_knowledge_base_context', {
             'p_agent_id': agent_id,
@@ -538,3 +1283,311 @@ async def get_agent_knowledge_base_context(
         logger.error(f"Error getting knowledge base context for agent {agent_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve agent knowledge base context")
 
+@router.put("/{entry_id}", response_model=KnowledgeBaseEntryResponse)
+async def update_knowledge_base_entry(
+    entry_id: str,
+    entry_data: UpdateKnowledgeBaseEntryRequest,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Update a knowledge base entry (works for both thread and agent entries)"""
+    try:
+        client = await db.client
+        entry_result = await client.table('knowledge_base_entries').select('*').eq('entry_id', entry_id).execute()
+        table_name = 'knowledge_base_entries'
+        
+        if not entry_result.data:
+            entry_result = await client.table('agent_knowledge_base_entries').select('*').eq('entry_id', entry_id).execute()
+            table_name = 'agent_knowledge_base_entries'
+            
+        if not entry_result.data:
+            raise HTTPException(status_code=404, detail="Knowledge base entry not found")
+        
+        update_data = {}
+        if entry_data.name is not None:
+            update_data['name'] = entry_data.name
+        if entry_data.description is not None:
+            update_data['description'] = entry_data.description
+        if entry_data.content is not None:
+            update_data['content'] = entry_data.content
+        if entry_data.usage_context is not None:
+            update_data['usage_context'] = entry_data.usage_context
+        if entry_data.is_active is not None:
+            update_data['is_active'] = entry_data.is_active
+        
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No fields to update")
+        
+        result = await client.table(table_name).update(update_data).eq('entry_id', entry_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to update knowledge base entry")
+        
+        updated_entry = result.data[0]
+        
+        return KnowledgeBaseEntryResponse(
+            entry_id=updated_entry['entry_id'],
+            name=updated_entry['name'],
+            description=updated_entry['description'],
+            content=updated_entry['content'],
+            usage_context=updated_entry['usage_context'],
+            is_active=updated_entry['is_active'],
+            content_tokens=updated_entry.get('content_tokens'),
+            created_at=updated_entry['created_at'],
+            updated_at=updated_entry['updated_at'],
+            source_type=updated_entry.get('source_type'),
+            source_metadata=updated_entry.get('source_metadata'),
+            file_size=updated_entry.get('file_size'),
+            file_mime_type=updated_entry.get('file_mime_type')
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating knowledge base entry {entry_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update knowledge base entry")
+
+@router.delete("/{entry_id}")
+async def delete_knowledge_base_entry(
+    entry_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+
+    """Delete a knowledge base entry (works for both thread and agent entries)"""
+    try:
+        client = await db.client
+        
+        entry_result = await client.table('knowledge_base_entries').select('entry_id').eq('entry_id', entry_id).execute()
+        table_name = 'knowledge_base_entries'
+        
+        if not entry_result.data:
+            entry_result = await client.table('agent_knowledge_base_entries').select('entry_id').eq('entry_id', entry_id).execute()
+            table_name = 'agent_knowledge_base_entries'
+            
+        if not entry_result.data:
+            raise HTTPException(status_code=404, detail="Knowledge base entry not found")
+        
+        result = await client.table(table_name).delete().eq('entry_id', entry_id).execute()
+        
+        return {"message": "Knowledge base entry deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting knowledge base entry {entry_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete knowledge base entry")
+
+@router.get("/{entry_id}", response_model=KnowledgeBaseEntryResponse)
+async def get_knowledge_base_entry(
+    entry_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    """Get a specific knowledge base entry (works for both thread and agent entries)"""
+    try:
+        client = await db.client
+        
+        result = await client.table('knowledge_base_entries').select('*').eq('entry_id', entry_id).execute()
+        
+        if not result.data:
+            result = await client.table('agent_knowledge_base_entries').select('*').eq('entry_id', entry_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Knowledge base entry not found")
+        
+        entry = result.data[0]
+        
+        return KnowledgeBaseEntryResponse(
+            entry_id=entry['entry_id'],
+            name=entry['name'],
+            description=entry['description'],
+            content=entry['content'],
+            usage_context=entry['usage_context'],
+            is_active=entry['is_active'],
+            content_tokens=entry.get('content_tokens'),
+            created_at=entry['created_at'],
+            updated_at=entry['updated_at'],
+            source_type=entry.get('source_type'),
+            source_metadata=entry.get('source_metadata'),
+            file_size=entry.get('file_size'),
+            file_mime_type=entry.get('file_mime_type')
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting knowledge base entry {entry_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve knowledge base entry")
+
+@router.get("/threads/{thread_id}/context")
+async def get_knowledge_base_context(
+    thread_id: str,
+    max_tokens: int = 4000,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Get knowledge base context for agent prompts"""
+    try:
+        client = await db.client
+        thread_result = await client.table('threads').select('thread_id').eq('thread_id', thread_id).execute()
+        if not thread_result.data:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        
+        result = await client.rpc('get_knowledge_base_context', {
+            'p_thread_id': thread_id,
+            'p_max_tokens': max_tokens
+        }).execute()
+        
+        context = result.data if result.data else None
+        
+        return {
+            "context": context,
+            "max_tokens": max_tokens,
+            "thread_id": thread_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting knowledge base context for thread {thread_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve knowledge base context")
+
+@router.get("/threads/{thread_id}/combined-context")
+async def get_combined_knowledge_base_context(
+    thread_id: str,
+    agent_id: Optional[str] = None,
+    max_tokens: int = 4000,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Get combined knowledge base context from both thread and agent sources"""
+    try:
+        client = await db.client
+        thread_result = await client.table('threads').select('thread_id').eq('thread_id', thread_id).execute()
+        if not thread_result.data:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        
+        # Get user's account ID
+        user_result = await client.table('users').select('account_id').eq('user_id', user_id).execute()
+        account_id = user_result.data[0]['account_id'] if user_result.data else None
+        
+        result = await client.rpc('get_combined_knowledge_base_context', {
+            'p_thread_id': thread_id,
+            'p_account_id': account_id,
+            'p_agent_id': agent_id,
+            'p_max_tokens': max_tokens
+        }).execute()
+        
+        context = result.data if result.data else None
+        
+        return {
+            "context": context,
+            "max_tokens": max_tokens,
+            "thread_id": thread_id,
+            "agent_id": agent_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting combined knowledge base context for thread {thread_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve combined knowledge base context")
+
+@router.post("/threads/{thread_id}/save-to-global")
+async def save_thread_knowledge_to_global(
+    thread_id: str,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Automatically save thread knowledge base entries to global knowledge base when thread is closed"""
+    try:
+        client = await db.client
+        
+        # Get the proper account_id for this user
+        account_id = await get_user_account_id(client, user_id)
+        
+        # Get all active knowledge base entries for the thread
+        thread_kb_result = await client.table('knowledge_base_entries').select('*').eq('thread_id', thread_id).eq('is_active', True).execute()
+        
+        if not thread_kb_result.data:
+            return {
+                "message": "No knowledge base entries found for thread",
+                "entries_saved": 0,
+                "thread_id": thread_id
+            }
+        
+        # Get existing global knowledge base entries to check for duplicates
+        global_kb_result = await client.table('global_knowledge_base_entries').select('*').eq('account_id', account_id).eq('is_active', True).execute()
+        
+        existing_global_entries = global_kb_result.data or []
+        existing_content_hashes = {entry.get('content', '')[:100] for entry in existing_global_entries}
+        
+        saved_entries = 0
+        skipped_entries = 0
+        
+        for entry in thread_kb_result.data:
+            # Check if similar content already exists in global knowledge base
+            content_preview = entry.get('content', '')[:100]
+            if content_preview in existing_content_hashes:
+                skipped_entries += 1
+                continue
+            
+            # Create global knowledge base entry
+            global_entry_data = {
+                'account_id': account_id,
+                'name': f"{entry['name']} (from thread)",
+                'description': f"Knowledge extracted from thread {thread_id}: {entry.get('description', '')}",
+                'content': entry['content'],
+                'usage_context': entry['usage_context'],
+                'is_active': True
+            }
+            
+            try:
+                await client.table('global_knowledge_base_entries').insert(global_entry_data).execute()
+                saved_entries += 1
+                existing_content_hashes.add(content_preview)
+            except Exception as e:
+                logger.error(f"Error saving entry to global knowledge base: {str(e)}")
+                continue
+        
+        return {
+            "message": f"Successfully saved {saved_entries} knowledge base entries to global knowledge base",
+            "entries_saved": saved_entries,
+            "entries_skipped": skipped_entries,
+            "thread_id": thread_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error saving thread knowledge to global for thread {thread_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to save thread knowledge to global knowledge base") 

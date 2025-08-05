@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Bot, Menu, Store, Plus, Zap, Plug, ChevronRight, Loader2 } from 'lucide-react';
+import { Bot, Menu, Store, Plus, Zap, Plug, ChevronRight, Loader2, Lightbulb, X, Search, Book, History } from 'lucide-react';
 
 import { NavAgents } from '@/components/sidebar/nav-agents';
 import { NavUserWithTeams } from '@/components/sidebar/nav-user-with-teams';
@@ -53,12 +53,33 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useFeatureFlags } from '@/lib/feature-flags';
 import { useCreateNewAgent } from '@/hooks/react-query/agents/use-agents';
 import { Button } from '../ui/button';
+import { useRouter } from 'next/navigation';
+import { KnowledgeBaseDialog } from '@/components/thread/knowledge-based/knowledge-base-dialog';
+import { GlobalKnowledgeBaseDialog } from '@/components/thread/knowledge-based/global-knowledge-base-dialog';
+
+// Helper function to extract threadId from pathname
+const extractThreadIdFromPathname = (pathname: string): string | null => {
+  // Match patterns like /projects/{projectId}/thread/{threadId}
+  const threadMatch = pathname.match(/\/projects\/[^\/]+\/thread\/([^\/]+)/);
+  if (threadMatch) {
+    return threadMatch[1];
+  }
+  
+  // Match patterns like /share/{threadId}
+  const shareMatch = pathname.match(/\/share\/([^\/]+)/);
+  if (shareMatch) {
+    return shareMatch[1];
+  }
+  
+  return null;
+};
 
 export function SidebarLeft({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
   const { state, setOpen, setOpenMobile } = useSidebar();
   const isMobile = useIsMobile();
+  const router = useRouter();
   const [user, setUser] = useState<{
     name: string;
     email: string;
@@ -68,14 +89,24 @@ export function SidebarLeft({
     email: 'loading@example.com',
     avatar: '',
   });
+  const [showSearchBar, setShowSearchBar] = useState(false);
+  const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { flags, loading: flagsLoading } = useFeatureFlags(['custom_agents', 'agent_marketplace']);
+  const { flags, loading: flagsLoading } = useFeatureFlags(['custom_agents', 'agent_marketplace', 'knowledge_base']);
   const customAgentsEnabled = flags.custom_agents;
   const marketplaceEnabled = flags.agent_marketplace;
+  const knowledgeBaseEnabled = flags.knowledge_base;
   const createNewAgentMutation = useCreateNewAgent();
   const [showNewAgentDialog, setShowNewAgentDialog] = useState(false);
+
+  // Extract threadId from current pathname
+  const currentThreadId = extractThreadIdFromPathname(pathname);
+
+  const openKnowledgeBase = () => {
+    setShowKnowledgeBase(true);
+  };
 
   
   useEffect(() => {
@@ -253,7 +284,34 @@ export function SidebarLeft({
             </Tooltip>
           </div>
         )}
-        <NavUserWithTeams user={user} />
+        <div className='w-full items-center justify-center'>
+          {/* Knowledge Base button: only show if feature is enabled */}
+          {!flagsLoading && knowledgeBaseEnabled && (
+            <Tooltip>
+              <TooltipTrigger asChild className='w-full items-center justify-center'>
+                <button
+                  className={`h-5 w-5 cursor-pointer flex items-center justify-center my-3 rounded-sm flex-shrink-0 transition-colors ${state === 'collapsed' ? 'hover:bg-card' : ''}`}
+                  type="button"
+                  tabIndex={0}
+                  aria-label="Knowledge Base"
+                  onClick={() => {
+                    setOpen(true);
+                    setTimeout(() => { setShowKnowledgeBase(true); }, 100); // Show knowledge base after expanding
+                  }}
+                >
+                  <Lightbulb className="w-5 h-5" />
+                </button>
+              </TooltipTrigger>
+                              <TooltipContent side="right">
+                  {currentThreadId 
+                    ? "Knowledge Base" 
+                    : "Knowledge Base"
+                  }
+                </TooltipContent>
+            </Tooltip>
+          )}
+          <NavUserWithTeams user={user} />
+        </div>
       </SidebarFooter>
       <SidebarRail />
       <AlertDialog open={showNewAgentDialog} onOpenChange={setShowNewAgentDialog}>
@@ -270,6 +328,19 @@ export function SidebarLeft({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {!flagsLoading && knowledgeBaseEnabled && currentThreadId && (
+        <KnowledgeBaseDialog
+          threadId={currentThreadId}
+          isOpen={showKnowledgeBase}
+          onOpenChange={setShowKnowledgeBase}
+        />
+      )}
+      {!flagsLoading && knowledgeBaseEnabled && !currentThreadId && (
+        <GlobalKnowledgeBaseDialog
+          isOpen={showKnowledgeBase}
+          onOpenChange={setShowKnowledgeBase}
+        />
+      )}
     </Sidebar>
   );
 }

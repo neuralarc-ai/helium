@@ -1,16 +1,16 @@
 export interface KnowledgeBaseEntry {
-    source_metadata: any;
-    source_type: string;
-    file_size: any;
     entry_id: string;
     name: string;
-    description?: string;
+    description: string;
     content: string;
     usage_context: 'always' | 'on_request' | 'contextual';
     is_active: boolean;
     content_tokens?: number;
     created_at: string;
     updated_at: string;
+    source_type?: string;
+    source_metadata?: any;
+    file_size?: any;
   }
   
   export interface KnowledgeBaseListResponse {
@@ -21,9 +21,9 @@ export interface KnowledgeBaseEntry {
   
   export interface CreateKnowledgeBaseEntryRequest {
     name: string;
-    description?: string;
+    description: string;
     content: string;
-    usage_context?: 'always' | 'on_request' | 'contextual';
+    usage_context: 'always' | 'on_request' | 'contextual';
   }
   
   export interface UpdateKnowledgeBaseEntryRequest {
