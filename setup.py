@@ -33,7 +33,7 @@ def print_banner():
     """Prints the Helium setup banner."""
     print(
         f"""
-{Colors.MAGENTA}{Colors.BOLD}
+{Colors.BLUE}{Colors.BOLD}
     ██╗  ██╗███████╗██╗     ██╗██╗   ██╗███╗   ███╗
     ██║  ██║██╔════╝██║     ██║██║   ██║████╗ ████║
     ███████║█████╗  ██║     ██║██║   ██║██╔████╔██║

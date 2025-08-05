@@ -1,6 +1,13 @@
 import { createClient } from '@/lib/supabase/client';
 import { handleApiError } from './error-handler';
 
+// Add this type declaration at the top of the file (after imports)
+declare global {
+  interface Window {
+    tolt_referral?: string;
+  }
+}
+
 // Get backend URL from environment variables
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 

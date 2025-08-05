@@ -120,6 +120,28 @@ export const MODELS = {
   },
 };
 
+// Production-only models for Helio branding
+export const PRODUCTION_MODELS = {
+  'helio-o1': {
+    id: 'moonshotai/kimi-k2:free',
+    label: 'Helio o1',
+    description: 'Our most powerful model for complex tasks',
+    tier: 'free',
+    priority: 100,
+    recommended: true,
+    lowQuality: false
+  },
+  'helio-o1-lite': {
+    id: 'openrouter/deepseek/deepseek-chat-v3-0324:free',
+    label: 'Helio o1 Lite',
+    description: 'Fast and efficient for everyday tasks',
+    tier: 'free',
+    priority: 90,
+    recommended: false,
+    lowQuality: false
+  }
+};
+
 // Helper to check if a user can access a model based on subscription status
 export const canAccessModel = (
   subscriptionStatus: SubscriptionStatus,
@@ -209,70 +231,83 @@ export const useModelSelection = () => {
   const MODEL_OPTIONS = useMemo(() => {
     let models = [];
     
-    // Default models if API data not available
-    if (!modelsData?.models || isLoadingModels) {
-      models = [
-        { 
-          id: DEFAULT_FREE_MODEL_ID, 
-          label: 'DeepSeek', 
-          requiresSubscription: false,
-          priority: MODELS[DEFAULT_FREE_MODEL_ID]?.priority || 50
-        },
-        { 
-          id: DEFAULT_PREMIUM_MODEL_ID, 
-          label: 'Sonnet 4', 
-          requiresSubscription: true, 
-          priority: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.priority || 100
-        },
-      ];
-    } else {
-      // Process API-provided models
-      models = modelsData.models.map(model => {
-        const shortName = model.short_name || model.id;
-        const displayName = model.display_name || shortName;
-        
-        // Format the display label
-        let cleanLabel = displayName;
-        if (cleanLabel.includes('/')) {
-          cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
-        }
-        
-        cleanLabel = cleanLabel
-          .replace(/-/g, ' ')
-          .split(' ')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' ');
-        
-        // Get model data from our central MODELS constant
-        const modelData = MODELS[shortName] || {};
-        const isPremium = model?.requires_subscription || modelData.tier === 'premium' || false;
-        
-        return {
-          id: shortName,
-          label: cleanLabel,
-          requiresSubscription: isPremium,
-          top: modelData.priority >= 90, // Mark high-priority models as "top"
-          priority: modelData.priority || 0,
-          lowQuality: modelData.lowQuality || false,
-          recommended: modelData.recommended || false
-        };
-      });
-    }
-    
-    // Add custom models if in local mode
-    if (isLocalMode() && customModels.length > 0) {
-      const customModelOptions = customModels.map(model => ({
+    // In production, only show the two Helio models
+    if (!isLocalMode()) {
+      models = Object.values(PRODUCTION_MODELS).map(model => ({
         id: model.id,
-        label: model.label || formatModelName(model.id),
+        label: model.label,
         requiresSubscription: false,
-        top: false,
-        isCustom: true,
-        priority: 30, // Low priority by default
-        lowQuality: false,
-        recommended: false
+        top: model.recommended,
+        priority: model.priority,
+        lowQuality: model.lowQuality,
+        recommended: model.recommended
       }));
+    } else {
+      // Default models if API data not available
+      if (!modelsData?.models || isLoadingModels) {
+        models = [
+          { 
+            id: DEFAULT_FREE_MODEL_ID, 
+            label: 'DeepSeek', 
+            requiresSubscription: false,
+            priority: MODELS[DEFAULT_FREE_MODEL_ID]?.priority || 50
+          },
+          { 
+            id: DEFAULT_PREMIUM_MODEL_ID, 
+            label: 'Sonnet 4', 
+            requiresSubscription: true, 
+            priority: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.priority || 100
+          },
+        ];
+      } else {
+        // Process API-provided models
+        models = modelsData.models.map(model => {
+          const shortName = model.short_name || model.id;
+          const displayName = model.display_name || shortName;
+          
+          // Format the display label
+          let cleanLabel = displayName;
+          if (cleanLabel.includes('/')) {
+            cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
+          }
+          
+          cleanLabel = cleanLabel
+            .replace(/-/g, ' ')
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+          
+          // Get model data from our central MODELS constant
+          const modelData = MODELS[shortName] || {};
+          const isPremium = model?.requires_subscription || modelData.tier === 'premium' || false;
+          
+          return {
+            id: shortName,
+            label: cleanLabel,
+            requiresSubscription: isPremium,
+            top: modelData.priority >= 90, // Mark high-priority models as "top"
+            priority: modelData.priority || 0,
+            lowQuality: modelData.lowQuality || false,
+            recommended: modelData.recommended || false
+          };
+        });
+      }
       
-      models = [...models, ...customModelOptions];
+      // Add custom models if in local mode
+      if (customModels.length > 0) {
+        const customModelOptions = customModels.map(model => ({
+          id: model.id,
+          label: model.label || formatModelName(model.id),
+          requiresSubscription: false,
+          top: false,
+          isCustom: true,
+          priority: 30, // Low priority by default
+          lowQuality: false,
+          recommended: false
+        }));
+        
+        models = [...models, ...customModelOptions];
+      }
     }
     
     // Sort models consistently in one place:
@@ -298,11 +333,15 @@ export const useModelSelection = () => {
 
   // Get filtered list of models the user can access (no additional sorting)
   const availableModels = useMemo(() => {
-    return isLocalMode() 
-      ? MODEL_OPTIONS 
-      : MODEL_OPTIONS.filter(model => 
-          canAccessModel(subscriptionStatus, model.requiresSubscription)
-        );
+    // In production, all models are available (they're all free)
+    if (!isLocalMode()) {
+      return MODEL_OPTIONS;
+    }
+    
+    // In local mode, filter based on subscription status
+    return MODEL_OPTIONS.filter(model => 
+      canAccessModel(subscriptionStatus, model.requiresSubscription)
+    );
   }, [MODEL_OPTIONS, subscriptionStatus]);
 
   // Initialize selected model from localStorage ONLY ONCE
@@ -344,8 +383,16 @@ export const useModelSelection = () => {
         }
       }
       
-      // Fallback to default model
-      const defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+      // Fallback to default model based on environment
+      let defaultModel: string;
+      if (isLocalMode()) {
+        // Local mode: use subscription-based default
+        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+      } else {
+        // Production mode: use Helio o1 as default
+        defaultModel = PRODUCTION_MODELS['helio-o1'].id;
+      }
+      
       console.log('Using default model:', defaultModel);
       setSelectedModel(defaultModel);
       saveModelPreference(defaultModel);
@@ -353,7 +400,17 @@ export const useModelSelection = () => {
       
     } catch (error) {
       console.warn('Failed to load preferences from localStorage:', error);
-      const defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+      
+      // Fallback to default model based on environment
+      let defaultModel: string;
+      if (isLocalMode()) {
+        // Local mode: use subscription-based default
+        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+      } else {
+        // Production mode: use Helio o1 as default
+        defaultModel = PRODUCTION_MODELS['helio-o1'].id;
+      }
+      
       setSelectedModel(defaultModel);
       saveModelPreference(defaultModel);
       setHasInitialized(true);
@@ -380,7 +437,15 @@ export const useModelSelection = () => {
       console.warn('Model not found in options:', modelId, MODEL_OPTIONS, isCustomModel, customModels);
       
       // Reset to default model when the selected model is not found
-      const defaultModel = isLocalMode() ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+      let defaultModel: string;
+      if (isLocalMode()) {
+        // Local mode: use subscription-based default
+        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+      } else {
+        // Production mode: use Helio o1 as default
+        defaultModel = PRODUCTION_MODELS['helio-o1'].id;
+      }
+      
       setSelectedModel(defaultModel);
       saveModelPreference(defaultModel);
       return;

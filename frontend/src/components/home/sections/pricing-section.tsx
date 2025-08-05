@@ -300,8 +300,10 @@ function PricingTier({
 
   // Find the current tier (moved outside conditional for JSX access)
   const currentTier = siteConfig.cloudPricingItems.find(
-    (p) => p.stripePriceId === currentSubscription?.price_id || p.yearlyStripePriceId === currentSubscription?.price_id,
-  );
+    (p) => p.stripePriceId === currentSubscription?.price_id || 
+           p.yearlyStripePriceId === currentSubscription?.price_id ||
+           (p as any).monthlyCommitmentStripePriceId === currentSubscription?.price_id,
+  ) as PricingTier | undefined;
 
   const isCurrentActivePlan =
     isAuthenticated && currentSubscription?.price_id === priceId;
@@ -609,8 +611,8 @@ export function PricingSection({
     const currentTier = siteConfig.cloudPricingItems.find(
       (p) => p.stripePriceId === currentSubscription.price_id || 
              p.yearlyStripePriceId === currentSubscription.price_id ||
-             p.monthlyCommitmentStripePriceId === currentSubscription.price_id,
-    );
+             (p as any).monthlyCommitmentStripePriceId === currentSubscription.price_id,
+    ) as PricingTier | undefined;
 
     if (currentTier) {
       // Check if current subscription is yearly commitment (new yearly)

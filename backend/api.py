@@ -181,6 +181,9 @@ api_router.include_router(triggers_api.router)
 from pipedream import api as pipedream_api
 api_router.include_router(pipedream_api.router)
 
+from waitlist import api as waitlist_api
+api_router.include_router(waitlist_api.router)
+
 # MFA functionality moved to frontend
 
 

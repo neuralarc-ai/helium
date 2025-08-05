@@ -7,7 +7,6 @@ import { Bot, Menu, Store, Plus, Zap, Plug, ChevronRight, Loader2 } from 'lucide
 import { NavAgents } from '@/components/sidebar/nav-agents';
 import { NavUserWithTeams } from '@/components/sidebar/nav-user-with-teams';
 import { HeliumLogo } from '@/components/sidebar/helium-logo';
-import { CTACard } from '@/components/sidebar/cta';
 import {
   Sidebar,
   SidebarContent,
@@ -237,11 +236,6 @@ export function SidebarLeft({
         </SidebarGroup>
         <NavAgents />
       </SidebarContent>
-      {state !== 'collapsed' && (
-        <div className="px-3 py-2">
-          <CTACard />
-        </div>
-      )}
       <SidebarFooter>
         {state === 'collapsed' && (
           <div className="mt-2 flex justify-center">

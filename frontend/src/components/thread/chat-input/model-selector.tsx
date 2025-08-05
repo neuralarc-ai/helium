@@ -68,6 +68,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
 
   // Custom models state
@@ -507,12 +508,21 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   return (
     <div className="relative">
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (!open && triggerButtonRef.current) {
+            triggerButtonRef.current.blur();
+          }
+        }}
+      >
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
                 <Button
+                  ref={triggerButtonRef}
                   variant="ghost"
                   size="sm"
                   className="h-8 px-2 py-2 bg-transparent border-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/50 flex items-center gap-2"
@@ -534,24 +544,20 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
         <DropdownMenuContent
           align="end"
-          className="w-72 p-0 overflow-hidden"
+          className="w-72 p-0 overflow-hidden bg-background/80 backdrop-blur-md"
           sideOffset={4}
         >
           <div className="overflow-y-auto w-full scrollbar-hide relative">
-            {/* Completely separate views for subscribers and non-subscribers */}
-            {shouldDisplayAll ? (
-              /* No Subscription View */
+            {/* Production mode - simplified view with only Helio models */}
+            {!isLocalMode() ? (
               <div>
-                {/* Available Models Section - ONLY hardcoded free models */}
                 <div className="px-3 py-3 text-xs font-medium text-muted-foreground">
-                  Available Models
+                  Choose Model
                 </div>
-                {/* Only show free models */}
                 {uniqueModels
                   .filter(m =>
-                    !m.requiresSubscription &&
-                    (m.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                      m.id.toLowerCase().includes(searchQuery.toLowerCase()))
+                    m.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    m.id.toLowerCase().includes(searchQuery.toLowerCase())
                   )
                   .map((model, index) => (
                     <TooltipProvider key={model.uniqueKey || `model-${model.id}-${index}`}>
@@ -560,7 +566,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                           <div className='w-full'>
                             <DropdownMenuItem
                               className={cn(
-                                "text-sm mx-2 my-0.5 px-3 py-2 flex items-center justify-between cursor-pointer",
+                                "text-sm mx-2 my-0.5 px-3 py-2 flex flex-col items-start justify-between cursor-pointer gap-0.5",
                                 selectedModel === model.id && "bg-accent"
                               )}
                               onClick={() => onModelChange(model.id)}
@@ -569,7 +575,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                               <div className="flex items-center">
                                 <span className="font-medium">{model.label}</span>
                               </div>
-                              <div className="flex items-center gap-2">
+                              {model.description && (
+                                <span className="text-xs text-muted-foreground mt-0.5">
+                                  {model.description}
+                                </span>
+                              )}
+                              <div className="flex items-center gap-2 mt-1">
                                 {/* Show capabilities */}
                                 {(MODELS[model.id]?.lowQuality || false) && (
                                   <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
@@ -595,85 +606,143 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                     </TooltipProvider>
                   ))
                 }
-
-                {/* Premium Models Section */}
-                <div className="mt-4 border-t border-border pt-2">
-                  <div className="px-3 py-1.5 text-xs font-medium text-blue-500 flex items-center">
-                    {/* <Crown className="h-3.5 w-3.5 mr-1.5" /> */}
-                    Additional Models
+              </div>
+            ) : (
+              /* Local mode - full functionality */
+              shouldDisplayAll ? (
+                /* No Subscription View */
+                <div>
+                  {/* Available Models Section - ONLY hardcoded free models */}
+                  <div className="px-3 py-3 text-xs font-medium text-muted-foreground">
+                    Available Models
                   </div>
-
-                  {/* Premium models container with paywall overlay */}
-                  <div className="relative h-40 overflow-hidden px-2">
-                    {getPremiumModels()
-                      .filter(m =>
-                        m.requiresSubscription &&
-                        (m.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          m.id.toLowerCase().includes(searchQuery.toLowerCase()))
-                      )
-                      .slice(0, 3)
-                      .map((model, index) => (
-                        <TooltipProvider key={model.uniqueKey || `model-${model.id}-${index}`}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className='w-full'>
-                                <DropdownMenuItem
-                                  className="text-sm px-3 py-2 flex items-center justify-between opacity-70 cursor-pointer pointer-events-none"
-                                >
-                                  <div className="flex items-center">
-                                    <span className="font-medium">{model.label}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {/* Show capabilities */}
-                                    {MODELS[model.id]?.recommended && (
-                                      <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium whitespace-nowrap">
-                                        Recommended
-                                      </span>
-                                    )}
-                                    <Crown className="h-3.5 w-3.5 text-blue-500" />
-                                  </div>
-                                </DropdownMenuItem>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="left" className="text-xs max-w-xs">
-                              <p>Requires subscription to access premium model</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ))
-                    }
-
-                    {/* Absolute positioned paywall overlay with gradient fade */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/95 to-transparent flex items-end justify-center">
-                      <div className="w-full p-3">
-                        <div className="rounded-xl bg-gradient-to-br from-blue-50/80 to-blue-200/70 dark:from-blue-950/40 dark:to-blue-900/30 shadow-sm border border-blue-200/50 dark:border-blue-800/50 p-3">
-                          <div className="flex flex-col space-y-2">
-                            <div className="flex items-center">
-                              <Crown className="h-4 w-4 text-blue-500 mr-2 flex-shrink-0" />
-                              <div>
-                                <p className="text-sm font-medium">Unlock all models + higher limits</p>
-                              </div>
+                  {/* Only show free models */}
+                  {uniqueModels
+                    .filter(m =>
+                      !m.requiresSubscription &&
+                      (m.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        m.id.toLowerCase().includes(searchQuery.toLowerCase()))
+                    )
+                    .map((model, index) => (
+                      <TooltipProvider key={model.uniqueKey || `model-${model.id}-${index}`}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className='w-full'>
+                              <DropdownMenuItem
+                                className={cn(
+                                  "text-sm mx-2 my-0.5 px-3 py-2 flex items-center justify-between cursor-pointer",
+                                  selectedModel === model.id && "bg-accent"
+                                )}
+                                onClick={() => onModelChange(model.id)}
+                                onMouseEnter={() => setHighlightedIndex(filteredOptions.indexOf(model))}
+                              >
+                                <div className="flex items-center">
+                                  <span className="font-medium">{model.label}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {/* Show capabilities */}
+                                  {(MODELS[model.id]?.lowQuality || false) && (
+                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                                  )}
+                                  {(MODELS[model.id]?.recommended || false) && (
+                                    <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium">
+                                      Recommended
+                                    </span>
+                                  )}
+                                  {selectedModel === model.id && (
+                                    <Check className="h-4 w-4 text-blue-500" />
+                                  )}
+                                </div>
+                              </DropdownMenuItem>
                             </div>
-                            <Button
-                              size="sm"
-                              className="w-full h-8 font-medium"
-                              onClick={handleUpgradeClick}
-                            >
-                              Upgrade now
-                            </Button>
+                          </TooltipTrigger>
+                          {MODELS[model.id]?.lowQuality && (
+                            <TooltipContent side="left" className="text-xs max-w-xs">
+                              <p>Basic model with limited capabilities</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    ))
+                  }
+
+                  {/* Premium Models Section */}
+                  <div className="mt-4 border-t border-border pt-2">
+                    <div className="px-3 py-1.5 text-xs font-medium text-blue-500 flex items-center">
+                      {/* <Crown className="h-3.5 w-3.5 mr-1.5" /> */}
+                      Additional Models
+                    </div>
+
+                    {/* Premium models container with paywall overlay */}
+                    <div className="relative h-40 overflow-hidden px-2">
+                      {getPremiumModels()
+                        .filter(m =>
+                          m.requiresSubscription &&
+                          (m.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            m.id.toLowerCase().includes(searchQuery.toLowerCase()))
+                        )
+                        .slice(0, 3)
+                        .map((model, index) => (
+                          <TooltipProvider key={model.uniqueKey || `model-${model.id}-${index}`}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className='w-full'>
+                                  <DropdownMenuItem
+                                    className="text-sm px-3 py-2 flex items-center justify-between opacity-70 cursor-pointer pointer-events-none"
+                                  >
+                                    <div className="flex items-center">
+                                      <span className="font-medium">{model.label}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {/* Show capabilities */}
+                                      {MODELS[model.id]?.recommended && (
+                                        <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium whitespace-nowrap">
+                                          Recommended
+                                        </span>
+                                      )}
+                                      <Crown className="h-3.5 w-3.5 text-blue-500" />
+                                    </div>
+                                  </DropdownMenuItem>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="text-xs max-w-xs">
+                                <p>Requires subscription to access premium model</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ))
+                      }
+
+                      {/* Absolute positioned paywall overlay with gradient fade */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/95 to-transparent flex items-end justify-center">
+                        <div className="w-full p-3">
+                          <div className="rounded-xl bg-gradient-to-br from-blue-50/80 to-blue-200/70 dark:from-blue-950/40 dark:to-blue-900/30 shadow-sm border border-blue-200/50 dark:border-blue-800/50 p-3">
+                            <div className="flex flex-col space-y-2">
+                              <div className="flex items-center">
+                                <Crown className="h-4 w-4 text-blue-500 mr-2 flex-shrink-0" />
+                                <div>
+                                  <p className="text-sm font-medium">Unlock all models + higher limits</p>
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                className="w-full h-8 font-medium"
+                                onClick={handleUpgradeClick}
+                              >
+                                Upgrade now
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              /* Subscription or other status view */
-              <div className='max-h-[320px] overflow-y-auto w-full'>
-                <div className="px-3 py-3 flex justify-between items-center">
-                  <span className="text-xs font-medium text-muted-foreground">All Models</span>
-                  {isLocalMode() && (
+              ) : (
+                /* Subscription or other status view */
+                <div className='max-h-[320px] overflow-y-auto w-full'>
+                  <div className="px-3 py-3 flex justify-between items-center">
+                    <span className="text-xs font-medium text-muted-foreground">All Models</span>
                     <div className="flex items-center gap-1">
                       <TooltipProvider>
                         <Tooltip>
@@ -711,24 +780,24 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                       </Tooltip>
                     </TooltipProvider>
                     </div>
+                  </div>
+                  {uniqueModels
+                    .filter(m =>
+                      m.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      m.id.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map((model, index) => renderModelOption(model, index))}
+
+                  {uniqueModels.length === 0 && (
+                    <div className="text-sm text-center py-4 text-muted-foreground">
+                      No models match your search
+                    </div>
                   )}
                 </div>
-                {uniqueModels
-                  .filter(m =>
-                    m.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    m.id.toLowerCase().includes(searchQuery.toLowerCase())
-                  )
-                  .map((model, index) => renderModelOption(model, index))}
-
-                {uniqueModels.length === 0 && (
-                  <div className="text-sm text-center py-4 text-muted-foreground">
-                    No models match your search
-                  </div>
-                )}
-              </div>
+              )
             )}
           </div>
-          {!shouldDisplayAll && <div className="px-3 py-2 border-t border-border">
+          {!shouldDisplayAll && isLocalMode() && <div className="px-3 py-2 border-t border-border">
             <div className="relative flex items-center">
               <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <input

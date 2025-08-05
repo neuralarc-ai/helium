@@ -1,13 +1,13 @@
 import { ThemeProvider } from '@/components/home/theme-provider';
 import { siteConfig } from '@/lib/site';
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Fustat, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import { Toaster } from '@/components/ui/sonner';
 import Script from 'next/script';
 
-const geistSans = Geist({
+const geistSans = Fustat({
   variable: '--font-geist-sans',
   subsets: ['latin'],
 });
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     'research',
     'data analysis',
   ],
-  authors: [{ name: 'Neural Arc Inc.', url: 'https://h2.ai' }],
+  authors: [{ name: 'Neural Arc Inc.', url: 'https://he2.ai' }],
   creator:
     'Neural Arc Inc.',
   publisher:

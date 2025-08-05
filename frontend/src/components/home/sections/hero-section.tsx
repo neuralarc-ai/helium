@@ -1,419 +1,397 @@
-'use client';
-import { HeroVideoSection } from '@/components/home/sections/hero-video-section';
-import { siteConfig } from '@/lib/home';
-import { ArrowRight, Github, X, AlertCircle, Square } from 'lucide-react';
-import { FlickeringGrid } from '@/components/home/ui/flickering-grid';
-import { useMediaQuery } from '@/hooks/use-media-query';
-import { useState, useEffect, useRef, FormEvent } from 'react';
-import { useScroll } from 'motion/react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import React from 'react';
 import { useAuth } from '@/components/AuthProvider';
-import {
-  BillingError,
-} from '@/lib/api';
-import { useInitiateAgentMutation } from '@/hooks/react-query/dashboard/use-initiate-agent';
-import { useThreadQuery } from '@/hooks/react-query/threads/use-threads';
-import { generateThreadName } from '@/lib/actions/threads';
-import GoogleSignIn from '@/components/GoogleSignIn';
-import { useAgents } from '@/hooks/react-query/agents/use-agents';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogOverlay,
-} from '@/components/ui/dialog';
-import { BillingErrorAlert } from '@/components/billing/usage-limit-alert';
-import { useBillingError } from '@/hooks/useBillingError';
-import { useAccounts } from '@/hooks/use-accounts';
-import { isLocalMode, config } from '@/lib/config';
-import { toast } from 'sonner';
-import { useModal } from '@/hooks/use-modal-store';
-import GitHubSignIn from '@/components/GithubSignIn';
-import { ChatInput, ChatInputHandles } from '@/components/thread/chat-input/chat-input';
-import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
-import { createQueryHook } from '@/hooks/use-query';
-import { agentKeys } from '@/hooks/react-query/agents/keys';
-import { getAgents } from '@/hooks/react-query/agents/utils';
+import Link from 'next/link';
+import Image from 'next/image';
+import WaitlistForm from './WaitlistForm';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { motion, useScroll, useTransform } from 'framer-motion';
 
-// Custom dialog overlay with blur effect
-const BlurredDialogOverlay = () => (
-  <DialogOverlay className="bg-background/40 backdrop-blur-md" />
-);
-
-// Constant for localStorage key to ensure consistency
-const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
-
-export function HeroSection() {
-  const { hero } = siteConfig;
-  const tablet = useMediaQuery('(max-width: 1024px)');
-  const [mounted, setMounted] = useState(false);
-  const [isScrolling, setIsScrolling] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+export default function HeroSection() {
+  const { user } = useAuth();
+  const [waitlistOpen, setWaitlistOpen] = React.useState(false);
+  
+  // Parallax scroll effect
   const { scrollY } = useScroll();
-  const [inputValue, setInputValue] = useState('');
-  const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>();
-  const router = useRouter();
-  const { user, isLoading } = useAuth();
-  const { billingError, handleBillingError, clearBillingError } =
-    useBillingError();
-  const { data: accounts } = useAccounts();
-  const personalAccount = accounts?.find((account) => account.personal_account);
-  const { onOpen } = useModal();
-  const initiateAgentMutation = useInitiateAgentMutation();
-  const [initiatedThreadId, setInitiatedThreadId] = useState<string | null>(null);
-  const threadQuery = useThreadQuery(initiatedThreadId || '');
-  const chatInputRef = useRef<ChatInputHandles>(null);
+  const parallaxY1 = useTransform(scrollY, [0, 1000], [0, -200]);
+  const parallaxY2 = useTransform(scrollY, [0, 1000], [0, -150]);
+  const parallaxY3 = useTransform(scrollY, [0, 1000], [0, -250]);
+  const parallaxY4 = useTransform(scrollY, [0, 1000], [0, -180]);
+  const parallaxY5 = useTransform(scrollY, [0, 1000], [0, -220]);
+  const parallaxY6 = useTransform(scrollY, [0, 1000], [0, -190]);
 
-  // Fetch agents for selection
-  const { data: agentsResponse } = createQueryHook(
-    agentKeys.list({
-      limit: 100,
-      sort_by: 'name',
-      sort_order: 'asc'
-    }),
-    () => getAgents({
-      limit: 100,
-      sort_by: 'name',
-      sort_order: 'asc'
-    }),
-    {
-      enabled: !!user && !isLoading,
-      staleTime: 5 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
-    }
-  )();
+  // Create floating animation values
+  const [floatingOffset1, setFloatingOffset1] = React.useState(0);
+  const [floatingOffset2, setFloatingOffset2] = React.useState(0);
+  const [floatingOffset3, setFloatingOffset3] = React.useState(0);
+  const [floatingOffset4, setFloatingOffset4] = React.useState(0);
+  const [floatingOffset5, setFloatingOffset5] = React.useState(0);
+  const [floatingOffset6, setFloatingOffset6] = React.useState(0);
 
-  const agents = agentsResponse?.agents || [];
-
-  // Auth dialog state
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Detect when scrolling is active to reduce animation complexity
-  useEffect(() => {
-    const unsubscribe = scrollY.on('change', () => {
-      setIsScrolling(true);
-
-      // Clear any existing timeout
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-
-      // Set a new timeout
-      scrollTimeout.current = setTimeout(() => {
-        setIsScrolling(false);
-      }, 300); // Wait 300ms after scroll stops
-    });
+  // Floating animation effect
+  React.useEffect(() => {
+    const interval1 = setInterval(() => {
+      setFloatingOffset1(Math.sin(Date.now() * 0.0008) * 18);
+    }, 16);
+    const interval2 = setInterval(() => {
+      setFloatingOffset2(Math.sin(Date.now() * 0.0006) * 16);
+    }, 16);
+    const interval3 = setInterval(() => {
+      setFloatingOffset3(Math.sin(Date.now() * 0.0009) * 20);
+    }, 16);
+    const interval4 = setInterval(() => {
+      setFloatingOffset4(Math.sin(Date.now() * 0.0007) * 17);
+    }, 16);
+    const interval5 = setInterval(() => {
+      setFloatingOffset5(Math.sin(Date.now() * 0.0012) * 19);
+    }, 16);
+    const interval6 = setInterval(() => {
+      setFloatingOffset6(Math.sin(Date.now() * 0.0005) * 15);
+    }, 16);
 
     return () => {
-      unsubscribe();
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
+      clearInterval(interval1);
+      clearInterval(interval2);
+      clearInterval(interval3);
+      clearInterval(interval4);
+      clearInterval(interval5);
+      clearInterval(interval6);
     };
-  }, [scrollY]);
+  }, []);
 
-  useEffect(() => {
-    if (authDialogOpen && inputValue.trim()) {
-      localStorage.setItem(PENDING_PROMPT_KEY, inputValue.trim());
-    }
-  }, [authDialogOpen, inputValue]);
+  // Orbital movement states
+  const [orbitalPhase1, setOrbitalPhase1] = React.useState(0);
+  const [orbitalPhase2, setOrbitalPhase2] = React.useState(0);
+  const [orbitalPhase3, setOrbitalPhase3] = React.useState(0);
+  const [orbitalPhase4, setOrbitalPhase4] = React.useState(0);
+  const [orbitalPhase5, setOrbitalPhase5] = React.useState(0);
+  const [orbitalPhase6, setOrbitalPhase6] = React.useState(0);
 
-  useEffect(() => {
-    if (authDialogOpen && user && !isLoading) {
-      setAuthDialogOpen(false);
-      router.push('/dashboard');
-    }
-  }, [user, isLoading, authDialogOpen, router]);
+  // Orbital animation effect
+  React.useEffect(() => {
+    const orbitalInterval1 = setInterval(() => {
+      setOrbitalPhase1(Date.now() * 0.0003);
+    }, 16);
+    const orbitalInterval2 = setInterval(() => {
+      setOrbitalPhase2(Date.now() * 0.0004);
+    }, 16);
+    const orbitalInterval3 = setInterval(() => {
+      setOrbitalPhase3(Date.now() * 0.00025);
+    }, 16);
+    const orbitalInterval4 = setInterval(() => {
+      setOrbitalPhase4(Date.now() * 0.00035);
+    }, 16);
+    const orbitalInterval5 = setInterval(() => {
+      setOrbitalPhase5(Date.now() * 0.00045);
+    }, 16);
+    const orbitalInterval6 = setInterval(() => {
+      setOrbitalPhase6(Date.now() * 0.0002);
+    }, 16);
 
-  useEffect(() => {
-    if (threadQuery.data && initiatedThreadId) {
-      const thread = threadQuery.data;
-      if (thread.project_id) {
-        router.push(`/projects/${thread.project_id}/thread/${initiatedThreadId}`);
-      } else {
-        router.push(`/agents/${initiatedThreadId}`);
-      }
-      setInitiatedThreadId(null);
-    }
-  }, [threadQuery.data, initiatedThreadId, router]);
+    return () => {
+      clearInterval(orbitalInterval1);
+      clearInterval(orbitalInterval2);
+      clearInterval(orbitalInterval3);
+      clearInterval(orbitalInterval4);
+      clearInterval(orbitalInterval5);
+      clearInterval(orbitalInterval6);
+    };
+  }, []);
 
-  // Handle ChatInput submission
-  const handleChatInputSubmit = async (
-    message: string,
-    options?: { model_name?: string; enable_thinking?: boolean }
-  ) => {
-    if ((!message.trim() && !chatInputRef.current?.getPendingFiles().length) || isSubmitting) return;
+  // Glow pulse (sync with CSS pulseGlow: 2.5s period)
+  const [glowPulse, setGlowPulse] = React.useState(0);
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      // Sine wave from 0 to 1, period 2.5s
+      setGlowPulse((Math.sin((Date.now() / 2500) * 2 * Math.PI) + 1) / 2);
+    }, 16);
+    return () => clearInterval(interval);
+  }, []);
 
-    // If user is not logged in, save prompt and show auth dialog
-    if (!user && !isLoading) {
-      localStorage.setItem(PENDING_PROMPT_KEY, message.trim());
-      setAuthDialogOpen(true);
-      return;
-    }
+  // --- AGENT ORBIT RADII (base + pulse) ---
+  // H1 (HR): more visible
+  const agent1BaseRadiusY = 22; // was 14
+  const agent1BaseRadiusX = 18; // was 12
+  // L1 (Legal)
+  const agent2BaseRadiusY = 18;
+  const agent2BaseRadiusX = 14;
+  // S1 (Sales)
+  const agent3BaseRadiusY = 20;
+  const agent3BaseRadiusX = 16;
+  // F1 (Finance): more visible
+  const agent4BaseRadiusY = 26; // was 20
+  const agent4BaseRadiusX = 21; // was 15
+  // B1 (Operations)
+  const agent5BaseRadiusY = 22;
+  const agent5BaseRadiusX = 18;
+  // M1 (Marketing): more visible
+  const agent6BaseRadiusY = 23; // was 19
+  const agent6BaseRadiusX = 17; // was 11
 
-    // User is logged in, create the agent with files like dashboard does
-    setIsSubmitting(true);
-    try {
-      const files = chatInputRef.current?.getPendingFiles() || [];
-      localStorage.removeItem(PENDING_PROMPT_KEY);
+  // Pulse amplitude (how much the radius grows/shrinks with the glow)
+  const pulseAmpY = 8;
+  const pulseAmpX = 6;
 
-      const formData = new FormData();
-      formData.append('prompt', message);
+  // --- Combined parallax, floating, and orbital transforms with pulse ---
+  const agent1Y = useTransform(parallaxY1, (latest) => latest + floatingOffset1 + Math.sin(orbitalPhase1) * (agent1BaseRadiusY + glowPulse * pulseAmpY));
+  const agent1X = useTransform(parallaxY1, (latest) => Math.cos(orbitalPhase1) * (agent1BaseRadiusX + glowPulse * pulseAmpX));
+  const agent2Y = useTransform(parallaxY2, (latest) => latest + floatingOffset2 + Math.sin(orbitalPhase2) * (agent2BaseRadiusY + glowPulse * pulseAmpY));
+  const agent2X = useTransform(parallaxY2, (latest) => Math.cos(orbitalPhase2) * (agent2BaseRadiusX + glowPulse * pulseAmpX));
+  const agent3Y = useTransform(parallaxY3, (latest) => latest + floatingOffset3 + Math.sin(orbitalPhase3) * (agent3BaseRadiusY + glowPulse * pulseAmpY));
+  const agent3X = useTransform(parallaxY3, (latest) => Math.cos(orbitalPhase3) * (agent3BaseRadiusX + glowPulse * pulseAmpX));
+  const agent4Y = useTransform(parallaxY4, (latest) => latest + floatingOffset4 + Math.sin(orbitalPhase4) * (agent4BaseRadiusY + glowPulse * pulseAmpY));
+  const agent4X = useTransform(parallaxY4, (latest) => Math.cos(orbitalPhase4) * (agent4BaseRadiusX + glowPulse * pulseAmpX));
+  const agent5Y = useTransform(parallaxY5, (latest) => latest + floatingOffset5 + Math.sin(orbitalPhase5) * (agent5BaseRadiusY + glowPulse * pulseAmpY));
+  const agent5X = useTransform(parallaxY5, (latest) => Math.cos(orbitalPhase5) * (agent5BaseRadiusX + glowPulse * pulseAmpX));
+  const agent6Y = useTransform(parallaxY6, (latest) => latest + floatingOffset6 + Math.sin(orbitalPhase6) * (agent6BaseRadiusY + glowPulse * pulseAmpY));
+  const agent6X = useTransform(parallaxY6, (latest) => Math.cos(orbitalPhase6) * (agent6BaseRadiusX + glowPulse * pulseAmpX));
 
-      // Add selected agent if one is chosen
-      if (selectedAgentId) {
-        formData.append('agent_id', selectedAgentId);
-      }
+  // Entrance animation state
+  const [showHero, setShowHero] = React.useState(false);
+  React.useEffect(() => {
+    const timeout = setTimeout(() => setShowHero(true), 100);
+    return () => clearTimeout(timeout);
+  }, []);
 
-      // Add files if any
-      files.forEach((file) => {
-        const normalizedName = normalizeFilenameToNFC(file.name);
-        formData.append('files', file, normalizedName);
-      });
-
-      if (options?.model_name) formData.append('model_name', options.model_name);
-      formData.append('enable_thinking', String(options?.enable_thinking ?? false));
-      formData.append('reasoning_effort', 'low');
-      formData.append('stream', 'true');
-      formData.append('enable_context_manager', 'false');
-
-      const result = await initiateAgentMutation.mutateAsync(formData);
-
-      if (result.thread_id) {
-        setInitiatedThreadId(result.thread_id);
-      } else {
-        throw new Error('Agent initiation did not return a thread_id.');
-      }
-
-      chatInputRef.current?.clearPendingFiles();
-      setInputValue('');
-    } catch (error: any) {
-      if (error instanceof BillingError) {
-        console.log('Billing error:', error.detail);
-        onOpen("paymentRequiredDialog");
-      } else {
-        const isConnectionError =
-          error instanceof TypeError &&
-          error.message.includes('Failed to fetch');
-        if (!isLocalMode() || isConnectionError) {
-          toast.error(
-            error.message || 'Failed to create agent. Please try again.',
-          );
-        }
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
+  // Animation variants
+  const circleVariants = {
+    hidden: { opacity: 0, y: -80, scale: 0.7, rotate: 0 },
+    visible: { opacity: 1, y: 0, scale: 1, rotate: 360, transition: { duration: 1 } },
+  };
+  const agentVariants = {
+    hidden: { opacity: 0, scale: 0.7 },
+    visible: { opacity: 1, scale: 1 },
+  };
+  const contentVariants = {
+    hidden: { opacity: 0, y: 32 },
+    visible: { opacity: 1, y: 0, transition: { delay: 0.5, duration: 0.7 } },
+  };
+  const videoVariants = {
+    hidden: { opacity: 0, y: 32 },
+    visible: { opacity: 1, y: 0, transition: { delay: 1.8, duration: 0.7 } },
   };
 
   return (
-    <section id="hero" className="w-full relative overflow-hidden">
-      <div className="relative flex flex-col items-center w-full px-6">
-        {/* Left side flickering grid with gradient fades */}
-        <div className="absolute left-0 top-0 h-[600px] md:h-[800px] w-1/3 -z-10 overflow-hidden">
-          {/* Horizontal fade from left to right */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-background z-10" />
-
-          {/* Vertical fade from top */}
-          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background via-background/90 to-transparent z-10" />
-
-          {/* Vertical fade to bottom */}
-          <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-background via-background/90 to-transparent z-10" />
-
-          <FlickeringGrid
-            className="h-full w-full"
-            squareSize={mounted && tablet ? 2 : 2.5}
-            gridGap={mounted && tablet ? 2 : 2.5}
-            color="var(--secondary)"
-            maxOpacity={0.4}
-            flickerChance={isScrolling ? 0.01 : 0.03} // Low flickering when not scrolling
-          />
-        </div>
-
-        {/* Right side flickering grid with gradient fades */}
-        <div className="absolute right-0 top-0 h-[600px] md:h-[800px] w-1/3 -z-10 overflow-hidden">
-          {/* Horizontal fade from right to left */}
-          <div className="absolute inset-0 bg-gradient-to-l from-transparent via-transparent to-background z-10" />
-
-          {/* Vertical fade from top */}
-          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background via-background/90 to-transparent z-10" />
-
-          {/* Vertical fade to bottom */}
-          <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-background via-background/90 to-transparent z-10" />
-
-          <FlickeringGrid
-            className="h-full w-full"
-            squareSize={mounted && tablet ? 2 : 2.5}
-            gridGap={mounted && tablet ? 2 : 2.5}
-            color="var(--secondary)"
-            maxOpacity={0.4}
-            flickerChance={isScrolling ? 0.01 : 0.03} // Low flickering when not scrolling
-          />
-        </div>
-
-        {/* Center content background with rounded bottom */}
-        <div className="absolute inset-x-1/4 top-0 h-[600px] md:h-[800px] -z-20 bg-background rounded-b-xl"></div>
-
-        <div className="relative z-10 pt-32 max-w-3xl mx-auto h-full w-full flex flex-col gap-10 items-center justify-center">
-          {/* <p className="border border-border bg-accent rounded-full text-sm h-8 px-3 flex items-center gap-2">
-            {hero.badgeIcon}
-            {hero.badge}
-          </p> */}
-
-          {/* <Link
-            href={hero.githubUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group border border-border/50 bg-background hover:bg-accent/20 hover:border-secondary/40 rounded-full text-sm h-8 px-3 flex items-center gap-2 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-105 hover:-translate-y-0.5"
-          >
-            {hero.badgeIcon}
-            <span className="font-medium text-muted-foreground text-xs tracking-wide group-hover:text-primary transition-colors duration-300">
-              {hero.badge}
-            </span>
-            <span className="inline-flex items-center justify-center size-3.5 rounded-full bg-muted/30 group-hover:bg-secondary/30 transition-colors duration-300">
-              <svg
-                width="8"
-                height="8"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="text-muted-foreground group-hover:text-primary"
-              >
-                <path
-                  d="M7 17L17 7M17 7H8M17 7V16"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-          </Link> */}
-          <div className="flex flex-col items-center justify-center gap-5 pt-16">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-medium tracking-tighter text-balance text-center">
-              <span className="text-secondary">Suna</span>
-              <span className="text-primary">, your AI Employee.</span>
-            </h1>
-            <p className="text-base md:text-lg text-center text-muted-foreground font-medium text-balance leading-relaxed tracking-tight">
-              {hero.description}
-            </p>
-          </div>
-
-          <div className="flex items-center w-full max-w-4xl gap-2 flex-wrap justify-center">
-            <div className="w-full relative">
-              <div className="relative z-10">
-                <ChatInput
-                  ref={chatInputRef}
-                  onSubmit={handleChatInputSubmit}
-                  placeholder="Describe what you need help with..."
-                  loading={isSubmitting}
-                  disabled={isSubmitting}
-                  value={inputValue}
-                  onChange={setInputValue}
-                  isLoggedIn={!!user}
-                  selectedAgentId={selectedAgentId}
-                  onAgentSelect={setSelectedAgentId}
-                  autoFocus={false}
-                />
-              </div>
-              {/* Subtle glow effect */}
-              <div className="absolute -bottom-4 inset-x-0 h-6 bg-secondary/20 blur-xl rounded-full -z-10 opacity-70"></div>
-            </div>
-          </div>
-        </div>
+    <section className="w-full flex flex-col items-center justify-center pt-12 sm:pt-16 md:pt-20 lg:pt-24 py-4 sm:py-6 relative px-4 sm:px-6 lg:px-8">
+      {/* Small white dots background */}
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="bg-white rounded-full absolute top-[3%] left-[12%] w-[3px] h-[3px] opacity-90" />
+        <div className="bg-white rounded-full absolute top-[5%] left-[92%] w-[3px] h-[3px] opacity-90" />
+        <div className="bg-white rounded-full absolute top-[7%] left-[95%] w-[4px] h-[4px] opacity-80" />
+        <div className="bg-white rounded-full absolute top-[20%] left-[2%] w-[4px] h-[4px] opacity-90" />
       </div>
-      <div className="mb-16 sm:mt-52 max-w-4xl mx-auto"></div>
 
-      {/* Auth Dialog */}
-      <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
-        <BlurredDialogOverlay />
-        <DialogContent className="sm:max-w-md rounded-xl bg-background border border-border">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-medium">
-                Sign in to continue
-              </DialogTitle>
-              {/* <button 
-                onClick={() => setAuthDialogOpen(false)}
-                className="rounded-full p-1 hover:bg-muted transition-colors"
-              >
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button> */}
-            </div>
-            <DialogDescription className="text-muted-foreground">
-              Sign in or create an account to talk with Suna
-            </DialogDescription>
-          </DialogHeader>
+      {/* Interactive gradient circles - Responsive positioning */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.div
+            className="absolute top-[5%] sm:top-[8%] md:top-[6%] lg:top-[5%] left-[9%] sm:left-[8%] md:left-[10%] lg:left-[9%] w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] md:w-[14px] md:h-[14px] lg:w-[14px] lg:h-[14px] opacity-90 cursor-pointer z-10"
+            style={{ y: agent1Y, x: agent1X }}
+            whileHover={{ scale: 1.25 }}
+            initial="hidden"
+            animate={showHero ? 'visible' : 'hidden'}
+            variants={agentVariants}
+            transition={{ delay: 1 + 0 * 0.08, duration: 0.6, ease: 'easeOut' }}
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-[#FBD8E3] via-[#9A96CC] to-[#3987BE]" />
+          </motion.div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>H1(HR Agent)</p>
+        </TooltipContent>
+      </Tooltip>
 
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.div 
+            className="absolute top-[15%] sm:top-[18%] md:top-[20%] lg:top-[25%] left-[85%] sm:left-[88%] md:left-[90%] lg:left-[90%] w-[8px] h-[8px] sm:w-[10px] sm:h-[10px] md:w-[12px] md:h-[12px] lg:w-[12px] lg:h-[12px] opacity-80 cursor-pointer z-10"
+            style={{ y: agent2Y, x: agent2X }}
+            whileHover={{ scale: 1.25 }}
+            initial="hidden"
+            animate={showHero ? 'visible' : 'hidden'}
+            variants={agentVariants}
+            transition={{ delay: 1 + 1 * 0.08, duration: 0.6, ease: 'easeOut' }}
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-[#A46B5E] to-[#62C77F]" />
+          </motion.div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>L1(Legal Agent)</p>
+        </TooltipContent>
+      </Tooltip>
 
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.div 
+            className="absolute top-[20%] sm:top-[22%] md:top-[25%] lg:top-[30%] left-[80%] sm:left-[82%] md:left-[85%] lg:left-[85%] w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] md:w-[14px] md:h-[14px] lg:w-[16px] lg:h-[16px] opacity-90 cursor-pointer z-10"
+            style={{ y: agent3Y, x: agent3X }}
+            whileHover={{ scale: 1.25 }}
+            initial="hidden"
+            animate={showHero ? 'visible' : 'hidden'}
+            variants={agentVariants}
+            transition={{ delay: 1 + 2 * 0.08, duration: 0.6, ease: 'easeOut' }}
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-[#5E5EDE] to-[#EFD336]" />
+          </motion.div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>S1(Sales Agent)</p>
+        </TooltipContent>
+      </Tooltip>
 
-          {/* OAuth Sign In */}
-          <div className="w-full">
-            <GoogleSignIn returnUrl="/dashboard" />
-            <GitHubSignIn returnUrl="/dashboard" />
-          </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.div 
+            className="absolute top-[25%] sm:top-[28%] md:top-[30%] lg:top-[35%] left-[8%] sm:left-[10%] md:left-[12%] lg:left-[12%] w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] md:w-[14px] md:h-[14px] lg:w-[16px] lg:h-[16px] opacity-95 cursor-pointer z-10"
+            style={{ y: agent4Y, x: agent4X }}
+            whileHover={{ scale: 1.25 }}
+            initial="hidden"
+            animate={showHero ? 'visible' : 'hidden'}
+            variants={agentVariants}
+            transition={{ delay: 1 + 3 * 0.08, duration: 0.6, ease: 'easeOut' }}
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-bl from-[#FFDEAB] via-[#AFC38D] to-[#535D43]" />
+          </motion.div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>F1(Finance Agent)</p>
+        </TooltipContent>
+      </Tooltip>
 
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-[#F3F4F6] dark:bg-[#F9FAFB]/[0.02] text-muted-foreground">
-                or continue with email
-              </span>
-            </div>
-          </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.div 
+            className="absolute top-[30%] sm:top-[32%] md:top-[35%] lg:top-[40%] left-[85%] sm:left-[87%] md:left-[89%] lg:left-[89%] w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] md:w-[14px] md:h-[14px] lg:w-[16px] lg:h-[16px] opacity-80 cursor-pointer z-10"
+            style={{ y: agent5Y, x: agent5X }}
+            whileHover={{ scale: 1.25 }}
+            initial="hidden"
+            animate={showHero ? 'visible' : 'hidden'}
+            variants={agentVariants}
+            transition={{ delay: 1 + 4 * 0.08, duration: 0.6, ease: 'easeOut' }}
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-pink-300 via-purple-400 to-white " />
+          </motion.div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>B1(Operations Agent)</p>
+        </TooltipContent>
+      </Tooltip>
 
-          {/* Sign in options */}
-          <div className="space-y-4 pt-4">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <motion.div 
+            className="absolute top-[35%] sm:top-[38%] md:top-[40%] lg:top-[45%] left-[5%] sm:left-[8%] md:left-[10%] lg:left-[10%] w-[8px] h-[8px] sm:w-[10px] sm:h-[10px] md:w-[12px] md:h-[12px] lg:w-[12px] lg:h-[12px] opacity-85 cursor-pointer z-10"
+            style={{ y: agent6Y, x: agent6X }}
+            whileHover={{ scale: 1.25 }}
+            initial="hidden"
+            animate={showHero ? 'visible' : 'hidden'}
+            variants={agentVariants}
+            transition={{ delay: 1 + 5 * 0.08, duration: 0.6, ease: 'easeOut' }}
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-bl from-pink-300 via-orange-400 to-red-400" />
+          </motion.div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>M1(Marketing Agent)</p>
+        </TooltipContent>
+      </Tooltip>
+
+      {/* Gradient Circle with Text */}
+      <motion.div 
+        className="relative flex flex-col items-center justify-center mb-8 sm:mb-10 md:mb-12 mt-8 sm:mt-10 md:mt-12"
+        style={{ y: useTransform(scrollY, [0, 1000], [0, 100]) }}
+        initial="hidden"
+        animate={showHero ? 'visible' : 'hidden'}
+        variants={contentVariants}
+      >
+        {/* Central gradient circle - positioned to extend from above */}
+        <motion.div
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] sm:w-[250px] sm:h-[250px] md:w-[350px] md:h-[350px] lg:w-[450px] lg:h-[450px] xl:w-[600px] xl:h-[600px] object-contain rounded-full blur-[60px] sm:blur-[70px] md:blur-[80px] shadow-[0_0_60px_10px_rgba(54,189,160,0.4)]"
+          style={{
+            background: 'linear-gradient(135deg, #5B502F 0%, #7A9B6A 55%, #36BDA0 100%)',
+            boxShadow: '0 0 60px 10px rgba(54,189,160,0.4), 0 0 120px 30px rgba(54,189,160,0.15)',
+            animation: 'pulseGlow 2.5s ease-in-out infinite',
+          }}
+          initial="hidden"
+          animate={showHero ? 'visible' : 'hidden'}
+          variants={circleVariants}
+          transition={{ repeat: Infinity, duration: 12, ease: 'linear' }}
+        />
+        <motion.div
+          className="relative flex flex-col items-center justify-center w-full max-w-6xl"
+        >
+          <motion.h1
+            className="text-center text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl 2xl:text-[92px] font-extralight text-white leading-tight tracking-tight mb-6 sm:mb-8 z-2 mt-8 sm:mt-10 md:mt-12 px-4 sm:px-6"
+            initial="hidden"
+            animate={showHero ? 'visible' : 'hidden'}
+            variants={contentVariants}
+            transition={{ ease: 'easeOut' }}
+          >
+            Helium is abundant in <br className="hidden md:block" />the universe, yet <br className="hidden md:block" />strategic on Earth
+          </motion.h1>
+          <motion.div
+            className="flex flex-row gap-2 sm:gap-3 md:gap-4 mt-2 w-auto px-4 sm:px-0 z-2"
+            initial="hidden"
+            animate={showHero ? 'visible' : 'hidden'}
+            variants={contentVariants}
+            transition={{ ease: 'easeOut' }}
+          >
             <Link
-              href={`/auth?returnUrl=${encodeURIComponent('/dashboard')}`}
-              className="flex h-12 items-center justify-center w-full text-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md"
-              onClick={() => setAuthDialogOpen(false)}
+              href="#"
+              onClick={e => { e.preventDefault(); setWaitlistOpen(true); }}
+              className="px-2 sm:px-6 md:px-4 lg:px-6 py-1.5 sm:py-4 md:py-3 lg:py-4 liquid-glass-btn rounded-full text-white text-xs sm:text-sm md:text-base lg:text-lg font-normal backdrop-blur-lg hover:bg-white/20 transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2"
             >
-              Sign in with email
+              <span className="liquid-glass-gradient-border rounded-full"></span>
+              <span className="whitespace-nowrap">Join Helium Waitlist</span>
+              <Image src="/arrow.svg" alt="arrow" width={30} height={30} className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 flex-shrink-0" />
             </Link>
-
             <Link
-              href={`/auth?mode=signup&returnUrl=${encodeURIComponent('/dashboard')}`}
-              className="flex h-12 items-center justify-center w-full text-center rounded-full border border-border bg-background hover:bg-accent/20 transition-all"
-              onClick={() => setAuthDialogOpen(false)}
+              href={user ? '/dashboard' : '/auth'}
+              className="px-2 sm:px-6 md:px-4 lg:px-6 py-1.5 sm:py-4 md:py-3 lg:py-4 liquid-glass-btn rounded-full text-white text-xs sm:text-sm md:text-base lg:text-lg font-normal backdrop-blur-lg hover:bg-white/20 transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2"
             >
-              Create new account
+              <span className="liquid-glass-gradient-border rounded-full"></span>
+              <span className="whitespace-nowrap">{user ? 'Get Started' : 'Log In'}</span>
+              <Image src="/arrow.svg" alt="arrow" width={30} height={30} className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 flex-shrink-0" />
             </Link>
-          </div>
+          </motion.div>
+          <WaitlistForm isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} />
+        </motion.div>
+      </motion.div>
 
-          <div className="mt-4 text-center text-xs text-muted-foreground">
-            By continuing, you agree to our{' '}
-            <Link href="/terms" className="text-primary hover:underline">
-              Terms of Service
-            </Link>{' '}
-            and{' '}
-            <Link href="/privacy" className="text-primary hover:underline">
-              Privacy Policy
-            </Link>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Video Section */}
+      <motion.div
+        className="w-full flex justify-center mt-8 sm:mt-10 md:mt-12 mb-8 sm:mb-10 md:mb-12 px-4 sm:px-6 lg:px-8"
+        initial="hidden"
+        animate={showHero ? 'visible' : 'hidden'}
+        variants={videoVariants}
+        transition={{ ease: 'easeOut' }}
+      >
+        <video
+          src="/videos/helium-demo-video.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="rounded-2xl sm:rounded-3xl md:rounded-[48px] shadow-lg border border-white/10 max-w-4xl w-full h-auto"
+        >
+          Your browser does not support the video tag.
+        </video>
+      </motion.div>
 
-      {/* Add Billing Error Alert here */}
-      <BillingErrorAlert
-        message={billingError?.message}
-        currentUsage={billingError?.currentUsage}
-        limit={billingError?.limit}
-        accountId={personalAccount?.account_id}
-        onDismiss={clearBillingError}
-        isOpen={!!billingError}
-      />
+      {/* Stats Grid */}
+      {/* <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 w-full max-w-7xl px-4 sm:px-6 lg:px-8 mt-4">
+        {heroStats.map((stat, idx) => (
+          <div
+            key={idx}
+            className="liquid-glass-btn rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-6 flex flex-col min-h-[100px] sm:min-h-[120px] md:min-h-[150px]"
+          >
+            <span className="liquid-glass-gradient-border rounded-2xl sm:rounded-3xl opacity-70"></span>
+            <div className="relative z-10 flex flex-col justify-between h-full w-full">
+              <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl text-white mb-1 sm:mb-2 font-medium">{stat.value}</span>
+              <span className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-white/70 font-normal leading-tight">{stat.text}</span>
+            </div>
+          </div>
+        ))}
+      </div>  */}
     </section>
   );
 }

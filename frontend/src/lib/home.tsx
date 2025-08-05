@@ -49,7 +49,7 @@ export interface PricingTier {
   features: string[];
   stripePriceId: string;
   yearlyStripePriceId?: string; // Add yearly price ID support
-  monthlyCommitmentStripePriceId?: string; // Add monthly commitment with yearly commitment support
+  monthlyCommitmentStripePriceId?: string; // Add yearly commitment price ID support
   upgradePlans: UpgradePlan[];
   hidden?: boolean; // Optional property to hide plans from display while keeping them in code
   billingPeriod?: 'monthly' | 'yearly'; // Add billing period support
@@ -59,21 +59,22 @@ export interface PricingTier {
 
 export const siteConfig = {
   name: 'Helium AI',
-  description: 'The God Mode Agent that can act on your behalf.',
+  description: 'The God Agent that can act on your behalf.',
   cta: 'Start Free',
   url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-  keywords: ['AI Agent', 'God Mode Agent', 'Autonomous Agent', 'Enterprise AI'],
+  keywords: ['AI Agent', 'Generalist AI', 'Enterprise AI', 'Autonomous Agent'],
   links: {
     email: 'support@neuralarc.ai',
     twitter: 'https://x.com/neuralarc_ai',
-    github: 'https://github.com/neuralarc-ai/helium',
+    instagram: 'https://instagram.com/neuralarc-ai',
   },
   nav: {
     links: [
-      { id: 1, name: 'Home', href: '#hero' },
-      { id: 2, name: 'Use Cases', href: '#use-cases' },
-      { id: 3, name: 'Open Source', href: '#open-source' },
-      { id: 4, name: 'Pricing', href: '#pricing' },
+      // { id: 1, name: 'Enterprise Solutions', href: '#enterprise-solutions' },
+      // { id: 2, name: 'Strategic Service', href: '#strategic-service' },
+      // { id: 3, name: 'Inside Neural Arc', href: '#inside-neural-arc' },
+      // { id: 4, name: 'Work at the Edge', href: '#work-at-the-edge' },
+      { id: 5, name: 'helium v1.0 - in private beta testing', href: '#' },
     ],
   },
   hero: {
@@ -104,10 +105,9 @@ export const siteConfig = {
       </svg>
     ),
     badge: '100% OPEN SOURCE',
-    githubUrl: 'https://github.com/neuralarc-ai/helium',
-    title: 'Helium AI, the God Mode Agent.',
+    title: 'Helium AI, the GOD MODE Agent',
     description:
-      'Helium AI by NeuralArc – is a God Mode AI Agent that acts on your behalf.',
+      'Helium AI by NeuralArc – is a God Agent that acts on your behalf.',
     inputPlaceholder: 'Ask Helium to...',
   },
   cloudPricingItems: [
@@ -121,7 +121,7 @@ export const siteConfig = {
       /** @deprecated */
       hours: '60 min',
       features: [
-        '$5 free AI tokens included',
+        ...(config.ENV_MODE !== 'production' ? ['$5 free AI tokens included'] : []),
         'Public projects',
         'Basic Models',
         'Community support',
@@ -149,7 +149,6 @@ export const siteConfig = {
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_2_20.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_2_20_YEARLY.priceId,
-      monthlyCommitmentStripePriceId: config.SUBSCRIPTION_TIERS.TIER_2_17_YEARLY_COMMITMENT.priceId,
       upgradePlans: [],
     },
     {
@@ -172,7 +171,6 @@ export const siteConfig = {
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_6_50.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_6_50_YEARLY.priceId,
-      monthlyCommitmentStripePriceId: config.SUBSCRIPTION_TIERS.TIER_6_42_YEARLY_COMMITMENT.priceId,
       upgradePlans: [],
     },
     {
@@ -203,9 +201,9 @@ export const siteConfig = {
       yearlyPrice: '$2040',
       originalYearlyPrice: '$2400',
       discountPercentage: 15,
-      description: 'For power users',
+      description: 'For power users and teams',
       buttonText: 'Start Free',
-      buttonColor: 'bg-secondary text-white',
+      buttonColor: 'bg-primary text-white dark:text-black',
       isPopular: false,
       hours: '25 hours',
       features: [
@@ -216,7 +214,6 @@ export const siteConfig = {
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_25_200.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_25_200_YEARLY.priceId,
-      monthlyCommitmentStripePriceId: config.SUBSCRIPTION_TIERS.TIER_25_170_YEARLY_COMMITMENT.priceId,
       upgradePlans: [],
     },
     {
@@ -225,7 +222,7 @@ export const siteConfig = {
       yearlyPrice: '$4080',
       originalYearlyPrice: '$4800',
       discountPercentage: 15,
-      description: 'For large teams',
+      description: 'For large organizations',
       buttonText: 'Start Free',
       buttonColor: 'bg-secondary text-white',
       isPopular: false,
@@ -234,8 +231,10 @@ export const siteConfig = {
         '$400 AI token credits/month',
         'Private projects',
         'Premium AI Models',
-        'Priority support',
+        'Full Helium AI access',
+        'Community support',
         'Custom integrations',
+        'Dedicated account manager',
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_50_400.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_50_400_YEARLY.priceId,
@@ -248,7 +247,7 @@ export const siteConfig = {
       yearlyPrice: '$8160',
       originalYearlyPrice: '$9600',
       discountPercentage: 15,
-      description: 'For scaling teams',
+      description: 'For scaling enterprises',
       buttonText: 'Start Free',
       buttonColor: 'bg-secondary text-white',
       isPopular: false,
@@ -257,9 +256,11 @@ export const siteConfig = {
         '$800 AI token credits/month',
         'Private projects',
         'Premium AI Models',
-        'Priority support',
+        'Full Helium AI access',
+        'Community support',
         'Custom integrations',
         'Dedicated account manager',
+        'Custom SLA',
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_125_800.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_125_800_YEARLY.priceId,
@@ -267,12 +268,12 @@ export const siteConfig = {
       hidden: true,
     },
     {
-      name: 'Max',
+      name: 'Premium',
       price: '$1000',
       yearlyPrice: '$10200',
       originalYearlyPrice: '$12000',
       discountPercentage: 15,
-      description: 'Maximum performance',
+      description: 'For maximum scale and performance',
       buttonText: 'Start Free',
       buttonColor: 'bg-secondary text-white',
       isPopular: false,
@@ -281,10 +282,12 @@ export const siteConfig = {
         '$1000 AI token credits/month',
         'Private projects',
         'Premium AI Models',
+        'Full Helium AI access',
         'Priority support',
         'Custom integrations',
         'Dedicated account manager',
-        'Custom deployment',
+        'Custom SLA',
+        'White-label options',
       ],
       stripePriceId: config.SUBSCRIPTION_TIERS.TIER_200_1000.priceId,
       yearlyStripePriceId: config.SUBSCRIPTION_TIERS.TIER_200_1000_YEARLY.priceId,
@@ -502,7 +505,7 @@ export const siteConfig = {
         id: 1,
         title: 'Request an Action',
         content:
-          'Speak or type your command—let Heliumcapture your intent. Your request instantly sets the process in motion.',
+          'Speak or type your command—let Helium AI capture your intent. Your request instantly sets the process in motion.',
         image:
           'https://images.unsplash.com/photo-1720371300677-ba4838fa0678?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       },
@@ -563,7 +566,7 @@ export const siteConfig = {
         ),
         title: 'Intelligent Data Analysis',
         description:
-          "Transform raw data into actionable insights in seconds. Make better decisions with Helium AI's real-time, adaptive intelligence.",
+          "Transform raw data into actionable insights in seconds. Make better decisions with Helium's real-time, adaptive intelligence.",
       },
       {
         id: 4,
@@ -577,7 +580,7 @@ export const siteConfig = {
   benefits: [
     {
       id: 1,
-      text: "Automate everyday tasks with Helium AI's powerful AI capabilities.",
+      text: "Automate everyday tasks with Helium's powerful AI capabilities.",
       image: '/Device-6.png',
     },
     {
@@ -893,7 +896,7 @@ export const siteConfig = {
 
         title: 'Community Powered',
         description:
-          "Join a thriving community of developers and users continuously enhancing and expanding Helium AI's capabilities.",
+          "Join a thriving community of developers and users continuously enhancing and expanding Helium's capabilities.",
       },
     ],
   },
@@ -1174,7 +1177,7 @@ export const siteConfig = {
   faqSection: {
     title: 'Frequently Asked Questions',
     description:
-      "Answers to common questions about Helium and its capabilities. If you have any other questions, please don't hesitate to contact us.",
+      "Answers to common questions about Helium AI and its capabilities. If you have any other questions, please don't hesitate to contact us.",
     faQitems: [
       {
         id: 1,
@@ -1184,33 +1187,33 @@ export const siteConfig = {
       },
       {
         id: 2,
-        question: 'How does Helium AIwork?',
+        question: 'How does Helium AI work?',
         answer:
           'Helium works by analyzing your requirements, leveraging advanced AI algorithms to understand context, and executing tasks based on your instructions. It can integrate with your workflow, learn from feedback, and continuously improve its performance.',
       },
       {
         id: 3,
-        question: 'Is Helium AI really free?',
+        question: 'Is Kortix Helium AI really free?',
         answer:
-          'Yes, Helium AI is completely free and open source. We believe in democratizing AI technology and making it accessible to everyone. You can use it, modify it, and contribute to its development without any cost.',
+          'Yes, Helium is completely free and open source. We believe in democratizing AI technology and making it accessible to everyone. You can use it, modify it, and contribute to its development without any cost.',
       },
       {
         id: 4,
         question: 'Can I integrate Helium AI with my existing tools?',
         answer:
-          'Yes, Helium AI is designed to be highly compatible with popular tools and platforms. We offer APIs and pre-built integrations for seamless connection with your existing workflow tools and systems.',
+          'Yes, Helium is designed to be highly compatible with popular tools and platforms. We offer APIs and pre-built integrations for seamless connection with your existing workflow tools and systems.',
       },
       {
         id: 5,
         question: 'How can I contribute to Helium AI?',
         answer:
-          'You can contribute to Helium AI by submitting pull requests on GitHub, reporting bugs, suggesting new features, or helping with documentation. Join our Discord community to connect with other contributors and Hire Helium AI.',
+          'You can contribute to Helium by submitting pull requests on GitHub, reporting bugs, suggesting new features, or helping with documentation. Join our Discord community to connect with other contributors.',
       },
       {
         id: 6,
         question: 'How does Helium AI save me time?',
         answer:
-          'Helium AI automates repetitive tasks, streamlines workflows, and provides quick solutions to common challenges. This automation and efficiency can save hours of manual work, allowing you to focus on more strategic activities.',
+          'Helium automates repetitive tasks, streamlines workflows, and provides quick solutions to common challenges. This automation and efficiency can save hours of manual work, allowing you to focus on more strategic activities.',
       },
     ],
   },
@@ -1226,11 +1229,11 @@ export const siteConfig = {
   },
   footerLinks: [
     {
-      title: 'Helium AI',
+      title: 'Kortix',
       links: [
-        { id: 1, title: 'About', url: 'https://neuralarc.ai' },
-        { id: 3, title: 'Contact', url: 'mailto:support@neuralarc.ai' },
-        { id: 4, title: 'Careers', url: 'https://neuralarc.ai/careers' },
+        { id: 1, title: 'About', url: 'https://kortix.ai' },
+        { id: 3, title: 'Contact', url: 'mailto:hey@kortix.ai' },
+        { id: 4, title: 'Careers', url: 'https://kortix.ai/careers' },
       ],
     },
     {
@@ -1239,10 +1242,10 @@ export const siteConfig = {
         {
           id: 5,
           title: 'Documentation',
-          url: 'https://github.com/neuralarc-ai/helium.git',
+          url: 'https://github.com/Kortix-ai/Suna',
         },
         { id: 7, title: 'Discord', url: 'https://discord.gg/Py6pCBUUPw' },
-        { id: 8, title: 'GitHub', url: 'https://github.com/neuralarc-ai/helium' },
+        { id: 8, title: 'GitHub', url: 'https://github.com/Kortix-ai/Suna' },
       ],
     },
     {
@@ -1251,17 +1254,17 @@ export const siteConfig = {
         {
           id: 9,
           title: 'Privacy Policy',
-          url: 'https://he2.ai/legal?tab=privacy',
+          url: 'https://suna.so/legal?tab=privacy',
         },
         {
           id: 10,
           title: 'Terms of Service',
-          url: 'https://he2.ai/legal?tab=terms',
+          url: 'https://suna.so/legal?tab=terms',
         },
         {
           id: 11,
           title: 'License Apache 2.0',
-          url: 'https://github.com/neuralarc-ai/helium/blob/main/LICENSE',
+          url: 'https://github.com/Kortix-ai/Suna/blob/main/LICENSE',
         },
       ],
     },
@@ -1607,7 +1610,7 @@ export const siteConfig = {
       id: 'seo-analysis',
       title: 'SEO Analysis',
       description:
-        "Based on my website he2.ai, generate an SEO report analysis, find top-ranking pages by keyword clusters, and identify topics I'm missing.",
+        "Based on my website Helium AI, generate an SEO report analysis, find top-ranking pages by keyword clusters, and identify topics I'm missing.",
       category: 'marketing',
       featured: true,
       icon: (

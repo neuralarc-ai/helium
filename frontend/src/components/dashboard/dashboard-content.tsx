@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, Suspense, useEffect, useRef } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Menu } from 'lucide-react';
 import {
@@ -22,16 +21,13 @@ import {
 import { useBillingError } from '@/hooks/useBillingError';
 import { BillingErrorAlert } from '@/components/billing/usage-limit-alert';
 import { useAccounts } from '@/hooks/use-accounts';
-import { config } from '@/lib/config';
 import { useInitiateAgentWithInvalidation } from '@/hooks/react-query/dashboard/use-initiate-agent';
 import { ModalProviders } from '@/providers/modal-providers';
 import { useAgents } from '@/hooks/react-query/agents/use-agents';
 import { cn } from '@/lib/utils';
 import { useModal } from '@/hooks/use-modal-store';
-import { Examples } from './examples';
 import { useThreadQuery } from '@/hooks/react-query/threads/use-threads';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
-import { HeliumLogo } from '../sidebar/helium-logo';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
@@ -64,7 +60,7 @@ export function DashboardContent() {
   const selectedAgent = selectedAgentId
     ? agents.find(agent => agent.agent_id === selectedAgentId)
     : null;
-  const displayName = selectedAgent?.name || 'Suna';
+  const displayName = selectedAgent?.name || 'Helium';
   const agentAvatar = selectedAgent?.avatar;
   const isSunaAgent = selectedAgent?.metadata?.is_suna_default || false;
 
@@ -92,9 +88,6 @@ export function DashboardContent() {
       setInitiatedThreadId(null);
     }
   }, [threadQuery.data, initiatedThreadId, router]);
-
-  const secondaryGradient =
-    'bg-gradient-to-r from-blue-500 to-blue-500 bg-clip-text text-transparent';
 
   const handleSubmit = async (
     message: string,
@@ -206,23 +199,6 @@ export function DashboardContent() {
         )}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[650px] max-w-[90%]">
           <div className="flex flex-col items-center text-center w-full">
-            {/* <div className="flex items-center gap-1">
-              <h1 className="tracking-tight text-4xl text-muted-foreground leading-tight">
-                Hey, I am
-              </h1>
-              <h1 className="ml-1 tracking-tight text-4xl font-semibold leading-tight text-primary flex items-center gap-3">
-                {displayName}
-                {isSunaAgent ? (
-                  <span className="ml-2 flex items-center">
-                    <HeliumLogo size={24} />
-                  </span>
-                ) : agentAvatar && (
-                  <span className="text-muted-foreground ml-2">
-                    {agentAvatar}
-                  </span>
-                )}
-              </h1>
-            </div> */}
             <p className="tracking-tight text-3xl font-normal text-muted-foreground/80 mt-2">
               What would you like to do today?
             </p>
@@ -236,7 +212,7 @@ export function DashboardContent() {
               ref={chatInputRef}
               onSubmit={handleSubmit}
               loading={isSubmitting}
-              placeholder="Describe what you need help with..."
+              placeholder="Assign tasks or ask anything..."
               value={inputValue}
               onChange={setInputValue}
               hideAttachments={false}
@@ -246,7 +222,6 @@ export function DashboardContent() {
               onConfigureAgent={(agentId) => router.push(`/agents/config/${agentId}`)}
             />
           </div>
-          <Examples onSelectPrompt={setInputValue} />
         </div>
         <BillingErrorAlert
           message={billingError?.message}
