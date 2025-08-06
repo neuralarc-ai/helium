@@ -4,7 +4,7 @@ export const metadata: Metadata = {
   title: 'App Profiles | Helium AI',
   description: 'Manage your connected app integrations',
   openGraph: {
-    title: 'App Profiles | Kortix Suna',
+    title: 'App Profiles | Helium AI',
     description: 'Manage your connected app integrations',
     type: 'website',
   },

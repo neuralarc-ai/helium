@@ -31,13 +31,12 @@ export interface CustomModel {
 // SINGLE SOURCE OF TRUTH for all model data - aligned with backend constants
 export const MODELS = {
   // Free tier models (available to all users)
-  'claude-sonnet-4': { 
-    tier: 'free',
-    priority: 100, 
-    recommended: true,
-    lowQuality: false
-  },
-
+  // 'claude-sonnet-4': { 
+  //   tier: 'free',
+  //   priority: 100, 
+  //   recommended: true,
+  //   lowQuality: false
+  // },
   // 'gemini-flash-2.5': { 
   //   tier: 'free', 
   //   priority: 70,
@@ -55,12 +54,6 @@ export const MODELS = {
   'moonshotai/kimi-k2:free': { 
     tier: 'free', 
     priority: 99,
-    recommended: false,
-    lowQuality: false
-  },
-  'openrouter/horizon-beta': { 
-    tier: 'free', 
-    priority: 98,
     recommended: false,
     lowQuality: false
   },
@@ -123,7 +116,7 @@ export const MODELS = {
 // Production-only models for Helio branding
 export const PRODUCTION_MODELS = {
   'helio-o1': {
-    id: 'moonshotai/kimi-k2:free',
+    id: 'openrouter/moonshotai/kimi-k2',
     label: 'Helio o1',
     description: 'Our most powerful model for complex tasks',
     tier: 'free',
@@ -236,6 +229,7 @@ export const useModelSelection = () => {
       models = Object.values(PRODUCTION_MODELS).map(model => ({
         id: model.id,
         label: model.label,
+        description: model.description,
         requiresSubscription: false,
         top: model.recommended,
         priority: model.priority,
