@@ -107,6 +107,10 @@ export function SidebarLeft({
     setShowKnowledgeBase(true);
   };
 
+  const handleUserUpdate = (updatedUser: { name: string; email: string; avatar: string }) => {
+    setUser(updatedUser);
+  };
+
   
   useEffect(() => {
     const fetchUserData = async () => {
@@ -304,7 +308,7 @@ export function SidebarLeft({
                 </TooltipContent>
             </Tooltip>
           )}
-          <NavUserWithTeams user={user} />
+          <NavUserWithTeams user={user} onUserUpdate={handleUserUpdate} />
         </div>
       </SidebarFooter>
       <SidebarRail />

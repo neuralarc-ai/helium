@@ -559,7 +559,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                   ref={triggerButtonRef}
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-2 py-2 bg-transparent border-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/50 flex items-center gap-2"
+                  className="h-fit p-2 bg-transparent border-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-2 cursor-pointer"
                 >
                   <div className="relative flex items-center justify-center">
                     <Cpu className="h-4 w-4" />
