@@ -18,17 +18,27 @@ export default function GoogleSignIn({ returnUrl }: GoogleSignInProps) {
     try {
       setIsLoading(true);
       console.log('returnUrl', returnUrl);
+      console.log('Current origin:', window.location.origin);
+      console.log('Current URL:', window.location.href);
+      
+      // Ensure we're using the correct origin for the redirect
+      const currentOrigin = window.location.origin;
+      const redirectUrl = `${currentOrigin}/auth/callback${
+        returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''
+      }`;
+      
+      console.log('Redirecting to:', redirectUrl);
+      console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback${
-            returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''
-          }`,
+          redirectTo: redirectUrl,
         },
       });
 
       if (error) {
+        console.error('Supabase OAuth error:', error);
         throw error;
       }
     } catch (error: any) {

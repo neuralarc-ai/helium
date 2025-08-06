@@ -107,6 +107,10 @@ export function SidebarLeft({
     setShowKnowledgeBase(true);
   };
 
+  const handleUserUpdate = (updatedUser: { name: string; email: string; avatar: string }) => {
+    setUser(updatedUser);
+  };
+
   
   useEffect(() => {
     const fetchUserData = async () => {

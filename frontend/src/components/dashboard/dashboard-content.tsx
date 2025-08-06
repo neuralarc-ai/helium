@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { useModal } from '@/hooks/use-modal-store';
 import { useThreadQuery } from '@/hooks/react-query/threads/use-threads';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
+import { useAuth } from '@/components/AuthProvider';
 
 const PENDING_PROMPT_KEY = 'pendingAgentPrompt';
 
@@ -48,6 +49,19 @@ export function DashboardContent() {
   const chatInputRef = useRef<ChatInputHandles>(null);
   const initiateAgentMutation = useInitiateAgentWithInvalidation();
   const { onOpen } = useModal();
+  const { user } = useAuth();
+  const firstName =
+    user?.user_metadata?.first_name ||
+    user?.user_metadata?.name?.split(' ')[0] ||
+    user?.email?.split('@')[0] ||
+    'there';
+
+  function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning!';
+    if (hour < 18) return 'Good Afternoon!';
+    return 'Good Evening!';
+  }
 
   // Fetch agents to get the selected agent's name
   const { data: agentsResponse } = useAgents({
@@ -200,7 +214,7 @@ export function DashboardContent() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[650px] max-w-[90%]">
           <div className="flex flex-col items-center text-center w-full">
             <p className="tracking-tight text-3xl font-normal text-muted-foreground/80 mt-2">
-              What would you like to do today?
+              {getGreeting()} {firstName}
             </p>
           </div>
           <div className={cn(

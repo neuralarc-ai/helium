@@ -49,7 +49,7 @@ export function ThreadSkeleton({
                 )}
 
                 {/* Skeleton Chat Messages */}
-                <div className="flex-1 overflow-y-auto px-6 py-4 pb-72">
+                <div className="flex-1 overflow-y-auto px-6 py-4 pb-80">
                     <div className="mx-auto max-w-3xl space-y-6">
                         {/* Generate multiple message skeletons based on messageCount */}
                         {Array.from({ length: messageCount }).map((_, index) => (
@@ -119,7 +119,7 @@ export function ThreadSkeleton({
                 {/* ChatInput - Inside the left div, positioned at bottom with exact same styling */}
                 <div
                     className={cn(
-                        "bg-gradient-to-t from-background via-background/90 to-transparent px-0 pt-8 transition-all duration-200 ease-in-out"
+                        "bg-gradient-to-t from-background via-background/90 to-transparent px-4 pt-16 pb-4 transition-all duration-200 ease-in-out"
                     )}
                 >
                     <div className={cn(
