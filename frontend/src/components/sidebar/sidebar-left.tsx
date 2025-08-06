@@ -200,12 +200,22 @@ export function SidebarLeft({
             <SidebarMenuButton className={cn({
               'bg-accent text-accent-foreground font-medium': pathname === '/dashboard',
             })}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-1 cursor-pointer" />
               <span className="flex items-center justify-between w-full">
                 New Task
               </span>
             </SidebarMenuButton>
           </Link>
+          {state === 'collapsed' && (
+            <div className="mt-2 flex justify-center">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <SidebarTrigger className="h-8 w-8 hover:bg-accent hover:text-accent-foreground cursor-pointer" />
+                </TooltipTrigger>
+                <TooltipContent side="right">Expand sidebar (CMD+B)</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
           {!flagsLoading && customAgentsEnabled && (
             <SidebarMenu>
               <Collapsible
@@ -272,23 +282,13 @@ export function SidebarLeft({
         <NavAgents />
       </SidebarContent>
       <SidebarFooter>
-        {state === 'collapsed' && (
-          <div className="mt-2 flex justify-center">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <SidebarTrigger className="h-8 w-8" />
-              </TooltipTrigger>
-              <TooltipContent>Expand sidebar (CMD+B)</TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-        <div className='w-full items-center justify-center'>
-          {/* Knowledge Base button: only show if feature is enabled */}
+        <div className={state === 'collapsed' ? 'w-full flex flex-col items-center' : 'w-full flex flex-col items-start'}>
+          {/* Knowledge Base button: always show if feature is enabled */}
           {!flagsLoading && knowledgeBaseEnabled && (
             <Tooltip>
-              <TooltipTrigger asChild className='w-full items-center justify-center'>
+              <TooltipTrigger asChild className='w-full'>
                 <button
-                  className={`h-5 w-5 cursor-pointer flex items-center justify-center my-3 rounded-sm flex-shrink-0 transition-colors ${state === 'collapsed' ? 'hover:bg-card' : ''}`}
+                  className={`h-5 w-full cursor-pointer flex items-center${state === 'collapsed' ? ' justify-center my-3' : ' my-4 mx-3'} rounded-sm flex-shrink-0 transition-colors ${state === 'collapsed' ? 'hover:bg-card' : ''}`}
                   type="button"
                   tabIndex={0}
                   aria-label="Knowledge Base"
@@ -298,17 +298,22 @@ export function SidebarLeft({
                   }}
                 >
                   <Lightbulb className="w-5 h-5" />
+                  {state !== 'collapsed' && (
+                    <span className="ml-2 text-sm font-medium whitespace-nowrap">Knowledge Base</span>
+                  )}
                 </button>
               </TooltipTrigger>
-                              <TooltipContent side="right">
-                  {currentThreadId 
-                    ? "Knowledge Base" 
-                    : "Knowledge Base"
-                  }
-                </TooltipContent>
+              <TooltipContent side="right">
+                {currentThreadId 
+                  ? "Knowledge Base" 
+                  : "Knowledge Base"
+                }
+              </TooltipContent>
             </Tooltip>
           )}
-          <NavUserWithTeams user={user} onUserUpdate={handleUserUpdate} />
+          {/* Divider above NavUserWithTeams only when expanded */}
+          {state !== 'collapsed' && <div className="w-full h-px bg-border my-2" />}
+          <NavUserWithTeams user={user} />
         </div>
       </SidebarFooter>
       <SidebarRail />

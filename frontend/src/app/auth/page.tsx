@@ -366,12 +366,12 @@ function LoginContent() {
               layout
               className="w-[500px] bg-white/77 rounded-[24px] p-8"
             >
-              <div className="mb-4 flex items-center flex-col gap-4 justify-center">
+              {/* <div className="mb-4 flex items-center flex-col gap-4 justify-center">
                 {customAgentsEnabled && <ReleaseBadge className='mb-4' text="Custom Agents, Workflows, and more!" link="/changelog" />}
                 <h1 className="text-2xl font-semibold text-foreground">
                   {isSignUp ? 'Create your account' : 'Log into your account'}
                 </h1>
-              </div>
+              </div> */}
             <form className="space-y-3 mb-4">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-foreground">
@@ -429,7 +429,7 @@ function LoginContent() {
                 <div className="relative">
                   <SubmitButton
                     formAction={isSignUp ? handleSignUp : handleSignIn}
-                    className="w-full h-10 bg-gradient-to-r from-[#FFACDB] to-[#36BDA0] text-white hover:opacity-90 transition-opacity rounded-lg"
+                    className="w-full h-10 bg-gradient-to-r from-helium-pink to-helium-teal text-white hover:opacity-90 transition-opacity rounded-lg"
                     pendingText={isSignUp ? "Creating account..." : "Initiating..."}
                   >
                     {isSignUp ? 'Create account' : 'Ready to Initiate Intelligence'}
