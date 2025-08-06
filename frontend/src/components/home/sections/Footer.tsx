@@ -450,18 +450,18 @@ export const Footer: React.FC = () => {
   return (
     <footer
       className="w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] md:w-[calc(100%-4rem)] lg:w-[calc(100%-5rem)] xl:w-[calc(100%-6rem)] max-w-7xl mx-auto min-h-[200px] sm:min-h-[240px] md:min-h-[276px] rounded-2xl sm:rounded-3xl px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 my-4 sm:my-6 flex flex-col justify-between bg-cover bg-center relative"
-      style={{ backgroundImage: "url('/neuralarc/footer-bg-1.png')" }}
+      style={{ backgroundImage: "url('/neuralarc/footer.png')" }}
     >
       {/* Top: Logo and name */}
       <div className="flex items-center gap-4 mb-8 mt-2">
         <Image
-          src="/helium-orb.png"
+          src="/Helium_logo.png"
           alt="Helium Orb"
           width={40}
           height={40}
           className="w-auto h-10 rounded-full object-cover"
         />
-        <span className="text-xl sm:text-2xl md:text-3xl font-light text-white/90 tracking-wide">Helium</span>
+        {/* <span className="text-xl sm:text-2xl md:text-3xl font-light text-white/90 tracking-wide">Helium</span> */}
       </div>
       {/* Bottom: Links and copyright */}
       <div className="flex flex-col sm:flex-col md:flex-col lg:flex-col xl:flex-row items-center sm:items-center md:items-center lg:items-center xl:items-end justify-center sm:justify-center md:justify-center lg:justify-center xl:justify-between w-full flex-1 gap-6 sm:gap-4 md:gap-4 lg:gap-4 xl:gap-6 2xl:gap-8">
