@@ -11,6 +11,7 @@ import {
   Share2,
   X,
   Check,
+  History,
 } from "lucide-react"
 import { toast } from "sonner"
 import { usePathname, useRouter } from "next/navigation"
@@ -40,7 +41,7 @@ import { processThreadsWithProjects, useDeleteMultipleThreads, useDeleteThread, 
 import { projectKeys, threadKeys } from '@/hooks/react-query/sidebar/keys';
 
 export function NavAgents() {
-  const { isMobile, state } = useSidebar()
+  const { isMobile, state, openMobile } = useSidebar()
   const [loadingThreadId, setLoadingThreadId] = useState<string | null>(null)
   const [showShareModal, setShowShareModal] = useState(false)
   const [selectedItem, setSelectedItem] = useState<{ threadId: string, projectId: string } | null>(null)
@@ -341,42 +342,15 @@ export function NavAgents() {
 
   return (
     <SidebarGroup>
-      <div className="flex justify-between items-center">
-        <SidebarGroupLabel>Tasks</SidebarGroupLabel>
-        {state !== 'collapsed' ? (
-          <div className="flex items-center space-x-1">
-            {selectedThreads.size > 0 ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={deselectAllThreads}
-                  className="h-7 w-7"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={selectAllThreads}
-                  disabled={selectedThreads.size === combinedThreads.length}
-                  className="h-7 w-7"
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleMultiDelete}
-                  className="h-7 w-7 text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </>
-            ) : null}
+      {(state === 'expanded' || (isMobile && openMobile)) && (
+        <div className="px-1 py-1 mb-2">
+          <div className="flex items-center space-x-2">
+            <History className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">Chat History</span>
           </div>
-        ) : null}
-      </div>
+          <div className="w-full h-px bg-border mt-2" />
+        </div>
+      )}
 
       <SidebarMenu className="overflow-y-auto max-h-[calc(100vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
 
