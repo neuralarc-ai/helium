@@ -8,12 +8,13 @@ import StrategicServiceSection from '@/components/home/sections/strategic-servic
 import NeuralArcSection from '@/components/home/sections/neuralarc';
 import PerformanceSection from '@/components/home/sections/performance';
 import { Integrations } from '@/components/home/sections/integrations';
+import WaitlistBanner from '@/components/home/sections/waitlist-banner';
 
 export default function Home() {
   return (
     <>
       <ModalProviders />
-      <main className="flex flex-col items-center justify-center min-h-screen w-full">
+      <main className="flex flex-col items-center justify-center min-h-screen w-full bg-white dark:bg-[#18181b]">
         <div className="w-full max-w-[1440px] mx-auto">
             <HeroSection />
             <HeliumPoweredActions />
@@ -21,6 +22,7 @@ export default function Home() {
             <NeuralArcSection />
             <PerformanceSection />
             <Integrations />
+            <WaitlistBanner />
             <Footer />
         </div>
       </main>
