@@ -173,17 +173,17 @@ export default function HeroSection() {
   return (
     <>
       {/* Hero Top Section: background image, text, buttons */}
-      <section className="w-full flex flex-col items-center justify-center pt-12 sm:pt-16 md:pt-20 lg:pt-24 py-4 sm:py-6 relative px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section className="w-full flex flex-col items-center justify-center min-h-[calc(100vh-5rem)] pt-20 mt-5 relative px-4 sm:px-6 lg:px-8 overflow-hidden rounded-[33.93px]">
         <Image
           src="/auth/bg.png"
           alt="Helium background"
           fill
           priority
           className="absolute inset-0 w-full h-full object-cover z-0 !opacity-100 !brightness-100 !blur-0 transition-none"
-          style={{ objectPosition: 'center center' }}
+          style={{ objectPosition: 'center center', borderRadius: '33.93px' }}
         />
-        <motion.div
-          className="relative flex flex-col items-center justify-center mb-8 sm:mb-10 md:mb-12 mt-8 sm:mt-10 md:mt-12 z-10"
+        <motion.div 
+          className="relative flex flex-col items-center justify-center h-full w-full z-10"
           style={{ y: useTransform(scrollY, [0, 1000], [0, 100]) }}
           initial="hidden"
           animate={showHero ? 'visible' : 'hidden'}
@@ -193,7 +193,7 @@ export default function HeroSection() {
             className="relative flex flex-col items-center justify-center w-full max-w-6xl"
           >
             <motion.h1
-              className="text-center text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl 2xl:text-[92px] font-extralight text-white leading-tight tracking-tight mb-6 sm:mb-8 z-2 mt-8 sm:mt-10 md:mt-12 px-4 sm:px-6"
+              className="text-center text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl 2xl:text-[92px] font-extralight text-white leading-tight tracking-tight mb-6 sm:mb-8 z-2 px-4 sm:px-6"
               initial="hidden"
               animate={showHero ? 'visible' : 'hidden'}
               variants={contentVariants}
