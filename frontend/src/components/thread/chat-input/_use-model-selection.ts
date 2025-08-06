@@ -7,9 +7,9 @@ import { useAvailableModels } from '@/hooks/react-query/subscriptions/use-model'
 
 export const STORAGE_KEY_MODEL = 'suna-preferred-model-v3';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
-export const DEFAULT_PREMIUM_MODEL_ID = 'openrouter/deepseek/deepseek-chat-v3-0324:free';
+export const DEFAULT_PREMIUM_MODEL_ID = 'gemini/gemini-2.5-flash';
 // export const DEFAULT_FREE_MODEL_ID = 'moonshotai/kimi-k2';
-export const DEFAULT_FREE_MODEL_ID = 'openrouter/deepseek/deepseek-chat-v3-0324:free';
+export const DEFAULT_FREE_MODEL_ID = 'gemini/gemini-2.5-flash';
 
 export type SubscriptionStatus = 'no_subscription' | 'active';
 
@@ -31,24 +31,30 @@ export interface CustomModel {
 // SINGLE SOURCE OF TRUTH for all model data - aligned with backend constants
 export const MODELS = {
   // Free tier models (available to all users)
-  // 'claude-sonnet-4': { 
-  //   tier: 'free',
-  //   priority: 100, 
-  //   recommended: true,
-  //   lowQuality: false
-  // },
-  // 'gemini-flash-2.5': { 
-  //   tier: 'free', 
-  //   priority: 70,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'qwen3': { 
-  //   tier: 'free', 
-  //   priority: 60,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
+  'gemini/gemini-2.5-flash': { 
+    tier: 'free',
+    priority: 105, 
+    recommended: true,
+    lowQuality: false
+  },
+  'gemini/gemini-2.0-flash-exp': { 
+    tier: 'free',
+    priority: 100, 
+    recommended: false,
+    lowQuality: false
+  },
+  'gemini/gemini-1.5-flash': { 
+    tier: 'free', 
+    priority: 90,
+    recommended: false,
+    lowQuality: false
+  },
+  'gemini/gemini-1.5-pro': { 
+    tier: 'free', 
+    priority: 85,
+    recommended: false,
+    lowQuality: false
+  },
 
   // Premium/Paid tier models (require subscription) - except specific free models
   'moonshotai/kimi-k2:free': { 
@@ -63,48 +69,6 @@ export const MODELS = {
     recommended: false,
     lowQuality: false
   },
-  // 'grok-4': { 
-  //   tier: 'premium', 
-  //   priority: 98,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'sonnet-3.7': { 
-  //   tier: 'premium', 
-  //   priority: 97, 
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'google/gemini-2.5-pro': { 
-  //   tier: 'premium', 
-  //   priority: 96,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'gpt-4.1': { 
-  //   tier: 'premium', 
-  //   priority: 96,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'sonnet-3.5': { 
-  //   tier: 'premium', 
-  //   priority: 90,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'gpt-4o': { 
-  //   tier: 'premium', 
-  //   priority: 88,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'gemini-2.5-flash:thinking': { 
-  //   tier: 'premium', 
-  //   priority: 84,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
   'openrouter/deepseek/deepseek-chat-v3-0324:free': { 
     tier: 'free', 
     priority: 75,
@@ -116,20 +80,20 @@ export const MODELS = {
 // Production-only models for Helio branding
 export const PRODUCTION_MODELS = {
   'helio-o1': {
-    id: 'openrouter/moonshotai/kimi-k2',
+    id: 'gemini/gemini-2.5-flash',
     label: 'Helio o1',
     description: 'Our most powerful model for complex tasks',
     tier: 'free',
-    priority: 100,
+    priority: 105,
     recommended: true,
     lowQuality: false
   },
   'helio-o1-lite': {
-    id: 'openrouter/deepseek/deepseek-chat-v3-0324:free',
+    id: 'gemini/gemini-2.0-flash-exp',
     label: 'Helio o1 Lite',
     description: 'Fast and efficient for everyday tasks',
     tier: 'free',
-    priority: 90,
+    priority: 100,
     recommended: false,
     lowQuality: false
   }

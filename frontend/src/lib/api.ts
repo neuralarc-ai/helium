@@ -659,7 +659,7 @@ export const startAgent = async (
     );
 
     const defaultOptions = {
-      model_name: 'openrouter/deepseek/deepseek-chat-v3-0324:free',
+      model_name: 'gemini/gemini-2.5-flash',
       enable_thinking: false,
       reasoning_effort: 'low',
       stream: true,

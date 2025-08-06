@@ -16,7 +16,7 @@ class Agent:
         self,
         client: AgentsClient,
         agent_id: str,
-        model: str = "openrouter/deepseek/deepseek-chat-v3-0324:free",
+        model: str = "gemini/gemini-2.5-flash",
     ):
         self._client = client
         self._agent_id = agent_id

@@ -172,8 +172,34 @@ def prepare_params(
         # params["mock_testing_fallback"] = True
         logger.debug("Added Claude-specific headers")
 
+    # Add Gemini-specific parameters
+    if model_name.startswith("gemini/"):
+        logger.info(f"Preparing Gemini parameters for model: {model_name}")
+        
+        # Set Gemini API key if not already provided
+        if not api_key and config.GEMINI_API_KEY:
+            params["api_key"] = config.GEMINI_API_KEY
+            logger.info(f"Set Gemini API key from config (length: {len(config.GEMINI_API_KEY)}, starts with: {config.GEMINI_API_KEY[:10]}...)")
+        elif api_key:
+            logger.info(f"Using provided API key for Gemini (length: {len(api_key)}, starts with: {api_key[:10]}...)")
+        else:
+            logger.error("No Gemini API key available!")
+            # Check environment variable as fallback
+            env_key = os.environ.get('GEMINI_API_KEY')
+            if env_key:
+                params["api_key"] = env_key
+                logger.info(f"Using Gemini API key from environment (length: {len(env_key)}, starts with: {env_key[:10]}...)")
+            else:
+                logger.error("Gemini API key not found in config or environment!")
+
+        # Ensure the API key is explicitly passed to LiteLLM
+        if "api_key" not in params:
+            logger.error("Gemini API key not set in params - this will cause authentication failure!")
+        else:
+            logger.info(f"Gemini API key confirmed in params (length: {len(params['api_key'])}, starts with: {params['api_key'][:10]}...)")
+
     # Add OpenRouter-specific parameters
-    if model_name.startswith("openrouter/"):
+    elif model_name.startswith("openrouter/"):
         logger.info(f"Preparing OpenRouter parameters for model: {model_name}")
 
         # Set OpenRouter API key if not already provided

@@ -216,7 +216,7 @@ class Configuration:
     AWS_REGION_NAME: Optional[str] = None
     
     # Model configuration
-    MODEL_TO_USE: Optional[str] = "openrouter/deepseek/deepseek-chat-v3-0324:free"
+    MODEL_TO_USE: Optional[str] = "gemini/gemini-2.5-flash"
     
     # Supabase configuration
     SUPABASE_URL: str

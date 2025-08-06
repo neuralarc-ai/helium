@@ -8,46 +8,53 @@ export const generateThreadName = async (message: string): Promise<string> => {
         ? message.trim().substring(0, 47) + '...'
         : message.trim();
 
-    // OpenAI API key should be stored in an environment variable
-    const apiKey = process.env.OPENAI_API_KEY;
+    // Gemini API key should be stored in an environment variable
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      console.error('OpenAI API key not found');
+      console.error('Gemini API key not found');
       return defaultName;
     }
 
-    const response = await fetch('https://openrouter.ai/api/v1', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'openrouter/deepseek/deepseek-chat-v3-0324:free',
-        messages: [
+        contents: [
           {
-            role: 'system',
-            content:
-              "You are a helpful assistant that generates extremely concise titles (2-4 words maximum) for chat threads based on the user's message. Respond with only the title, no other text or punctuation.",
+            parts: [
+              {
+                text: "You are a helpful assistant that generates extremely concise titles (2-4 words maximum) for chat threads based on the user's message. Respond with only the title, no other text or punctuation."
+              }
+            ],
+            role: "user"
           },
           {
-            role: 'user',
-            content: `Generate an extremely brief title (2-4 words only) for a chat thread that starts with this message: "${message}"`,
-          },
+            parts: [
+              {
+                text: `Generate an extremely brief title (2-4 words only) for a chat thread that starts with this message: "${message}"`
+              }
+            ],
+            role: "user"
+          }
         ],
-        max_tokens: 20,
-        temperature: 0.7,
+        generationConfig: {
+          maxOutputTokens: 20,
+          temperature: 0.7,
+        },
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('OpenRouter API error:', errorData);
+      console.error('Gemini API error:', errorData);
       return defaultName;
     }
 
     const data = await response.json();
-    const generatedName = data.choices[0]?.message?.content?.trim();
+    const generatedName = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
     // Return the generated name or default if empty
     return generatedName || defaultName;
