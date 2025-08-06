@@ -344,9 +344,44 @@ export function NavAgents() {
     <SidebarGroup>
       {(state === 'expanded' || (isMobile && openMobile)) && (
         <div className="px-1 py-1 mb-2">
-          <div className="flex items-center space-x-2">
-            <History className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm font-medium text-muted-foreground">Chat History</span>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <History className="h-5 w-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">Chat History</span>
+            </div>
+            {state !== 'collapsed' ? (
+              <div className="flex items-center space-x-1">
+                {selectedThreads.size > 0 ? (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={deselectAllThreads}
+                      className="h-7 w-7"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={selectAllThreads}
+                      disabled={selectedThreads.size === combinedThreads.length}
+                      className="h-7 w-7"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleMultiDelete}
+                      className="h-7 w-7 text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           <div className="w-full h-px bg-border mt-2" />
         </div>

@@ -290,15 +290,13 @@ export function SeeImageToolView({
 
   return (
     <Card className="flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-14 bg-gradient-to-r from-zinc-50/90 to-zinc-100/90 dark:from-zinc-900/90 dark:to-zinc-800/90 backdrop-blur-sm border-b p-2 px-4 space-y-0">
+      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-0 rounded-xl mx-2 mt-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className={cn("relative p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20 transition-colors", config.bgColor)}>
-              <ImageIcon className={cn("w-5 h-5", config.color)} />
-            </div>
+            <ImageIcon className="w-5 h-5 text-white" />
             <div>
               <div className="flex items-center">
-                <CardTitle className="text-base font-medium text-zinc-900 dark:text-zinc-100">
+                <CardTitle className="text-base font-medium text-white">
                   {truncateString(filename, 25)}
                 </CardTitle>
                 {isAnimated && (
