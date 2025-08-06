@@ -2,11 +2,11 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Bot, Menu, Store, Plus, Zap, Plug, ChevronRight, Loader2, Lightbulb, X, Search, Book, History } from 'lucide-react';
+import { Bot, Menu, Plus, Plug, ChevronRight, Lightbulb } from 'lucide-react';
+import Image from 'next/image';
 
 import { NavAgents } from '@/components/sidebar/nav-agents';
 import { NavUserWithTeams } from '@/components/sidebar/nav-user-with-teams';
-import { HeliumLogo } from '@/components/sidebar/helium-logo';
 import {
   Sidebar,
   SidebarContent,
@@ -159,7 +159,7 @@ export function SidebarLeft({
       <SidebarHeader className="px-2 py-2">
         <div className="flex h-[40px] items-center px-1 relative">
           <Link href="/dashboard">
-            <HeliumLogo />
+            <Image src="/helium-logo.png" alt="Helium Logo" width={30} height={30} />
           </Link>
           {state !== 'collapsed' && (
             <div className="ml-2 transition-all duration-200 ease-in-out whitespace-nowrap">

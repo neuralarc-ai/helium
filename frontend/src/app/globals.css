@@ -6,8 +6,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-  --helium-brown: var(--helium-brown);
-  --helium-teal: var(--helium-teal);
+  --color-helium-pink: var(--helium-pink);
+  --color-helium-teal: var(--helium-teal);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
@@ -273,7 +273,7 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --helium-brown: oklch(0.4836 0.0584 75.31);
+  --helium-pink: oklch(0.744 0.1819 347.04);
   --helium-teal: oklch(0.7197 0.1217 174.92);
 }
 
@@ -310,7 +310,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-  --helium-brown: oklch(0.4836 0.0584 75.31);
+  --helium-pink: oklch(0.744 0.1819 347.04);
   --helium-teal: oklch(0.7197 0.1217 174.92);
 }
 

@@ -24,7 +24,8 @@ import {
   DEFAULT_PREMIUM_MODEL_ID,
   formatModelName,
   getCustomModels,
-  MODELS // Import the centralized MODELS constant
+  MODELS, // Import the centralized MODELS constant
+  PRODUCTION_MODELS // Import production models for descriptions
 } from './_use-model-selection';
 import { PaywallDialog } from '@/components/payment/paywall-dialog';
 import { cn } from '@/lib/utils';
@@ -77,6 +78,43 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const [dialogInitialData, setDialogInitialData] = useState<CustomModelFormData>({ id: '', label: '' });
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
   const [editingModelId, setEditingModelId] = useState<string | null>(null);
+
+  // Helper function to get model description
+  const getModelDescription = (modelId: string): string => {
+    // Check production models first
+    const productionModel = Object.values(PRODUCTION_MODELS).find(model => model.id === modelId);
+    if (productionModel?.description) {
+      return productionModel.description;
+    }
+    
+    // Check if it's a custom model
+    const customModel = customModels.find(model => model.id === modelId);
+    if (customModel) {
+      return 'Custom model';
+    }
+    
+    // Default descriptions based on model characteristics
+    if (MODELS[modelId]?.lowQuality) {
+      return 'Basic model with limited capabilities - best for simple tasks';
+    }
+    
+    if (MODELS[modelId]?.recommended) {
+      return 'Recommended model for optimal performance and capabilities';
+    }
+    
+    // Generic descriptions based on model ID patterns
+    if (modelId.includes('deepseek')) {
+      return 'Powerful model optimized for coding and technical tasks';
+    }
+    if (modelId.includes('kimi')) {
+      return 'Advanced model with strong reasoning capabilities';
+    }
+    if (modelId.includes('glm')) {
+      return 'Efficient model with good performance across various tasks';
+    }
+    
+    return 'AI model for conversation and task completion';
+  };
 
   // Load custom models from localStorage on component mount
   useEffect(() => {
@@ -423,48 +461,52 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                 onClick={() => handleSelect(opt.id)}
                 onMouseEnter={() => setHighlightedIndex(index)}
               >
-                <div className="flex items-center">
-                  <span className="font-medium">{opt.label}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {/* Show capabilities */}
-                  {isLowQuality && (
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                  )}
-                  {isRecommended && (
-                    <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium">
-                      Recommended
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center">
+                    <span className={cn("font-semibold", selectedModel === opt.id && "text-helium-pink")}>
+                      {opt.label}
                     </span>
-                  )}
-                  {isPremium && !accessible && (
-                    <Crown className="h-3.5 w-3.5 text-blue-500" />
-                  )}
-                  {/* Custom model actions */}
-                  {isLocalMode() && isCustom && (
-                    <>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditCustomModelDialog(opt, e);
-                        }}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteCustomModel(opt.id, e);
-                        }}
-                        className="text-muted-foreground hover:text-red-500"
-                      >
-                        <Trash className="h-3.5 w-3.5" />
-                      </button>
-                    </>
-                  )}
-                  {selectedModel === opt.id && (
-                    <Check className="h-4 w-4 text-blue-500" />
-                  )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Show capabilities */}
+                    {isLowQuality && (
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                    )}
+                    {isRecommended && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium">
+                        Recommended
+                      </span>
+                    )}
+                    {isPremium && !accessible && (
+                      <Crown className="h-3.5 w-3.5 text-blue-500" />
+                    )}
+                    {/* Custom model actions */}
+                    {isLocalMode() && isCustom && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditCustomModelDialog(opt, e);
+                          }}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCustomModel(opt.id, e);
+                          }}
+                          className="text-muted-foreground hover:text-red-500"
+                        >
+                          <Trash className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    )}
+                    {selectedModel === opt.id && (
+                      <Check className="h-4 w-4 text-helium-pink" />
+                    )}
+                  </div>
                 </div>
               </DropdownMenuItem>
             </div>
@@ -473,19 +515,11 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             <TooltipContent side="left" className="text-xs max-w-xs">
               <p>Requires subscription to access premium model</p>
             </TooltipContent>
-          ) : isLowQuality ? (
+          ) : (
             <TooltipContent side="left" className="text-xs max-w-xs">
-              <p>Not recommended for complex tasks</p>
+              <p>{getModelDescription(opt.id)}</p>
             </TooltipContent>
-          ) : isRecommended ? (
-            <TooltipContent side="left" className="text-xs max-w-xs">
-              <p>Recommended for optimal performance</p>
-            </TooltipContent>
-          ) : isCustom ? (
-            <TooltipContent side="left" className="text-xs max-w-xs">
-              <p>Custom model</p>
-            </TooltipContent>
-          ) : null}
+          )}
         </Tooltip>
       </TooltipProvider>
     );
@@ -536,24 +570,18 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                 </Button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              <p>Choose a model</p>
-            </TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
         <DropdownMenuContent
           align="end"
-          className="w-72 p-0 overflow-hidden bg-background/80 backdrop-blur-md"
+          className="w-72 p-0 h-fit py-1.5 overflow-hidden bg-background/80 gap-1 backdrop-blur-md"
           sideOffset={4}
         >
           <div className="overflow-y-auto w-full scrollbar-hide relative">
             {/* Production mode - simplified view with only Helio models */}
             {!isLocalMode() ? (
               <div>
-                <div className="px-3 py-3 text-xs font-medium text-muted-foreground">
-                  Choose Model
-                </div>
                 {uniqueModels
                   .filter(m =>
                     m.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -566,42 +594,39 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                           <div className='w-full'>
                             <DropdownMenuItem
                               className={cn(
-                                "text-sm mx-2 my-0.5 px-3 py-2 flex flex-col items-start justify-between cursor-pointer gap-0.5",
-                                selectedModel === model.id && "bg-accent"
+                                "text-sm mx-2 px-3 py-2 my-1 flex items-center justify-between cursor-pointer",
+                                selectedModel === model.id && "bg-accent/60"
                               )}
                               onClick={() => onModelChange(model.id)}
                               onMouseEnter={() => setHighlightedIndex(filteredOptions.indexOf(model))}
                             >
-                              <div className="flex items-center">
-                                <span className="font-medium">{model.label}</span>
-                              </div>
-                              {model.description && (
-                                <span className="text-xs text-muted-foreground mt-0.5">
-                                  {model.description}
-                                </span>
-                              )}
-                              <div className="flex items-center gap-2 mt-1">
-                                {/* Show capabilities */}
-                                {(MODELS[model.id]?.lowQuality || false) && (
-                                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                                )}
-                                {(MODELS[model.id]?.recommended || false) && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium">
-                                    Recommended
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center">
+                                  <span className={cn("font-semibold", selectedModel === model.id && "text-helium-pink")}>
+                                    {model.label}
                                   </span>
-                                )}
-                                {selectedModel === model.id && (
-                                  <Check className="h-4 w-4 text-blue-500" />
-                                )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {/* Show capabilities */}
+                                  {(MODELS[model.id]?.lowQuality || false) && (
+                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                                  )}
+                                  {(MODELS[model.id]?.recommended || false) && (
+                                    <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium">
+                                      Recommended
+                                    </span>
+                                  )}
+                                  {selectedModel === model.id && (
+                                    <Check className="h-4 w-4 text-helium-pink" />
+                                  )}
+                                </div>
                               </div>
                             </DropdownMenuItem>
                           </div>
                         </TooltipTrigger>
-                        {MODELS[model.id]?.lowQuality && (
-                          <TooltipContent side="left" className="text-xs max-w-xs">
-                            <p>Basic model with limited capabilities</p>
-                          </TooltipContent>
-                        )}
+                        <TooltipContent side="left" className="text-xs max-w-xs">
+                          <p>{getModelDescription(model.id)}</p>
+                        </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   ))
@@ -636,31 +661,33 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                                 onClick={() => onModelChange(model.id)}
                                 onMouseEnter={() => setHighlightedIndex(filteredOptions.indexOf(model))}
                               >
-                                <div className="flex items-center">
-                                  <span className="font-medium">{model.label}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {/* Show capabilities */}
-                                  {(MODELS[model.id]?.lowQuality || false) && (
-                                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                                  )}
-                                  {(MODELS[model.id]?.recommended || false) && (
-                                    <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium">
-                                      Recommended
+                                <div className="flex items-center justify-between w-full">
+                                  <div className="flex items-center">
+                                    <span className={cn("font-semibold", selectedModel === model.id && "text-helium-pink")}>
+                                      {model.label}
                                     </span>
-                                  )}
-                                  {selectedModel === model.id && (
-                                    <Check className="h-4 w-4 text-blue-500" />
-                                  )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {/* Show capabilities */}
+                                    {(MODELS[model.id]?.lowQuality || false) && (
+                                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                                    )}
+                                    {(MODELS[model.id]?.recommended || false) && (
+                                      <span className="text-xs px-1.5 py-0.5 rounded-sm bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 font-medium">
+                                        Recommended
+                                      </span>
+                                    )}
+                                    {selectedModel === model.id && (
+                                      <Check className="h-4 w-4 text-helium-pink" />
+                                    )}
+                                  </div>
                                 </div>
                               </DropdownMenuItem>
                             </div>
                           </TooltipTrigger>
-                          {MODELS[model.id]?.lowQuality && (
-                            <TooltipContent side="left" className="text-xs max-w-xs">
-                              <p>Basic model with limited capabilities</p>
-                            </TooltipContent>
-                          )}
+                          <TooltipContent side="left" className="text-xs max-w-xs">
+                            <p>{getModelDescription(model.id)}</p>
+                          </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     ))
@@ -706,7 +733,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side="left" className="text-xs max-w-xs">
-                                <p>Requires subscription to access premium model</p>
+                                <p>{getModelDescription(model.id)}</p>
+                                <p className="mt-1 text-muted-foreground">Requires subscription to access</p>
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
