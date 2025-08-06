@@ -151,7 +151,7 @@ export function FileOperationToolView({
 
     if (isHtml && htmlPreviewUrl) {
       return (
-        <div className="flex flex-col h-[calc(100vh-16rem)]">
+        <div className="flex flex-col h-[calc(100vh-16rem)] pt-4">
           <iframe
             src={htmlPreviewUrl}
             title={`HTML Preview of ${fileName}`}
