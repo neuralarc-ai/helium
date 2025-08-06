@@ -279,7 +279,7 @@ export function NavUserWithTeams({
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
-                {/* Teams Section
+                {/* Teams Section */}
                 {personalAccount && (
                   <>
                     <DropdownMenuLabel className="text-muted-foreground text-xs">
@@ -338,7 +338,18 @@ export function NavUserWithTeams({
                   </>
                 )}
 
-                <DropdownMenuSeparator /> */}
+                <DropdownMenuSeparator />
+
+                {/* Create Team Option */}
+                <DropdownMenuItem
+                  onClick={() => setShowNewTeamDialog(true)}
+                  className="gap-2 p-2"
+                >
+                  <Plus className="size-4 shrink-0" />
+                  Create Team
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
 
                 {/* User Settings Section */}
                 <DropdownMenuGroup>

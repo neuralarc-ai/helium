@@ -89,7 +89,7 @@ uv run api.py
 ```bash
 cd backend
 source .venv/bin/activate
-dramatiq --processes 4 --threads 4 run_agent_background
+uv run dramatiq --processes 4 --threads 4 run_agent_background
 ```
 
 ---

@@ -364,7 +364,7 @@ class SandboxFilesTool(SandboxToolsBase):
                     base_url="https://openrouter.ai/api/v1"
                 )
                 response = await client.chat.completions.create(
-                    model="openrouter/qwen/qwen3-coder:free",
+                    model="openrouter/z-ai/glm-4.5-air:free",
                     messages=messages,
                     temperature=0.0,
                     timeout=120.0
@@ -372,7 +372,7 @@ class SandboxFilesTool(SandboxToolsBase):
             elif openrouter_key:
                 logger.debug("Morph API key not set, falling back to OpenRouter for file editing via litellm.")
                 response = await litellm.acompletion(
-                    model="openrouter/qwen/qwen3-coder:free",
+                    model="openrouter/agentica-org/deepcoder-14b-preview:free",
                     messages=messages,
                     api_key=openrouter_key,
                     api_base="https://openrouter.ai/api/v1",

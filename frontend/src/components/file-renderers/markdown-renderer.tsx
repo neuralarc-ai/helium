@@ -90,10 +90,10 @@ export const MarkdownRenderer = forwardRef<
               <p className="my-2 font-sans cjk-text" {...props} />
             ),
             ul: ({ node, ...props }) => (
-              <ul className="list-disc pl-5 my-2" {...props} />
+              <ul className="list-disc pl-5 my-2 ml-4" {...props} />
             ),
             ol: ({ node, ...props }) => (
-              <ol className="list-decimal pl-5 my-2" {...props} />
+              <ol className="list-decimal pl-5 my-2 ml-4" {...props} />
             ),
             li: ({ node, ...props }) => <li className="my-1" {...props} />,
             blockquote: ({ node, ...props }) => (

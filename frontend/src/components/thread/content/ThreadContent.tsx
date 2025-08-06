@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { ArrowDown, CircleDashed, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArrowDown, CircleDashed, } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UnifiedMessage, ParsedContent, ParsedMetadata } from '@/components/thread/types';
 import { FileAttachmentGrid } from '@/components/thread/file-attachment';
@@ -81,7 +81,7 @@ export function renderMarkdownContent(
     // If in debug mode, just display raw content in a pre tag
     if (debugMode) {
         return (
-            <pre className="text-xs font-mono whitespace-pre-wrap overflow-x-auto p-2 border border-border rounded-md bg-muted/30 text-foreground">
+            <pre className="text-xs font-mono whitespace-pre-wrap overflow-x-auto p-2 border border-border rounded-md bg-muted/30 text-foreground xl:text-lg">
                 {content}
             </pre>
         );
@@ -124,7 +124,7 @@ export function renderMarkdownContent(
                     // Render ask tool content with attachment UI
                     contentParts.push(
                         <div key={`ask-${match.index}-${index}`} className="space-y-3">
-                            <PipedreamUrlDetector content={askText} className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
+                            <PipedreamUrlDetector content={askText} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
                             {renderAttachments(attachmentArray, fileViewerHandler, sandboxId, project)}
                         </div>
                     );
@@ -140,7 +140,7 @@ export function renderMarkdownContent(
                     // Render complete tool content with attachment UI
                     contentParts.push(
                         <div key={`complete-${match.index}-${index}`} className="space-y-3">
-                            <PipedreamUrlDetector content={completeText} className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
+                            <PipedreamUrlDetector content={completeText} className="text-sm lg:text-base xl:text-lg leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
                             {renderAttachments(attachmentArray, fileViewerHandler, sandboxId, project)}
                         </div>
                     );
@@ -171,8 +171,8 @@ export function renderMarkdownContent(
                                 <div className='border-2 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-800 flex items-center justify-center p-0.5 rounded-sm border-neutral-400/20 dark:border-neutral-600'>
                                     <IconComponent className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                                 </div>
-                                <span className="font-mono text-xs text-foreground">{getUserFriendlyToolName(toolName)}</span>
-                                {paramDisplay && <span className="ml-1 text-muted-foreground truncate max-w-[200px]" title={paramDisplay}>{paramDisplay}</span>}
+                                <span className="text-xs text-foreground/80">{getUserFriendlyToolName(toolName)}</span>
+                                {paramDisplay && <span className="ml-1 font-mono text-muted-foreground truncate max-w-[200px]" title={paramDisplay}>{paramDisplay}</span>}
                             </button>
                         </div>
                     );
@@ -187,12 +187,12 @@ export function renderMarkdownContent(
             const remainingText = content.substring(lastIndex);
             if (remainingText.trim()) {
                 contentParts.push(
-                    <PipedreamUrlDetector key={`md-${lastIndex}`} content={remainingText} className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />
+                    <PipedreamUrlDetector key={`md-${lastIndex}`} content={remainingText} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />
                 );
             }
         }
 
-        return contentParts.length > 0 ? contentParts : <PipedreamUrlDetector content={content} className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />;
+        return contentParts.length > 0 ? contentParts : <PipedreamUrlDetector content={content} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />;
     }
 
     // Fall back to old XML format handling
@@ -203,7 +203,7 @@ export function renderMarkdownContent(
 
     // If no XML tags found, just return the full content as markdown
     if (!content.match(xmlRegex)) {
-        return <PipedreamUrlDetector content={content} className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />;
+        return <PipedreamUrlDetector content={content} className="text-sm lg:text-base xl:text-lg leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />;
     }
 
     while ((match = xmlRegex.exec(content)) !== null) {
@@ -233,7 +233,7 @@ export function renderMarkdownContent(
             // Render <ask> tag content with attachment UI (using the helper)
             contentParts.push(
                 <div key={`ask-${match.index}`} className="space-y-3">
-                    <PipedreamUrlDetector content={askContent} className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
+                    <PipedreamUrlDetector content={askContent} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
                     {renderAttachments(attachments, fileViewerHandler, sandboxId, project)}
                 </div>
             );
@@ -251,7 +251,7 @@ export function renderMarkdownContent(
             // Render <complete> tag content with attachment UI (using the helper)
             contentParts.push(
                 <div key={`complete-${match.index}`} className="space-y-3">
-                    <PipedreamUrlDetector content={completeContent} className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
+                    <PipedreamUrlDetector content={completeContent} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
                     {renderAttachments(attachments, fileViewerHandler, sandboxId, project)}
                 </div>
             );
@@ -263,7 +263,7 @@ export function renderMarkdownContent(
             contentParts.push(
                 <div
                     key={toolCallKey}
-                    className="my-1"
+                    className=""
                 >
                     <button
                         onClick={() => handleToolClick(messageId, toolName)}
@@ -272,7 +272,7 @@ export function renderMarkdownContent(
                         <div className='border-2 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-800 flex items-center justify-center p-0.5 rounded-sm border-neutral-400/20 dark:border-neutral-600'>
                             <IconComponent className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                         </div>
-                        <span className="font-mono text-xs text-foreground">{getUserFriendlyToolName(toolName)}</span>
+                        <span className="font-mono text-xs text-foreground/80">{getUserFriendlyToolName(toolName)}</span>
                         {paramDisplay && <span className="ml-1 text-muted-foreground truncate max-w-[200px]" title={paramDisplay}>{paramDisplay}</span>}
                     </button>
                 </div>
@@ -284,7 +284,7 @@ export function renderMarkdownContent(
     // Add text after the last tag
     if (lastIndex < content.length) {
         contentParts.push(
-            <PipedreamUrlDetector key={`md-${lastIndex}`} content={content.substring(lastIndex)} className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />
+            <PipedreamUrlDetector key={`md-${lastIndex}`} content={content.substring(lastIndex)} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />
         );
     }
 
@@ -332,7 +332,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     debugMode = false,
     isPreviewMode = false,
     agentName = 'Helium',
-    agentAvatar = <HeliumLogo size={16} />,
+    agentAvatar = <HeliumLogo size={28} />,
     emptyStateComponent,
     threadMetadata,
 }) => {
@@ -360,7 +360,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
             return {
                 name: 'Agent Builder',
                 avatar: (
-                    <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
+                    <div className="h-8 w-8 flex items-center justify-center">
                         <span className="text-lg">🤖</span>
                     </div>
                 )
@@ -376,7 +376,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
             return {
                 name: 'Agent Builder',
                 avatar: (
-                    <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
+                    <div className="h-12 w-12 flex items-center justify-center">
                         <span className="text-lg">🤖</span>
                     </div>
                 )
@@ -388,18 +388,18 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
             const avatar = recentAssistantWithAgent.agents.avatar ? (
                 <>
                     {isSunaAgent ? (
-                        <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
-                            <HeliumLogo size={16} />
+                        <div className="h-8 w-8 flex items-center justify-center">
+                            <HeliumLogo size={48} />
                         </div>
                     ) : (
-                        <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
+                        <div className="h-8 w-8 flex items-center justify-center">
                             <span className="text-lg">{recentAssistantWithAgent.agents.avatar}</span>
                         </div>
                     )}
                 </>
             ) : (
-                <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
-                    <HeliumLogo size={16} />
+                <div className="h-8 w-8 flex items-center justify-center">
+                    <HeliumLogo size={48} />
                 </div>
             );
             return {
@@ -683,14 +683,16 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                     } else if (group.type === 'assistant_group') {
                                         return (
                                             <div key={group.key} ref={groupIndex === groupedMessages.length - 1 ? latestMessageRef : null}>
-                                                <div className="flex flex-col gap-2">
-                                                    <div className="flex items-center">
-                                                        <div className="rounded-md flex items-center justify-center relative">
+                                                <div className="flex flex-col gap-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="h-fit w-fit rounded-xl flex items-center justify-center">
                                                             {getAgentInfo().avatar}
                                                         </div>
-                                                        <p className='ml-2 text-sm text-muted-foreground'>
-                                                            {getAgentInfo().name}
-                                                        </p>
+                                                        <div className="flex flex-col">
+                                                            <p className='text-base font-semibold text-foreground/80'>
+                                                                {getAgentInfo().name}
+                                                            </p>
+                                                        </div>
                                                     </div>
 
                                                     {/* Message content - ALL messages in the group */}
@@ -757,8 +759,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                                         );
 
                                                                         elements.push(
-                                                                            <div key={msgKey} className={assistantMessageCount > 0 ? "mt-4" : ""}>
-                                                                                <div className="prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-hidden">
+                                                                            <div key={msgKey} className={assistantMessageCount > 0 ? "mt-1" : ""}>
+                                                                                <div className="text-sm lg:text-base xl:text-lg leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-hidden">
                                                                                     {renderedContent}
                                                                                 </div>
                                                                             </div>
@@ -813,7 +815,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                                         return (
                                                                             <>
                                                                                 {textBeforeTag && (
-                                                                                    <PipedreamUrlDetector content={textBeforeTag} className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere" />
+                                                                                    <PipedreamUrlDetector content={textBeforeTag} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere" />
                                                                                 )}
                                                                                 {showCursor && (
                                                                                     <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
@@ -876,7 +878,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                                                 ) : (
                                                                                     <>
                                                                                         {textBeforeTag && (
-                                                                                            <PipedreamUrlDetector content={textBeforeTag} className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere" />
+                                                                                            <PipedreamUrlDetector content={textBeforeTag} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere" />
                                                                                         )}
                                                                                         {showCursor && (
                                                                                             <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
@@ -913,13 +915,15 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                     <div ref={latestMessageRef} className='w-full h-22 rounded'>
                                         <div className="flex flex-col gap-2">
                                             {/* Logo positioned above the loader */}
-                                            <div className="flex items-center">
-                                                <div className="rounded-md flex items-center justify-center">
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-8 w-fit rounded-xl flex items-center justify-center">
                                                     {getAgentInfo().avatar}
                                                 </div>
-                                                <p className='ml-2 text-sm text-muted-foreground'>
-                                                    {getAgentInfo().name}
-                                                </p>
+                                                <div className="flex flex-col">
+                                                    <p className='text-lg font-semibold text-foreground/80'>
+                                                        {getAgentInfo().name}
+                                                    </p>
+                                                </div>
                                             </div>
 
                                             {/* Loader content */}
@@ -933,13 +937,15 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 <div ref={latestMessageRef}>
                                     <div className="flex flex-col gap-2">
                                         {/* Logo positioned above the tool call */}
-                                        <div className="flex justify-start">
-                                            <div className="rounded-md flex items-center justify-center">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-12 w-fit rounded-xl flex items-center justify-center">
                                                 {getAgentInfo().avatar}
                                             </div>
-                                            <p className='ml-2 text-sm text-muted-foreground'>
-                                                {getAgentInfo().name}
-                                            </p>
+                                            <div className="flex flex-col">
+                                                <p className='text-sm font-semibold text-foreground/80'>
+                                                    {getAgentInfo().name}
+                                                </p>
+                                            </div>
                                         </div>
 
                                         {/* Tool call content */}
@@ -960,13 +966,15 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 <div ref={latestMessageRef}>
                                     <div className="flex flex-col gap-2">
                                         {/* Logo positioned above the streaming indicator */}
-                                        <div className="flex justify-start">
-                                            <div className="rounded-md flex items-center justify-center">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-12 w-fit rounded-xl flex items-center justify-center">
                                                 {getAgentInfo().avatar}
                                             </div>
-                                            <p className='ml-2 text-sm text-muted-foreground'>
-                                                {getAgentInfo().name}
-                                            </p>
+                                            <div className="flex flex-col">
+                                                <p className='text-sm font-semibold text-foreground/80'>
+                                                    {getAgentInfo().name}
+                                                </p>
+                                            </div>
                                         </div>
 
                                         {/* Streaming indicator content */}

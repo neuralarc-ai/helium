@@ -83,8 +83,8 @@ def get_openrouter_fallback(model_name: str) -> Optional[str]:
     # Map models to their OpenRouter equivalents
     fallback_mapping = {
         "deepseek/deepseek-chat-v3-0324:free": "openrouter/deepseek/deepseek-chat-v3-0324:free",
-        "qwen/qwen3-coder:free": "openrouter/qwen/qwen3-coder:free",
-        "gemini/gemini-2.0-flash-exp:free": "openrouter/google/gemini-2.0-flash-exp:free",
+        "z-ai/glm-4.5-air:free": "openrouter/z-ai/glm-4.5-air:free",
+        "agentica-org/deepcoder-14b-preview:free": "openrouter/agentica-org/deepcoder-14b-preview:free",
     }
     
     # Check for exact match first
