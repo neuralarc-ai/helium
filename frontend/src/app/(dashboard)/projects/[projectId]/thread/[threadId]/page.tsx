@@ -28,6 +28,14 @@ import { useThreadData, useToolCalls, useBilling, useKeyboardShortcuts } from '.
 import { ThreadError, UpgradeDialog, ThreadLayout } from '../_components';
 import { useVncPreloader } from '@/hooks/useVncPreloader';
 import { useThreadAgent } from '@/hooks/react-query/agents/use-agents';
+import { useSubscriptionWithStreaming } from '@/hooks/react-query/subscriptions/use-subscriptions';
+import { useModelSelection } from '@/components/thread/chat-input/_use-model-selection';
+
+// Helper function to check if we're in production mode
+const isProductionMode = (): boolean => {
+  const envMode = process.env.NEXT_PUBLIC_ENV_MODE?.toLowerCase();
+  return envMode === 'production';
+};
 
 export default function ThreadPage({
   params,
@@ -517,7 +525,17 @@ export default function ThreadPage({
       hasCheckedUpgradeDialog.current = true;
       const hasSeenUpgradeDialog = localStorage.getItem('suna_upgrade_dialog_displayed');
       const isFreeTier = subscriptionStatus === 'no_subscription';
-      if (!hasSeenUpgradeDialog && isFreeTier && !isLocalMode()) {
+      const isProduction = isProductionMode();
+      const currentUsage = subscriptionData?.current_usage || 0;
+      const usageOver5Dollars = currentUsage > 5;
+      
+      // Only show upgrade dialog if:
+      // 1. Not in production environment
+      // 2. Usage is under $5
+      // 3. User hasn't seen the dialog before
+      // 4. User is on free tier
+      // 5. Not in local mode
+      if (!hasSeenUpgradeDialog && isFreeTier && !isLocalMode() && !isProduction && !usageOver5Dollars) {
         setShowUpgradeDialog(true);
       }
     }

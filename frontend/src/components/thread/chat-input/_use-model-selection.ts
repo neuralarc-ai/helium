@@ -127,7 +127,7 @@ export const PRODUCTION_MODELS = {
     description: 'Our most powerful model for complex tasks',
     tier: 'free',
     priority: 90,
-    recommended: true,
+    recommended: false,
     lowQuality: false
   },
   'helio-o1-lite': {
@@ -136,12 +136,12 @@ export const PRODUCTION_MODELS = {
     description: 'Fast and efficient for everyday tasks',
     tier: 'free',
     priority: 100,
-    recommended: false,
+    recommended: true,
     lowQuality: false
   },
   'helio-g1': {
     id: 'openrouter/z-ai/glm-4.5-air:free',
-    label: 'Helio G1',
+    label: 'Helio g1',
     description: 'Great for coding and analysis',
     tier: 'free',
     priority: 80,
