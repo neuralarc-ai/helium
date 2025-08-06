@@ -72,7 +72,7 @@ export default function HeliumPoweredActions() {
                 alt={feature.title}
                 width={180}
                 height={180}
-                className="object-cover w-full h-full rounded-xl"
+                className="object-cover w-full h-full rounded-[33px]"
                 priority={idx === 0}
               />
             </div>

@@ -141,7 +141,7 @@ export default function PerformanceSection() {
               alt={title}
               width={200}
               height={200}
-              className="object-cover w-full h-auto rounded-2xl mb-2"
+              className="object-cover w-full h-auto rounded-[33px] mb-2"
               style={{ aspectRatio: '1/1' }}
             />
             <h4 className="text-gray-700 text-xs sm:text-sm font-medium uppercase tracking-wider mt-2 mb-1">{title}</h4>
@@ -150,8 +150,8 @@ export default function PerformanceSection() {
       </div>
 
       {/* Bottom two-column feature block */}
-      <div className="max-w-7xl w-full mx-auto flex flex-col md:flex-row gap-0 rounded-3xl overflow-hidden bg-white dark:bg-[#232323] border border-[#e5e7eb] dark:border-[#FFFFFF12] shadow-md">
-        {/* Left: Intelligent Workflow Automation */}
+      {/* <div className="max-w-7xl w-full mx-auto flex flex-col md:flex-row gap-0 rounded-3xl overflow-hidden bg-white dark:bg-[#232323] border border-[#e5e7eb] dark:border-[#FFFFFF12] shadow-md">
+        
         <div className="flex-1 flex flex-col p-5 sm:p-8 md:p-10">
           <div className="flex items-center mb-3 sm:mb-4">
             <div className="flex items-center justify-center mr-3 sm:mr-4">
@@ -170,10 +170,10 @@ export default function PerformanceSection() {
             <li>Synchronized execution pipelines</li>
           </ul>
         </div>
-        {/* Divider */}
+  
         <div className="block md:hidden w-full h-px bg-gradient-to-r from-transparent via-[#e5e7eb] dark:via-[#FFFFFF26] to-transparent" />
         <div className="hidden md:block w-px bg-gradient-to-b from-transparent via-[#e5e7eb] dark:via-[#FFFFFF26] to-transparent" />
-        {/* Right: Dynamic Knowledge Integration */}
+     
         <div className="flex-1 flex flex-col p-5 sm:p-8 md:p-10">
           <div className="flex items-center mb-3 sm:mb-4">
             <div className="flex items-center justify-center mr-3 sm:mr-4">
@@ -192,7 +192,7 @@ export default function PerformanceSection() {
             <li>Intelligent content synthesis</li>
           </ul>
         </div>
-      </div>
+      </div> */}
     </section>
   );
 }

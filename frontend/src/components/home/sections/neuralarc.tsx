@@ -41,12 +41,12 @@ export default function NeuralArcSection() {
           </p>
         </div>
         {/* Third image block: Enterprise AI Performance vs Cost Analysis */}
-        <div className="flex flex-col items-center w-full max-w-6xl mx-auto border-b border-b-[#e5e7eb] dark:border-b-[#FFFFFF26]">
+        {/* <div className="flex flex-col items-center w-full max-w-6xl mx-auto border-b border-b-[#e5e7eb] dark:border-b-[#FFFFFF26]">
           <Image src="/neuralarc/Helium-1.png" alt="Enterprise AI Performance vs Cost Analysis" width={700} height={400} className="object-contain w-full h-auto" />
           <p className="text-gray-400 dark:text-white/70 text-base md:text-lg lg:text-2xl mt-4 pb-4" >
             Enterprise AI Performance vs Cost Analysis: Helio o1 establishes optimal cost-effectiveness frontier with highest performance at lowest operational cost, delivering superior business value compared to all competing models
           </p>
-        </div>
+        </div> */}
         {/* Fourth image block: Helio o1 Business AI Performance Benchmark */}
         <div className="flex flex-col items-center w-full max-w-6xl mx-auto border-b border-b-[#e5e7eb] dark:border-b-[#FFFFFF26]">
           <Image src="/neuralarc/Helium-graph3.png" alt="Helio o1 Business AI Performance Benchmark" width={700} height={400} className="object-contain w-full h-auto" />
