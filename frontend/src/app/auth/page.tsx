@@ -36,6 +36,12 @@ import { ReleaseBadge } from '@/components/auth/release-badge';
 import LoginFooter from './login-footer/login-footer';
 import { motion } from 'framer-motion';
 
+// Helper function to check if we're in production mode
+const isProductionMode = (): boolean => {
+  const envMode = process.env.NEXT_PUBLIC_ENV_MODE?.toLowerCase();
+  return envMode === 'production';
+};
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -48,6 +54,7 @@ function LoginContent() {
   const isSignUp = mode === 'signup';
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [mounted, setMounted] = useState(false);
+  const isProduction = isProductionMode();
 
   const { wasLastMethod: wasEmailLastMethod, markAsUsed: markEmailAsUsed } = useAuthMethodTracking('email');
 
@@ -366,23 +373,17 @@ function LoginContent() {
               layout
               className="w-[500px] bg-white/77 rounded-[24px] p-8"
             >
-              {/* <div className="mb-4 flex items-center flex-col gap-4 justify-center">
-                {customAgentsEnabled && <ReleaseBadge className='mb-4' text="Custom Agents, Workflows, and more!" link="/changelog" />}
-                <h1 className="text-2xl font-semibold text-foreground">
-                  {isSignUp ? 'Create your account' : 'Log into your account'}
-                </h1>
-              </div> */}
             <form className="space-y-3 mb-4">
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-foreground">
-                  User Name
+                  Email
                 </label>
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   placeholder="Email address"
-                  className="h-10 rounded-lg"
+                  className="h-12 py-3 rounded-lg"
                   required
                 />
               </div>
@@ -391,7 +392,7 @@ function LoginContent() {
                   <label htmlFor="password" className="text-sm font-medium text-foreground">
                     Password
                   </label>
-                  {!isSignUp && (
+                  {!isSignUp && !isProduction && (
                     <button
                       type="button"
                       onClick={() => setForgotPasswordOpen(true)}
@@ -406,7 +407,7 @@ function LoginContent() {
                   name="password"
                   type="password"
                   placeholder="Password"
-                  className="h-10 rounded-lg"
+                  className="h-12 py-3 rounded-lg"
                   required
                 />
               </div>
@@ -420,7 +421,7 @@ function LoginContent() {
                     name="confirmPassword"
                     type="password"
                     placeholder="Confirm password"
-                    className="h-10 rounded-lg"
+                    className="h-12 py-3 rounded-lg"
                     required
                   />
                 </div>
@@ -443,36 +444,44 @@ function LoginContent() {
               </div>
             </form>
             
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2  text-muted-foreground">
-                  or continue with
-                </span>
-              </div>
-            </div>
+            {/* Social login section - only show if not in production */}
+            {!isProduction && (
+              <>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2  text-muted-foreground">
+                      or continue with
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <GoogleSignIn returnUrl={returnUrl || undefined} />
+                  <GitHubSignIn returnUrl={returnUrl || undefined} />
+                </div>
+              </>
+            )}
             
-            <div className="space-y-3">
-              <GoogleSignIn returnUrl={returnUrl || undefined} />
-              <GitHubSignIn returnUrl={returnUrl || undefined} />
-            </div>
-            
-            <div className="mt-4 text-center text-sm">
-              <Link
-                href={isSignUp 
-                  ? `/auth${returnUrl ? `?returnUrl=${returnUrl}` : ''}`
-                  : `/auth?mode=signup${returnUrl ? `&returnUrl=${returnUrl}` : ''}`
-                }
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {isSignUp 
-                  ? 'Already have an account? Sign in' 
-                  : "Don't have an account? Sign up"
-                }
-                              </Link>
+            {/* Sign up/Sign in link - only show if not in production */}
+            {!isProduction && (
+              <div className="mt-4 text-center text-sm">
+                <Link
+                  href={isSignUp 
+                    ? `/auth${returnUrl ? `?returnUrl=${returnUrl}` : ''}`
+                    : `/auth?mode=signup${returnUrl ? `&returnUrl=${returnUrl}` : ''}`
+                  }
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {isSignUp 
+                    ? 'Already have an account? Sign in' 
+                    : "Don't have an account? Sign up"
+                  }
+                </Link>
               </div>
+            )}
             </motion.div>
           </div>
       </div>
@@ -493,7 +502,7 @@ function LoginContent() {
               placeholder="Email address"
               value={forgotPasswordEmail}
               onChange={(e) => setForgotPasswordEmail(e.target.value)}
-              className="h-11 rounded-xl"
+              className="h-12 py-3 rounded-xl"
               required
             />
             {forgotPasswordStatus.message && (

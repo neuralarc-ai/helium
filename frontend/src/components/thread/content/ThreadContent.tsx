@@ -332,7 +332,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     debugMode = false,
     isPreviewMode = false,
     agentName = 'Helium',
-    agentAvatar = <HeliumLogo size={28} />,
+    agentAvatar = <HeliumLogo size={24} />,
     emptyStateComponent,
     threadMetadata,
 }) => {
