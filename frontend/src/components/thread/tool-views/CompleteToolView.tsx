@@ -217,9 +217,9 @@ export function CompleteToolView({
 
             {/* Text/Summary Section */}
             {(text || completeData.summary || completeData.result) && (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <div className="bg-muted/50 rounded-2xl p-4 border border-border">
-                  <Markdown className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3">
+                  <Markdown className="text-sm lg:text-base xl:text-lg leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3">
                     {text || completeData.summary || completeData.result}
                   </Markdown>
                 </div>
@@ -366,7 +366,7 @@ export function CompleteToolView({
                         <CheckCircle className="h-4 w-4 text-emerald-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <Markdown className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 [&>:last-child]:mb-0">
+                        <Markdown className="text-sm lg:text-base xl:text-lg leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 [&>:last-child]:mb-0">
                           {task}
                         </Markdown>
                       </div>
