@@ -231,7 +231,7 @@ function LoginContent() {
   // Registration success view
   if (registrationSuccess) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#EDEDED] flex items-center justify-center p-4">
         <div className="w-full max-w-md mx-auto">
           <div className="text-center">
             <div className="bg-green-50 dark:bg-green-950/20 rounded-full p-4 mb-6 inline-flex">
@@ -277,7 +277,7 @@ function LoginContent() {
   }
 
   return (
-      <div className="min-h-screen bg-background relative">
+      <div className="min-h-screen bg-[#EDEDED] relative">
         <div className="flex min-h-screen items-center justify-center gap-8">
           <motion.div
             initial={{ opacity: 0 }}
@@ -356,7 +356,7 @@ function LoginContent() {
             >
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-black transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to home
@@ -375,7 +375,7 @@ function LoginContent() {
             >
             <form className="space-y-3 mb-4">
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-foreground">
+                <label htmlFor="email" className="text-sm font-medium text-black">
                   Email
                 </label>
                 <Input
@@ -383,13 +383,13 @@ function LoginContent() {
                   name="email"
                   type="email"
                   placeholder="Email address"
-                  className="h-12 py-3 rounded-lg"
+                  className="h-14 py-3 rounded-lg dark:bg-transparent dark:border-black/20 text-black placeholder:text-black/70"
                   required
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label htmlFor="password" className="text-sm font-medium text-foreground">
+                  <label htmlFor="password" className="text-sm font-medium text-black">
                     Password
                   </label>
                   {!isSignUp && !isProduction && (
@@ -407,13 +407,13 @@ function LoginContent() {
                   name="password"
                   type="password"
                   placeholder="Password"
-                  className="h-12 py-3 rounded-lg"
+                  className="h-14 py-3 rounded-lg dark:bg-transparent dark:border-black/20 text-black placeholder:text-black/70"
                   required
                 />
               </div>
               {isSignUp && (
                 <div className="space-y-2">
-                  <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+                  <label htmlFor="confirmPassword" className="text-sm font-medium text-black">
                     Confirm Password
                   </label>
                   <Input
@@ -421,7 +421,7 @@ function LoginContent() {
                     name="confirmPassword"
                     type="password"
                     placeholder="Confirm password"
-                    className="h-12 py-3 rounded-lg"
+                    className="h-14 py-3 rounded-lg dark:bg-transparent text-black placeholder:text-black/70"
                     required
                   />
                 </div>
@@ -430,16 +430,16 @@ function LoginContent() {
                 <div className="relative">
                   <SubmitButton
                     formAction={isSignUp ? handleSignUp : handleSignIn}
-                    className="w-full h-10 bg-gradient-to-r from-helium-pink to-helium-teal text-white hover:opacity-90 transition-opacity rounded-lg"
+                    className="w-full h-12 bg-gradient-to-r from-helium-pink to-helium-teal text-white hover:opacity-90 transition-opacity rounded-lg"
                     pendingText={isSignUp ? "Creating account..." : "Initiating..."}
                   >
                     {isSignUp ? 'Create account' : 'Ready to Initiate Intelligence'}
                   </SubmitButton>
-                  {wasEmailLastMethod && (
+                  {/* {wasEmailLastMethod && (
                     <div className="absolute -top-1 -right-1 w-3 h-3 bg-black rounded-full border-2 border-background shadow-sm">
                       <div className="w-full h-full bg-black rounded-full animate-pulse" />
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
             </form>

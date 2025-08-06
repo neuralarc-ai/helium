@@ -14,7 +14,7 @@ export default function Home() {
   return (
     <>
       <ModalProviders />
-      <main className="flex flex-col items-center justify-center min-h-screen w-full bg-white dark:bg-[#18181b]">
+      <main className="flex flex-col items-center justify-center min-h-screen w-full bg-white">
         <div className="w-full max-w-[1440px] mx-auto">
             <HeroSection />
             <HeliumPoweredActions />

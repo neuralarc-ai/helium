@@ -236,7 +236,7 @@ export default function WaitlistForm({ isOpen, onClose }: WaitlistFormProps) {
   return (
     <Dialog open={isOpen} onOpenChange={open => { if (!open) onClose(); }}>
       <DialogOverlay className="bg-white/10 backdrop-blur-none" />
-      <DialogContent className="bg-card rounded-3xl shadow-2xl p-8 w-full max-w-md border border-white/10">
+      <DialogContent className="bg-black/40 backdrop-blur-xl rounded-3xl shadow-2xl p-8 w-full max-w-md border border-white/10">
         {/* DialogClose already provides a close button, so we remove the manual one */}
         {!submitted && (
           <>

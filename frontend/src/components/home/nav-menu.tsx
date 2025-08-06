@@ -122,8 +122,8 @@ export function NavMenu() {
             key={item.name}
             className={`z-10 h-full flex items-center justify-center px-4 py-2 text-sm font-medium transition-colors duration-200 ${
               activeSection === item.href.substring(1)
-                ? 'text-primary/60'
-                : 'text-primary/60'
+                ? 'text-black'
+                : 'text-black/60'
             } tracking-tight`}
           >
             <a onClick={(e) => handleClick(e, item)}>
