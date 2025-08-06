@@ -28,6 +28,7 @@ import { useSubscriptionWithStreaming } from '@/hooks/react-query/subscriptions/
 import { isLocalMode } from '@/lib/config';
 import { BillingModal } from '@/components/billing/billing-modal';
 import { useRouter } from 'next/navigation';
+import { BorderBeam } from '@/components/magicui/border-beam';
 
 export interface ChatInputHandles {
   getPendingFiles: () => File[];
@@ -84,7 +85,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
   (
     {
       onSubmit,
-      placeholder = 'Describe what you need help with...',
+      placeholder = 'Assign tasks or ask anything...',
       loading = false,
       disabled = false,
       isAgentRunning = false,
@@ -375,7 +376,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             isVisible={showToolPreview || !!showSnackbar}
           />
           <Card
-            className={`-mb-2 shadow-none w-full max-w-4xl mx-auto bg-transparent border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? '' : 'rounded-3xl'} relative`}
+            className={`-mb-2 p-0 mt-4 shadow-none w-full max-w-4xl mx-auto bg-transparent border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? '' : 'rounded-3xl'} relative`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={(e) => {
@@ -396,17 +397,17 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
               }
             }}
           >
-
-
             <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
-              <CardContent className={`w-full shadow-sm p-1.5 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${bgColor} border ${enableAdvancedConfig && selectedAgentId ? 'rounded-t-3xl' : 'rounded-3xl'}`}>
+              <CardContent className={`w-full shadow-sm p-1.5 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${bgColor} border ${enableAdvancedConfig && selectedAgentId ? 'rounded-t-2xl' : 'rounded-2xl'}`}>
+              <BorderBeam duration={4} borderWidth={1.5} size={200} className="from-transparent via-helium-teal to-transparent"/>
+              <BorderBeam duration={4} borderWidth={1.5} delay={2} size={200} className="from-transparent via-helium-pink to-transparent"/>
                 <AttachmentGroup
                   files={uploadedFiles || []}
                   sandboxId={sandboxId}
                   onRemove={removeUploadedFile}
                   layout="inline"
                   maxHeight="216px"
-                  showPreviews={true}
+                  showPreviews={false}
                 />
                 <MessageInput
                   ref={textareaRef}

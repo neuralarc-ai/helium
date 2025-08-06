@@ -649,11 +649,11 @@ export default function ThreadPage({
 
         <div
           className={cn(
-            "fixed bottom-0 z-10 bg-gradient-to-t from-background via-background/90 to-transparent px-4 pt-16",
+            "fixed bottom-0 z-10 bg-gradient-to-t from-background via-background/90 to-transparent px-4 pt-16 pb-6",
             isSidePanelAnimating ? "" : "transition-all duration-200 ease-in-out",
             leftSidebarState === 'expanded' ? 'left-[72px] md:left-[256px]' : 'left-[72px]',
             isSidePanelOpen ? 'right-[90%] sm:right-[450px] md:right-[500px] lg:right-[550px] xl:right-[650px]' : 'right-0',
-            isMobile ? 'left-0 right-0' : ''
+            isMobile ? 'left-0 right-0 pb-6' : ''
           )}>
           <div className={cn(
             "mx-auto",
@@ -688,11 +688,11 @@ export default function ThreadPage({
         </div>
       </ThreadLayout>
 
-      <UpgradeDialog
+      {/* <UpgradeDialog
         open={showUpgradeDialog}
         onOpenChange={setShowUpgradeDialog}
         onDismiss={handleDismissUpgradeDialog}
-      />
+      /> */}
     </>
   );
 } 

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Loader2 } from 'lucide-react';
+import { Mic, Square, Loader2, AudioLines } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -142,7 +142,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     const getButtonClass = () => {
         switch (state) {
             case 'recording':
-                return 'text-red-500 hover:bg-red-50 hover:text-red-600';
+                return 'text-helium-pink/80 hover:bg-accent hover:text-helium-pink';
             case 'processing':
                 return '';
             default:
@@ -153,7 +153,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     const getIcon = () => {
         switch (state) {
             case 'recording':
-                return <Square className="h-4 w-4" />;
+                return <AudioLines className="h-4 w-4" />;
             case 'processing':
                 return <Loader2 className="h-4 w-4 animate-spin" />;
             default:
@@ -172,7 +172,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                         onClick={handleClick}
                         onContextMenu={handleRightClick}
                         disabled={disabled || state === 'processing'}
-                        className={`h-8 px-2 py-2 bg-transparent border-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent/50 flex items-center gap-2 transition-colors ${getButtonClass()}`}
+                        className={`h-fit p-2 bg-transparent border-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-2 transition-colors cursor-pointer ${getButtonClass()}`}
                     >
                         {getIcon()}
                     </Button>
