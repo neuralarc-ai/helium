@@ -6,29 +6,29 @@ export default function PerformanceSection() {
     <section className="w-full flex flex-col items-center py-6 px-2 md:px-8">
       {/* Top text block */}
       <div className="max-w-7xl w-full mx-auto mb-12">
-        <h2 className="text-black dark:text-white text-2xl md:text-3xl lg:text-4xl font-light mb-4">
+        <h2 className="text-black text-2xl md:text-3xl lg:text-4xl font-light mb-4">
            Helium: Optimal Performance for Enterprise Deployment
         </h2>
-        <p className="text-gray-500 dark:text-white/60 text-base md:text-lg mb-4">
+        <p className="text-gray-500 text-base md:text-lg mb-4">
           Helium is designed to be flexible and modular. It is composed of seven independent components:
         </p>
-        <p className="text-gray-900 dark:text-white/90 text-base md:text-lg mb-4">
+        <p className="text-gray-900 text-base md:text-lg mb-4">
           <span className="font-semibold">Helios o1</span> – <span className="text-gray-500 dark:text-white/60">The foundation model that serves as the primary intelligence engine and can trigger and engage, assign and deliver via the sub models below</span>
         </p>
-        <ul className="list-disc pl-6 text-gray-700 dark:text-white/90 text-base md:text-lg space-y-1">
-          <li>H1 (HR) – <span className="text-gray-500 dark:text-white/60">Specialized for human resources, recruitment, and workforce analytics</span></li>
-          <li>S1 (Sales) – <span className="text-gray-500 dark:text-white/60">Optimized for CRM, lead qualification, and revenue operations</span></li>
-          <li>L1 (Legal) – <span className="text-gray-500 dark:text-white/60">Expert in contract analysis, compliance, and legal research</span></li>
-          <li>F1 (Finance) – <span className="text-gray-500 dark:text-white/60">Focused on financial analysis, risk assessment, and regulatory reporting</span></li>
-          <li>B1 (Operations) – <span className="text-gray-500 dark:text-white/60">Specialized in process optimization and supply chain management</span></li>
-          <li>M1 (Marketing) – <span className="text-gray-500 dark:text-white/60">Trained for campaign optimization, customer insights, and market analysis</span></li>
+        <ul className="list-disc pl-6 text-gray-700 text-base md:text-lg space-y-1">
+          <li>H1 (HR) – <span className="text-gray-500">Specialized for human resources, recruitment, and workforce analytics</span></li>
+          <li>S1 (Sales) – <span className="text-gray-500 ">Optimized for CRM, lead qualification, and revenue operations</span></li>
+          <li>L1 (Legal) – <span className="text-gray-500 ">Expert in contract analysis, compliance, and legal research</span></li>
+          <li>F1 (Finance) – <span className="text-gray-500 ">Focused on financial analysis, risk assessment, and regulatory reporting</span></li>
+          <li>B1 (Operations) – <span className="text-gray-500 ">Specialized in process optimization and supply chain management</span></li>
+          <li>M1 (Marketing) – <span className="text-gray-500 ">Trained for campaign optimization, customer insights, and market analysis</span></li>
         </ul>
       </div>
 
       {/* Helium Powered Actions heading */}
       <div className="max-w-7xl w-full mx-auto text-center mb-4 sm:mb-6 md:mb-8">
-        <h3 className="text-black dark:text-white text-lg sm:text-xl md:text-2xl lg:text-3xl font-light mb-2 sm:mb-3">Built on Cutting-Edge Technology</h3>
-        <p className="text-gray-700 dark:text-white/60 text-xs sm:text-sm md:text-base px-2 sm:px-0">
+        <h3 className="text-black text-lg sm:text-xl md:text-2xl lg:text-3xl font-light mb-2 sm:mb-3">Built on Cutting-Edge Technology</h3>
+        <p className="text-gray-700 text-xs sm:text-sm md:text-base px-2 sm:px-0">
         Helium leverages the most advanced AI and infrastructure technologies to deliver unparalleled performance and reliability.
         </p>
       </div>

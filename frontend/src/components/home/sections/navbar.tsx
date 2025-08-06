@@ -71,7 +71,7 @@ export function Navbar() {
           className={cn(
             'mx-auto max-w-[1440px] rounded-2xl transition-all duration-300  xl:px-0',
             hasScrolled
-              ? 'px-2 border border-border backdrop-blur-xl bg-background/30'
+              ? 'px-2 border border-border backdrop-blur-xl bg-white/30'
               : 'shadow-none px-7',
           )}
         >
@@ -86,7 +86,7 @@ export function Navbar() {
                 priority
                 className="h-auto mr-1 w-[48px] object-contain"
               />
-              <div className="text-2xl font-light">Helium</div>
+              <div className="text-2xl font-light text-black">Helium</div>
             </Link>
 
             {/* Right: Nav menu links */}

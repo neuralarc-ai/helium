@@ -23,13 +23,13 @@ export const Integrations: React.FC = () => {
   const row3 = integrationIcons.slice(8);
 
   return (
-<section className="w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] md:w-[calc(100%-4rem)] lg:w-[calc(100%-5rem)] xl:w-[calc(100%-6rem)] max-w-7xl mx-auto rounded-2xl sm:rounded-3xl flex flex-col md:flex-row items-center md:items-start justify-between px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 md:py-10 lg:py-12 md:gap-x-[5rem] bg-white dark:bg-[#18181b] shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:border-b dark:border-x dark:border-[#232323]">
+<section className="w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] md:w-[calc(100%-4rem)] lg:w-[calc(100%-5rem)] xl:w-[calc(100%-6rem)] max-w-7xl mx-auto rounded-2xl sm:rounded-3xl flex flex-col md:flex-row items-center md:items-start justify-between px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 md:py-10 lg:py-12 md:gap-x-[5rem] bg-white border border-black/20 shadow-lg">
 {/* Left Section */}
       <div className="flex flex-col justify-center w-full md:w-[60%] max-w-[700px] z-10 gap-3 sm:gap-5 md:gap-6 lg:gap-10 mb-6 md:mb-0 xl:max-w-[780px] xl:w-[80%]">
-        <h2 className="text-lg sm:text-xl md:text-2xl lg:text-4xl text-gray-900 dark:text-white font-medium leading-snug sm:leading-snug md:leading-tight">
+        <h2 className="text-lg sm:text-xl md:text-2xl lg:text-4xl text-gray-900 font-medium leading-snug sm:leading-snug md:leading-tight">
           Effortless App Integrations
         </h2>
-        <p className="text-sm sm:text-base md:text-base lg:text-lg text-gray-600 dark:text-white/70 leading-[1.6]">
+        <p className="text-sm sm:text-base md:text-base lg:text-lg text-gray-600 leading-[1.6]">
           Connect and collaborate like never before. Helium seamlessly integrates with thousands of your favorite applications, transforming your scattered tools into one intelligent, unified workspace. Experience smoother workflows, smarter decisions, and increased productivity — all in one place.
         </p>
       </div>
@@ -75,11 +75,11 @@ export const Integrations: React.FC = () => {
               {Array.from({ length: 3 - row3.length }).map((_, i) => (
                 <div key={`empty-${i}`} />
               ))}
-              <span className="text-xs sm:text-sm text-gray-500 dark:text-white/60 text-left flex items-center justify-start md:hidden">
+              <span className="text-xs sm:text-sm text-gray-500 text-left flex items-center justify-start md:hidden">
                 More to come...
               </span>
             </div>
-            <span className="hidden md:block text-xs sm:text-sm text-gray-500 dark:text-white/60 mt-1 sm:mt-2 text-left">
+            <span className="hidden md:block text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2 text-left">
               More to come...
             </span>
           </div>
