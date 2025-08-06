@@ -42,7 +42,7 @@ export default function GoogleSignIn({ returnUrl }: GoogleSignInProps) {
     <button
       onClick={handleGoogleSignIn}
       disabled={isLoading}
-      className="w-full h-12 flex items-center justify-center text-sm font-medium tracking-wide rounded-full bg-background text-foreground border border-border hover:bg-accent/30 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed font-sans"
+      className="w-full h-12 flex items-center justify-center text-sm font-medium tracking-wide rounded-[4px]  text-foreground border border-border hover:bg-accent/30 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed font-sans"
       type="button"
     >
       {isLoading ? (
