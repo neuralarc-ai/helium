@@ -20,7 +20,7 @@ const cards = [
   {
     title: (
       <>
-        Real-Time Financial <br /> Foresight at Scale
+        Real-Time<br/> Financial <br /> Foresight at Scale
       </>
     ),
     description: 'GreenTech Manufacturing leveraged Helios o1 to automate cash flow forecasting, risk alerts, and receivables tracking. This led to a 90% forecast accuracy and over $2M in annual savings from improved financial operations.',
