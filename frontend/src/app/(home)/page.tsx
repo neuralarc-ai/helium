@@ -22,7 +22,7 @@ export default function Home() {
             <NeuralArcSection />
             <PerformanceSection />
             <Integrations />
-            <WaitlistBanner />
+          
             <Footer />
         </div>
       </main>

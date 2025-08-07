@@ -1,5 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
+import WaitlistBanner from './waitlist-banner';
 
 export default function NeuralArcSection() {
   return (
@@ -33,6 +34,7 @@ export default function NeuralArcSection() {
             Business Domain Performance Comparison: Helio o1 consistently outperforms major competitors across all enterprise-critical domains including document processing, knowledge retrieval, workflow automation, financial analysis, and security compliance
           </p>
         </div>
+        <WaitlistBanner />
         {/* Second image block: Enterprise Cost Analysis */}
         <div className="flex flex-col items-center w-full max-w-6xl mx-auto">
           <Image src="/neuralarc/Helium-graph2.png" alt="Enterprise Cost Analysis" width={700} height={400} className="object-contain w-full h-auto" />
