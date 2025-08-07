@@ -259,8 +259,6 @@ export default function PerformanceSection() {
   </div>
 </div>
 
-
-
       {/* Bottom two-column feature block */}
       {/* <div className="max-w-7xl w-full mx-auto flex flex-col md:flex-row gap-0 rounded-3xl overflow-hidden bg-white dark:bg-[#232323] border border-[#e5e7eb] dark:border-[#FFFFFF12] shadow-md">
         

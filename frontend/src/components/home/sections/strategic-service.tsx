@@ -82,30 +82,54 @@ export default function StrategicServiceSection() {
                 />
                 {/* Button over image */}
                 {cards[0].button === 'over-image' && (
-                  <button className="absolute bottom-4 right-6 bg-white border border-gray-300 text-gray-700 text-sm px-6 py-2 rounded-full shadow-md hover:bg-gray-100 transition-colors flex items-center gap-2">
-                    {cards[0].buttonText}
-                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#fff" fillOpacity="0.18"/><path d="M8 7L14 10L8 13V7Z" fill="#6B7280"/></svg>
-                  </button>
+                  <div className="absolute bottom-4 right-7 p-[1px] rounded-full bg-gradient-to-r from-pink-400 to-blue-500 hover:from-pink-500 hover:to-blue-600 transition-all duration-300 hover:shadow-lg hover:scale-105">
+                    <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200">
+                      {cards[0].buttonText}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 6V18L18 12L8 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  </div>
                 )}
               </div>
             )}
           </div>
-          {/* Card 2: Text only, button top-right, heading with line breaks */}
+          {/* Card 2: Text only, button top-right on large screens, under text on small screens */}
           <div className="relative bg-white rounded-2xl border border-gray-200 shadow-md min-h-[220px] flex flex-col justify-between p-6 w-full md:basis-[40%] md:max-w-[40%] text-left">
-            {cards[1].button === 'top-right' && (
-              <div className="absolute top-4 right-4">
-                <button className="bg-white border border-gray-300 text-gray-700 text-sm px-6 py-2 rounded-full shadow-md hover:bg-gray-100 transition-colors flex items-center gap-2">
-                  {cards[1].buttonText}
-                  <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#fff" fillOpacity="0.18"/><path d="M8 7L14 10L8 13V7Z" fill="#6B7280"/></svg>
-                </button>
+            <div className="flex flex-col h-full">
+              <div className="flex justify-between items-start">
+                <h3 className="text-gray-900 text-2xl font-semibold mb-2 leading-tight flex-1">
+                  {cards[1].title}
+                </h3>
+                {cards[1].button === 'top-right' && (
+                  <div className="hidden lg:block ml-4">
+                    <div className="p-[1px] rounded-full bg-gradient-to-r from-pink-400 to-blue-500 hover:from-pink-500 hover:to-blue-600 transition-all duration-300 hover:shadow-lg hover:scale-105">
+                      <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200">
+                        {cards[1].buttonText}
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M8 6V18L18 12L8 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-            <h3 className="text-gray-900 text-2xl font-semibold mb-2 leading-tight">
-              {cards[1].title}
-            </h3>
-            <p className="text-gray-700 text-base font-normal leading-relaxed">
-              {cards[1].description}
-            </p>
+              <p className="text-gray-700 text-base font-normal leading-relaxed mb-4">
+                {cards[1].description}
+              </p>
+              {cards[1].button === 'top-right' && (
+                <div className="lg:hidden mt-4 w-fit">
+                  <div className="p-[1px] rounded-full bg-gradient-to-r from-pink-400 to-blue-500 hover:from-pink-500 hover:to-blue-600 transition-all duration-300 hover:shadow-lg hover:scale-105">
+                    <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap">
+                      {cards[1].buttonText}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 6V18L18 12L8 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         {/* Row 2 */}
@@ -120,10 +144,14 @@ export default function StrategicServiceSection() {
             </p>
             {cards[2].button === 'left' && (
               <div className="flex justify-start w-full mt-2">
-                <button className="bg-white border border-gray-300 text-gray-700 text-sm px-6 py-2 rounded-full shadow-md hover:bg-gray-100 transition-colors flex items-center gap-2">
-                  {cards[2].buttonText}
-                  <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#fff" fillOpacity="0.18"/><path d="M8 7L14 10L8 13V7Z" fill="#6B7280"/></svg>
-                </button>
+                <div className="p-[1px] rounded-full bg-gradient-to-r from-pink-400 to-blue-500 hover:from-pink-500 hover:to-blue-600 transition-all duration-300 hover:shadow-lg hover:scale-105">
+                  <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200">
+                    {cards[2].buttonText}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M8 6V18L18 12L8 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -136,23 +164,28 @@ export default function StrategicServiceSection() {
               <p className="text-gray-700 text-base font-normal mb-4 leading-relaxed">
                 {cards[3].description}
               </p>
-              {cards[3].button === 'left' && (
-                <div className="flex justify-start w-full mt-2">
-                  <button className="bg-white border border-gray-300 text-gray-700 text-sm px-6 py-2 rounded-full shadow-md hover:bg-gray-100 transition-colors flex items-center gap-2">
-                    {cards[3].buttonText}
-                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#fff" fillOpacity="0.18"/><path d="M8 7L14 10L8 13V7Z" fill="#6B7280"/></svg>
-                  </button>
-                </div>
-              )}
             </div>
+            {/* Image on right with button overlay */}
             {cards[3].img && (
-              <div className="relative w-full md:w-[40%] h-48 md:h-auto">
+              <div className="w-full md:w-[45%] h-48 md:h-auto relative">
                 <Image
                   src={cards[3].img}
                   alt="card4"
                   fill
                   className="object-cover"
                 />
+                {cards[3].button === 'left' && (
+                  <div className="absolute bottom-4 right-10">
+                    <div className="p-[1px] rounded-full bg-gradient-to-r from-pink-400 to-blue-500 hover:from-pink-500 hover:to-blue-600 transition-all duration-300 hover:shadow-lg hover:scale-105">
+                      <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap">
+                        {cards[3].buttonText}
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M8 6V18L18 12L8 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

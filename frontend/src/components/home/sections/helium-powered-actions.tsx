@@ -59,12 +59,12 @@ const features = [
 
 export default function HeliumPoweredActions() {
   return (
-    <section className="w-full flex justify-center items-center py-10">
-      <div className="w-full max-w-6xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 px-2">
+    <section className="w-full flex justify-center items-center py-6 sm:py-10 overflow-x-auto no-scrollbar">
+      <div className="w-full max-w-6xl grid grid-cols-2 gap-4 px-2 sm:gap-6 sm:grid-cols-2 md:grid-cols-4 md:gap-6">
         {features.map((feature, idx) => (
           <div
             key={feature.title}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col items-center p-5 transition-all duration-200 hover:shadow-md"
+            className="w-full min-w-[140px] bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col items-center p-3 sm:p-5 transition-all duration-200 hover:shadow-md"
           >
             <div className="w-full aspect-square rounded-[33px] overflow-hidden mb-4 flex items-center justify-center bg-gray-50">
               <Image
@@ -72,11 +72,11 @@ export default function HeliumPoweredActions() {
                 alt={feature.title}
                 width={180}
                 height={180}
-                className="object-cover w-full h-full rounded-[33px]"
+                className="object-contain w-full h-full rounded-[33px] p-2 sm:p-4"
                 priority={idx === 0}
               />
             </div>
-            <div className="text-center text-gray-800 text-lg font-medium tracking-wide mt-2">
+            <div className="text-center text-gray-800 text-sm sm:text-base md:text-lg font-medium tracking-wide mt-1 sm:mt-2">
               {feature.title}
             </div>
           </div>
