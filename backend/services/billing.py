@@ -109,7 +109,7 @@ def get_model_pricing(model: str) -> tuple[float, float] | None:
 
 
 SUBSCRIPTION_TIERS = {
-    config.STRIPE_FREE_TIER_ID: {'name': 'free', 'minutes': 60, 'cost': 5},
+    config.STRIPE_FREE_TIER_ID: {'name': 'free', 'minutes': 12000, 'cost': 100},
     config.STRIPE_TIER_2_20_ID: {'name': 'tier_2_20', 'minutes': 120, 'cost': 20 + 5},  # 2 hours
     config.STRIPE_TIER_6_50_ID: {'name': 'tier_6_50', 'minutes': 360, 'cost': 50 + 5},  # 6 hours
     config.STRIPE_TIER_12_100_ID: {'name': 'tier_12_100', 'minutes': 720, 'cost': 100 + 5},  # 12 hours
@@ -538,6 +538,15 @@ async def check_billing_status(client, user_id: str) -> Tuple[bool, str, Optiona
         return True, "Local development mode - billing disabled", {
             "price_id": "local_dev",
             "plan_name": "Local Development",
+            "minutes_limit": "no limit"
+        }
+
+    # DISABLED: Billing checks for production
+    if config.ENV_MODE == EnvMode.PRODUCTION:
+        logger.info("Running in production mode - billing checks are disabled")
+        return True, "Production mode - billing disabled", {
+            "price_id": "production_dev",
+            "plan_name": "Production",
             "minutes_limit": "no limit"
         }
 
@@ -1303,11 +1312,18 @@ async def get_available_models(
             
             # In local mode, return all models from MODEL_NAME_ALIASES
             model_info = []
+            processed_models = set()  # Track processed models to avoid duplicates
+            
             for short_name, full_name in MODEL_NAME_ALIASES.items():
-                # Skip entries where the key is a full name to avoid duplicates
-                # if short_name == full_name or '/' in short_name:
-                #     continue
+                # Skip if we've already processed this full model name
+                if full_name in processed_models:
+                    continue
                 
+                # Skip entries where the key is a full name to avoid duplicates
+                if short_name == full_name or '/' in short_name:
+                    continue
+                
+                processed_models.add(full_name)
                 model_info.append({
                     "id": full_name,
                     "display_name": short_name,
@@ -1348,11 +1364,17 @@ async def get_available_models(
         model_aliases = {}
         
         for short_name, full_name in MODEL_NAME_ALIASES.items():
-            # Add all unique full model names
+            # Only add the full model name, not the aliases
             all_models.add(full_name)
             
             # Only include short names that don't match their full names for aliases
-            if short_name != full_name and not short_name.startswith("openai/") and not short_name.startswith("anthropic/") and not short_name.startswith("openrouter/") and not short_name.startswith("xai/"):
+            # and exclude Bedrock models to avoid duplicates
+            if (short_name != full_name and 
+                not short_name.startswith("openai/") and 
+                not short_name.startswith("anthropic/") and 
+                not short_name.startswith("openrouter/") and 
+                not short_name.startswith("xai/") and
+                not short_name.startswith("bedrock/")):
                 if full_name not in model_aliases:
                     model_aliases[full_name] = short_name
         

@@ -174,7 +174,7 @@ OPENAI_API_KEY=your-openai-key
 OPENROUTER_API_KEY=your-openrouter-key
 GEMINI_API_KEY=your-gemini-api-key
 MORPH_API_KEY=
-MODEL_TO_USE=anthropic/claude-sonnet-4-20250514
+MODEL_TO_USE=bedrock/anthropic.claude-sonnet-4-20250514-v1:0
 
 # WEB SEARCH
 TAVILY_API_KEY=your-tavily-key

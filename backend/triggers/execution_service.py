@@ -284,7 +284,7 @@ class AgentExecutor:
         trigger_variables: Dict[str, Any]
     ) -> str:
         client = await self._db.client
-        model_name = config.MODEL_TO_USE or "openrouter/deepseek/deepseek-chat-v3-0324:free"
+        model_name = config.MODEL_TO_USE_PRODUCTION or "openrouter/deepseek/deepseek-chat-v3-0324:free"
         
         agent_run = await client.table('agent_runs').insert({
             "thread_id": thread_id,
@@ -487,7 +487,7 @@ class WorkflowExecutor:
         from services.billing import check_billing_status, can_use_model
         
         client = await self._db.client
-        model_name = config.MODEL_TO_USE or "openrouter/deepseek/deepseek-chat-v3-0324:free"
+        model_name = config.MODEL_TO_USE_PRODUCTION or "openrouter/deepseek/deepseek-chat-v3-0324:free"
         
         can_use, model_message, _ = await can_use_model(client, account_id, model_name)
         if not can_use:
@@ -523,7 +523,7 @@ class WorkflowExecutor:
         agent_config: Dict[str, Any]
     ) -> str:
         client = await self._db.client
-        model_name = config.MODEL_TO_USE or "openrouter/deepseek/deepseek-chat-v3-0324:free"
+        model_name = config.MODEL_TO_USE_PRODUCTION or "openrouter/deepseek/deepseek-chat-v3-0324:free"
         
         agent_run = await client.table('agent_runs').insert({
             "thread_id": thread_id,

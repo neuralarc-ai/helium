@@ -285,7 +285,7 @@ async def start_agent(
     logger.info(f"Original model_name from request: {model_name}")
 
     if model_name is None:
-        model_name = config.MODEL_TO_USE
+        model_name = config.MODEL_TO_USE_PRODUCTION
         logger.info(f"Using model from config: {model_name}")
 
     # Log the model name after alias resolution
@@ -754,22 +754,27 @@ async def stream_agent_run(
                                     return # Stop listening on control signal
 
                         except StopAsyncIteration:
-                            logger.warning(f"Listener {task} stopped.")
-                            # Decide how to handle listener stopping, maybe terminate?
-                            await message_queue.put({"type": "error", "data": "Listener stopped unexpectedly"})
+                            # This is normal behavior when async generators are exhausted
+                            logger.debug(f"Async generator exhausted for {agent_run_id} - this is normal")
+                            # Don't treat this as an error, just stop listening
                             return
                         except Exception as e:
                             logger.error(f"Error in listener for {agent_run_id}: {e}")
                             await message_queue.put({"type": "error", "data": "Listener failed"})
                             return
                         finally:
-                            # Reschedule the completed listener task
+                            # Reschedule the completed listener task only if it wasn't a StopAsyncIteration
                             if task in tasks:
                                 tasks.remove(task)
-                                if message and isinstance(message, dict) and message.get("channel") == response_channel:
-                                     tasks.append(asyncio.create_task(response_reader.__anext__()))
-                                elif message and isinstance(message, dict) and message.get("channel") == control_channel:
-                                     tasks.append(asyncio.create_task(control_reader.__anext__()))
+                                try:
+                                    if message and isinstance(message, dict) and message.get("channel") == response_channel:
+                                         tasks.append(asyncio.create_task(response_reader.__anext__()))
+                                    elif message and isinstance(message, dict) and message.get("channel") == control_channel:
+                                         tasks.append(asyncio.create_task(control_reader.__anext__()))
+                                except StopAsyncIteration:
+                                    # If we can't reschedule, the generator is exhausted - this is normal
+                                    logger.debug(f"Could not reschedule listener task - generator exhausted")
+                                    return
 
                 # Cancel pending listener tasks on exit
                 for p_task in pending: p_task.cancel()
@@ -924,7 +929,7 @@ async def initiate_agent_with_files(
     logger.info(f"Original model_name from request: {model_name}")
 
     if model_name is None:
-        model_name = config.MODEL_TO_USE
+        model_name = config.MODEL_TO_USE_PRODUCTION
         logger.info(f"Using model from config: {model_name}")
 
     # Log the model name after alias resolution
