@@ -290,11 +290,12 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
       chatInputRef.current?.clearPendingFiles();
       setInputValue('');
     } catch (error: any) {
-      if (error instanceof BillingError) {
-        toast.error('Billing limit reached. Please upgrade your plan.');
-      } else {
+      // DISABLED: Billing error handling for production
+      // if (error instanceof BillingError) {
+      //   toast.error('Billing limit reached. Please upgrade your plan.');
+      // } else {
         toast.error('Failed to start agent builder session');
-      }
+      // }
       setHasStartedConversation(false);
       setSaveStatus('idle');
     } finally {
@@ -344,11 +345,12 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
         }
         if (results[1].status === 'rejected') {
           const error = results[1].reason;
-          if (error instanceof BillingError) {
-            toast.error('Billing limit reached. Please upgrade your plan.');
-            setMessages(prev => prev.filter(m => m.message_id !== optimisticUserMessage.message_id));
-            return;
-          }
+          // DISABLED: Billing error handling for production
+          // if (error instanceof BillingError) {
+          //   toast.error('Billing limit reached. Please upgrade your plan.');
+          //   setMessages(prev => prev.filter(m => m.message_id !== optimisticUserMessage.message_id));
+          //   return;
+          // }
           throw new Error(`Failed to start agent: ${error?.message || error}`);
         }
         const agentResult = results[1].value;

@@ -157,10 +157,11 @@ export function DashboardContent() {
       chatInputRef.current?.clearPendingFiles();
     } catch (error: any) {
       console.error('Error during submission process:', error);
-      if (error instanceof BillingError) {
-        console.log('Handling BillingError:', error.detail);
-        onOpen("paymentRequiredDialog");
-      }
+      // DISABLED: Billing error handling for production
+      // if (error instanceof BillingError) {
+      //   console.log('Handling BillingError:', error.detail);
+      //   onOpen("paymentRequiredDialog");
+      // }
       setIsSubmitting(false);
     }
   };

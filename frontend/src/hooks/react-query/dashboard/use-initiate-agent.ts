@@ -38,14 +38,15 @@ export const useInitiateAgentWithInvalidation = () => {
     },
     onError: (error) => {
       console.log('Mutation error:', error);
-      if (error instanceof Error) {
-        const errorMessage = error.message;
-        if (errorMessage.toLowerCase().includes("payment required")) {
-          console.log('Opening payment required modal');
-          onOpen("paymentRequiredDialog");
-          return;
-        }
-      }
+      // DISABLED: Billing error handling for production
+      // if (error instanceof Error) {
+      //   const errorMessage = error.message;
+      //   if (errorMessage.toLowerCase().includes("payment required")) {
+      //     console.log('Opening payment required modal');
+      //     onOpen("paymentRequiredDialog");
+      //     return;
+      //   }
+      // }
     }
   });
 };

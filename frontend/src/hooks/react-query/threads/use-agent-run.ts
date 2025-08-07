@@ -29,9 +29,10 @@ export const useStartAgentMutation = () =>
     }) => startAgent(threadId, options),
     {
       onError: (error) => {
-        if (!(error instanceof BillingError)) {
-          throw error;
-        }
+        // DISABLED: Billing error handling for production
+        // if (!(error instanceof BillingError)) {
+        //   throw error;
+        // }
       },
     }
   )();

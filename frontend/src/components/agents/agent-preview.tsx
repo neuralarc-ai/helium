@@ -239,11 +239,12 @@ export const AgentPreview = ({ agent, agentMetadata }: AgentPreviewProps) => {
       setInputValue('');
     } catch (error: any) {
       console.error('[PREVIEW] Error during initiation:', error);
-      if (error instanceof BillingError) {
-        toast.error('Billing limit reached. Please upgrade your plan.');
-      } else {
+      // DISABLED: Billing error handling for production
+      // if (error instanceof BillingError) {
+      //   toast.error('Billing limit reached. Please upgrade your plan.');
+      // } else {
         toast.error('Failed to start conversation');
-      }
+      // }
       setHasStartedConversation(false);
     } finally {
       setIsSubmitting(false);
@@ -291,11 +292,12 @@ export const AgentPreview = ({ agent, agentMetadata }: AgentPreviewProps) => {
 
         if (results[1].status === 'rejected') {
           const error = results[1].reason;
-          if (error instanceof BillingError) {
-            toast.error('Billing limit reached. Please upgrade your plan.');
-            setMessages(prev => prev.filter(m => m.message_id !== optimisticUserMessage.message_id));
-            return;
-          }
+          // DISABLED: Billing error handling for production
+          // if (error instanceof BillingError) {
+          //   toast.error('Billing limit reached. Please upgrade your plan.');
+          //   setMessages(prev => prev.filter(m => m.message_id !== optimisticUserMessage.message_id));
+          //   return;
+          // }
           throw new Error(`Failed to start agent: ${error?.message || error}`);
         }
 

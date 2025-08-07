@@ -69,6 +69,39 @@ export const MODELS = {
     recommended: false,
     lowQuality: false
   },
+  
+  // AWS Bedrock Models
+  'bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0': { 
+    tier: 'free', 
+    priority: 95,
+    recommended: true,
+    lowQuality: false
+  },
+  'bedrock/anthropic.claude-sonnet-4-20250514-v1:0': { 
+    tier: 'free', 
+    priority: 96,
+    recommended: true,
+    lowQuality: false
+  },
+  'bedrock/meta.llama4-scout-17b-instruct-v1:0': { 
+    tier: 'free', 
+    priority: 90,
+    recommended: false,
+    lowQuality: false
+  },
+  'bedrock/meta.llama4-maverick-17b-instruct-v1:0': { 
+    tier: 'free', 
+    priority: 92,
+    recommended: false,
+    lowQuality: false
+  },
+  'bedrock/deepseek.r1-v1:0': { 
+    tier: 'free', 
+    priority: 88,
+    recommended: false,
+    lowQuality: false
+  },
+  
   // 'grok-4': { 
   //   tier: 'premium', 
   //   priority: 98,
@@ -122,25 +155,25 @@ export const MODELS = {
 // Production-only models for Helio branding
 export const PRODUCTION_MODELS = {
   'helio-o1': {
-    id: 'openrouter/moonshotai/kimi-k2',
+    id: 'bedrock/anthropic.claude-sonnet-4-20250514-v1:0',
     label: 'Helio o1',
     description: 'Our most powerful model for complex tasks',
+    tier: 'free',
+    priority: 100,
+    recommended: false,
+    lowQuality: false
+  },
+  'helio-o1-lite': {
+    id: 'bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0',
+    label: 'Helio o1 Lite',
+    description: 'Fast and efficient for everyday tasks',
     tier: 'free',
     priority: 90,
     recommended: false,
     lowQuality: false
   },
-  'helio-o1-lite': {
-    id: 'openrouter/moonshotai/kimi-k2:free',
-    label: 'Helio o1 Lite',
-    description: 'Fast and efficient for everyday tasks',
-    tier: 'free',
-    priority: 100,
-    recommended: true,
-    lowQuality: false
-  },
   'helio-g1': {
-    id: 'openrouter/z-ai/glm-4.5-air:free',
+    id: 'bedrock/meta.llama3-3-70b-instruct-v1:0',
     label: 'Helio g1',
     description: 'Great for coding and analysis',
     tier: 'free',
@@ -270,36 +303,47 @@ export const useModelSelection = () => {
         ];
       } else {
         // Process API-provided models
-        models = modelsData.models.map(model => {
-          const shortName = model.short_name || model.id;
-          const displayName = model.display_name || shortName;
-          
-          // Format the display label
-          let cleanLabel = displayName;
-          if (cleanLabel.includes('/')) {
-            cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
-          }
-          
-          cleanLabel = cleanLabel
-            .replace(/-/g, ' ')
-            .split(' ')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-          
-          // Get model data from our central MODELS constant
-          const modelData = MODELS[shortName] || {};
-          const isPremium = model?.requires_subscription || modelData.tier === 'premium' || false;
-          
-          return {
-            id: shortName,
-            label: cleanLabel,
-            requiresSubscription: isPremium,
-            top: modelData.priority >= 90, // Mark high-priority models as "top"
-            priority: modelData.priority || 0,
-            lowQuality: modelData.lowQuality || false,
-            recommended: modelData.recommended || false
-          };
-        });
+        const processedModelIds = new Set(); // Track processed models to avoid duplicates
+        models = modelsData.models
+          .filter(model => {
+            const shortName = model.short_name || model.id;
+            // Skip if we've already processed this model ID
+            if (processedModelIds.has(shortName)) {
+              return false;
+            }
+            processedModelIds.add(shortName);
+            return true;
+          })
+          .map(model => {
+            const shortName = model.short_name || model.id;
+            const displayName = model.display_name || shortName;
+            
+            // Format the display label
+            let cleanLabel = displayName;
+            if (cleanLabel.includes('/')) {
+              cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
+            }
+            
+            cleanLabel = cleanLabel
+              .replace(/-/g, ' ')
+              .split(' ')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ');
+            
+            // Get model data from our central MODELS constant
+            const modelData = MODELS[shortName] || {};
+            const isPremium = model?.requires_subscription || modelData.tier === 'premium' || false;
+            
+            return {
+              id: shortName,
+              label: cleanLabel,
+              requiresSubscription: isPremium,
+              top: modelData.priority >= 90, // Mark high-priority models as "top"
+              priority: modelData.priority || 0,
+              lowQuality: modelData.lowQuality || false,
+              recommended: modelData.recommended || false
+            };
+          });
       }
       
       // Add custom models if in local mode
