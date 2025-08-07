@@ -361,24 +361,37 @@ class SandboxFilesTool(SandboxToolsBase):
                 logger.debug("Using direct Morph API for file editing.")
                 client = openai.AsyncOpenAI(
                     api_key=morph_api_key,
-                    base_url="https://openrouter.ai/api/v1"
+                    base_url="https://api.morphllm.com/v1"
                 )
                 response = await client.chat.completions.create(
-                    model="openrouter/z-ai/glm-4.5-air:free",
+                    model="morph-v3-large",
                     messages=messages,
                     temperature=0.0,
                     timeout=120.0
                 )
             elif openrouter_key:
                 logger.debug("Morph API key not set, falling back to OpenRouter for file editing via litellm.")
-                response = await litellm.acompletion(
-                    model="openrouter/agentica-org/deepcoder-14b-preview:free",
-                    messages=messages,
-                    api_key=openrouter_key,
-                    api_base="https://openrouter.ai/api/v1",
-                    temperature=0.0,
-                    timeout=120.0
-                )
+                # Use a more reliable model that's known to work
+                try:
+                    response = await litellm.acompletion(
+                        model="openrouter/deepseek/deepseek-chat-v3-0324:free",
+                        messages=messages,
+                        api_key=openrouter_key,
+                        api_base="https://openrouter.ai/api/v1",
+                        temperature=0.0,
+                        timeout=120.0
+                    )
+                except Exception as e:
+                    logger.warning(f"First model failed, trying fallback: {str(e)}")
+                    # Fallback to another reliable model
+                    response = await litellm.acompletion(
+                        model="openrouter/moonshotai/kimi-k2:free",
+                        messages=messages,
+                        api_key=openrouter_key,
+                        api_base="https://openrouter.ai/api/v1",
+                        temperature=0.0,
+                        timeout=120.0
+                    )
             else:
                 error_msg = "No Morph or OpenRouter API key found, cannot perform AI edit."
                 logger.warning(error_msg)

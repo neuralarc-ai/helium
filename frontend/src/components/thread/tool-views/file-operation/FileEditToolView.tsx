@@ -13,7 +13,6 @@ import {
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -41,8 +40,8 @@ const UnifiedDiffView: React.FC<{ oldCode: string; newCode: string }> = ({ oldCo
         dark: {
           diffViewerColor: '#e2e8f0',
           diffViewerBackground: '#09090b',
-          addedBackground: '#104a32',
-          addedColor: '#6ee7b7',
+          addedBackground: '#1f2937',
+          addedColor: '#e2e8f0',
           removedBackground: '#5c1a2e',
           removedColor: '#fca5a5',
         },
@@ -72,8 +71,8 @@ const SplitDiffView: React.FC<{ oldCode: string; newCode: string }> = ({ oldCode
         dark: {
           diffViewerColor: '#e2e8f0',
           diffViewerBackground: '#09090b',
-          addedBackground: '#104a32',
-          addedColor: '#6ee7b7',
+          addedBackground: '#1f2937',
+          addedColor: '#e2e8f0',
           removedBackground: '#5c1a2e',
           removedColor: '#fca5a5',
         },
@@ -143,39 +142,35 @@ export function FileEditToolView({
   const shouldShowError = !isStreaming && (!actualIsSuccess || (actualIsSuccess && (originalContent === null || updatedContent === null)));
 
   return (
-    <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-14 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-sm border-b p-2 px-4 space-y-2">
-        <div className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="relative p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/20">
-              <FileDiff className="w-5 h-5 text-blue-500 dark:text-blue-400" />
-            </div>
-            <CardTitle className="text-base font-medium text-zinc-900 dark:text-zinc-100">
-              {toolTitle}
-            </CardTitle>
-          </div>
-
-          {!isStreaming && (
-            <Badge
-              variant="secondary"
-              className={
-                actualIsSuccess
-                  ? "bg-gradient-to-b from-emerald-200 to-emerald-100 text-emerald-700 dark:from-emerald-800/50 dark:to-emerald-900/60 dark:text-emerald-300"
-                  : "bg-gradient-to-b from-rose-200 to-rose-100 text-rose-700 dark:from-rose-800/50 dark:to-rose-900/60 dark:text-rose-300"
-              }
-            >
-              {actualIsSuccess ? (
-                <CheckCircle className="h-3.5 w-3.5 mr-1" />
-              ) : (
-                <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-              )}
-              {actualIsSuccess ? 'Edit applied' : 'Edit failed'}
-            </Badge>
-          )}
+    <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full bg-card">
+      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 rounded-[12px] mx-2 mt-2 mb-1 flex flex-row items-center justify-between">
+        <div className="flex items-center gap-2 mt-4">
+          <FileDiff className="w-5 h-5 text-white" />
+          <CardTitle className="text-base font-medium text-white">
+            {toolTitle}
+          </CardTitle>
         </div>
+
+        {!isStreaming && (
+          <Badge
+            variant="secondary"
+            className={
+              actualIsSuccess
+                ? "bg-white/60 text-emerald-700 border-white/50 mt-4"
+                : "bg-white/60 text-rose-700 border-white/50 mt-4"
+            }
+          >
+            {actualIsSuccess ? (
+              <CheckCircle className="h-3.5 w-3.5 mr-1" />
+            ) : (
+              <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+            )}
+            {actualIsSuccess ? 'Edit applied' : 'Edit failed'}
+          </Badge>
+        )}
       </CardHeader>
 
-      <CardContent className="p-0 h-full flex-1 overflow-hidden relative">
+      <CardContent className="p-0 flex-1 flex flex-col min-h-0">
         {isStreaming ? (
           <LoadingState
             icon={FileDiff}
@@ -189,8 +184,8 @@ export function FileEditToolView({
         ) : shouldShowError ? (
           <ErrorState message={errorMessage} />
         ) : (
-          <div className="h-full flex flex-col">
-            <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 bg-accent flex items-center justify-between">
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="shrink-0 p-3 border-b border-zinc-200 dark:border-zinc-800 bg-accent flex items-center justify-between">
               <div className="flex items-center">
                 <File className="h-4 w-4 mr-2 text-zinc-500 dark:text-zinc-400" />
                 <code className="text-sm font-mono text-zinc-700 dark:text-zinc-300">
@@ -223,13 +218,13 @@ export function FileEditToolView({
                 </Tabs>
               </div>
             </div>
-            <ScrollArea className="flex-1">
+            <div className="flex-1 overflow-auto min-h-0">
               {viewMode === 'unified' ? (
                 <UnifiedDiffView oldCode={originalContent!} newCode={updatedContent!} />
               ) : (
                 <SplitDiffView oldCode={originalContent!} newCode={updatedContent!} />
               )}
-            </ScrollArea>
+            </div>
           </div>
         )}
       </CardContent>
