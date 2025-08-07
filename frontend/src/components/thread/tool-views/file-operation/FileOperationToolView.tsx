@@ -271,42 +271,38 @@ export function FileOperationToolView({
   return (
     <Card className="flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
       <Tabs defaultValue={'preview'} className="w-full h-full">
-        <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-xl mx-2 mt-2">
-          <div className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Icon className="h-5 w-5 text-white" />
-              <div>
-                <CardTitle className="text-base font-medium text-white">
-                  {toolTitle}
-                </CardTitle>
-              </div>
-            </div>
-            <div className='flex items-center gap-x-2'>
-              {isHtml && htmlPreviewUrl && !isStreaming && (
-                <Button variant="outline" size="sm" className="h-7 px-3 text-xs rounded-full bg-white dark:bg-muted/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-none font-medium" asChild>
-                  <a href={htmlPreviewUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4 mr-1" />
-                    Open in Browser
-                  </a>
-                </Button>
-              )}
-              <TabsList className="h-7 bg-white/60 dark:bg-muted/60 border border-border/50 p-0.5 gap-x-2 rounded-full flex items-center">
-                <TabsTrigger
-                  value="code"
-                  className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full transition-all [&[data-state=active]]:bg-white [&[data-state=active]]:dark:bg-primary/10 [&[data-state=active]]:text-foreground hover:bg-background/50 text-muted-foreground shadow-none"
-                >
-                  <Code className="h-4 w-4" />
-                  Source
-                </TabsTrigger>
-                <TabsTrigger
-                  value="preview"
-                  className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full transition-all [&[data-state=active]]:bg-white [&[data-state=active]]:dark:bg-primary/10 [&[data-state=active]]:text-foreground hover:bg-background/50 text-muted-foreground shadow-none"
-                >
-                  <Eye className="h-4 w-4" />
-                  Preview
-                </TabsTrigger>
-              </TabsList>
-            </div>
+        <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 rounded-xl mx-2 mt-2 mb-1 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2 mt-4">
+            <Icon className="h-5 w-5 text-white" />
+            <CardTitle className="text-base font-medium text-white">
+              {toolTitle}
+            </CardTitle>
+          </div>
+          <div className='flex items-center gap-x-2 mt-4'>
+            {isHtml && htmlPreviewUrl && !isStreaming && (
+              <Button variant="outline" size="sm" className="h-7 px-3 text-xs rounded-full bg-white dark:bg-muted/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-none font-medium" asChild>
+                <a href={htmlPreviewUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-1" />
+                  Open in Browser
+                </a>
+              </Button>
+            )}
+            <TabsList className="h-7 bg-white/60 dark:bg-muted/60 border border-border/50 p-0.5 gap-x-2 rounded-full flex items-center">
+              <TabsTrigger
+                value="code"
+                className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full transition-all [&[data-state=active]]:bg-white [&[data-state=active]]:dark:bg-primary/10 [&[data-state=active]]:text-foreground hover:bg-background/50 text-muted-foreground shadow-none"
+              >
+                <Code className="h-4 w-4" />
+                Source
+              </TabsTrigger>
+              <TabsTrigger
+                value="preview"
+                className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full transition-all [&[data-state=active]]:bg-white [&[data-state=active]]:dark:bg-primary/10 [&[data-state=active]]:text-foreground hover:bg-background/50 text-muted-foreground shadow-none"
+              >
+                <Eye className="h-4 w-4" />
+                Preview
+              </TabsTrigger>
+            </TabsList>
           </div>
         </CardHeader>
 
