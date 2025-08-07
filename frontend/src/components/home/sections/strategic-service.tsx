@@ -3,131 +3,160 @@ import Image from 'next/image';
 
 const cards = [
   {
-    title: 'Accelerating Sales with AI-Orchestrated Lead Intelligence',
-    text: `Helio o1 streamlines sales process by automating lead qualification, CRM enrichment, and presentation generation. The result was a 35% increase in conversions and a 70% boost in daily client meetings.`,
-    img: '/strategic-service/strategy-1.png',
-    imgPosition: 'bottom-right',
+    title: 'Management Dashboards & Real-Time Decision Making',
+    description: 'Create a comprehensive executive dashboard that shows:',
+    list: [
+      'Revenue trends and profit margin analysis over time',
+      'Customer acquisition vs churn patterns',
+      'Employee productivity and growth metrics',
+      'Market positioning relative to competitors',
+      'Key performance indicators with predictive insights',
+    ],
+    img: '/strategic-service/strategy-2.png',
+    imgPosition: 'right',
+    button: 'over-image',
+    buttonText: 'Replay Live Runs'
   },
   {
-    title: 'Real-Time Financial Foresight at Scale',
-    text: `Helio o1 automates cash flow forecasting, risk alerts, and receivables tracking. Which leads to a 90% forecast accuracy and over $2M in annual savings from improved financial operations.`,
+    title: (
+      <>
+        Real-Time<br/> Financial <br /> Foresight at Scale
+      </>
+    ),
+    description: 'GreenTech Manufacturing leveraged Helios o1 to automate cash flow forecasting, risk alerts, and receivables tracking. This led to a 90% forecast accuracy and over $2M in annual savings from improved financial operations.',
     img: null,
+    button: 'top-right',
+    buttonText: 'Replay Live Runs'
   },
   {
-    title: 'Scaling Talent Acquisition with Smart Agent Coordination',
-    text: `Helium is an enterprise-grade language model built for real-time decision-making across functions like finance, legal, HR, and operations. With deep domain intelligence and seamless system integration, Helium serves as the cognitive core of modern enterprises.`,
+    title: 'Scaling Talent Acquisition with Smart Agent',
+    description: 'Helium is an enterprise-grade language model built for real-time decision-making across functions like finance, legal, HR, and operations. With deep domain intelligence and seamless system integration, Helium serves as the cognitive core of modern enterprises.',
     img: null,
+    button: 'left',
+    buttonText: 'Replay Live Runs'
   },
   {
-    title: 'Contract Intelligence for Global Legal Operations',
-    text: `Helio o1 can reduce contract review time from days to hours while achieving real-time compliance monitoring. Risk detection accuracy improved by 40%, enabling faster, safer deal closures.`,
-    img: '/strategic-service/strategy-4.png',
-    imgPosition: 'bottom-right',
-  },
-  {
-    title: 'Hyper-Personalized Marketing at Scale with AI Orchestration',
-    text: `RetailMax transformed campaign performance with real-time segmentation, predictive churn prevention, and automated content creation. They saw a 300% lift in campaign conversion and a 20% drop in churn.`,
-    img: '/strategic-service/strategy-5.png',
-    imgPosition: 'center-left',
+    title: 'Contract Intelligence for Legal Operations',
+    description: 'GlobalTech used Helios o1 to reduce contract review time from days to hours while achieving real-time compliance monitoring. Risk detection accuracy improved by 40%, enabling faster, safer deal closures.',
+    img: '/strategic-service/strategy-3.png',
+    imgPosition: 'right',
+    button: 'left',
+    buttonText: 'Replay Live Runs'
   },
 ];
 
 export default function StrategicServiceSection() {
   return (
-    <section className="w-full py-8 sm:py-12 md:py-16 lg:py-20 px-2 sm:px-4 md:px-8 flex flex-col items-center">
-      <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white text-center mb-3 sm:mb-4 px-2">
+    <section className="w-full py-12 px-2 sm:px-4 md:px-8 flex flex-col items-center bg-white">
+      <h2 className="text-gray-900 text-3xl sm:text-4xl md:text-5xl font-light text-center mb-3 sm:mb-4 px-2">
         Helium Powered Actions
       </h2>
-      <p className="text-white/60 text-center max-w-3xl mb-8 sm:mb-10 md:mb-12 px-2 sm:px-4 text-sm sm:text-base">
+      <p className="text-gray-600 text-center max-w-3xl mb-8 sm:mb-10 md:mb-12 px-2 sm:px-4 text-base">
         Discover hypothetical scenarios that illustrate how Helium can be applied to solve complex business challenges. These case studies demonstrate the model's potential across a range of tasks, workflows, and decision-making contexts.
       </p>
-      <div className="w-full max-w-7xl flex flex-col gap-4 sm:gap-6">
-        {/* Row 1: 70% + 30% */}
-        <div className="flex flex-col md:flex-row gap-4 sm:gap-6 w-full">
-          <div className="relative bg-[#5E5E5E]/15 rounded-2xl sm:rounded-3xl min-h-[220px] sm:min-h-[260px] md:min-h-[328px] overflow-hidden w-full md:basis-[60%] md:max-w-[60%] group flex flex-col md:flex-row">
-            {/* Left: Text */}
-            <div className="flex flex-col justify-between h-full flex-1 p-4 sm:p-6 md:pl-8 md:pb-8 md:pt-8">
-              <h3 className="text-white text-lg sm:text-xl md:text-2xl lg:text-[32px] mb-2 sm:mb-3 leading-tight">
+      <div className="w-full max-w-7xl flex flex-col gap-6">
+        {/* Row 1 */}
+        <div className="flex flex-col md:flex-row gap-6 w-full">
+          {/* Card 1: Text left, image right, button over image */}
+          <div className="relative bg-white rounded-2xl border border-gray-200 shadow-md min-h-[220px] flex flex-col md:flex-row w-full md:basis-[60%] md:max-w-[60%] overflow-hidden">
+            <div className="flex flex-col justify-between h-full flex-1 p-6 text-left">
+              <h3 className="text-gray-900 text-2xl font-semibold mb-2 leading-tight">
                 {cards[0].title}
               </h3>
-              <p className="text-white/70 text-sm sm:text-base md:text-lg font-normal mb-4 leading-relaxed">
-                {cards[0].text}
+              <p className="text-gray-700 text-base font-normal mb-2 leading-relaxed">
+                {cards[0].description}
               </p>
+              <ol className="text-gray-700 text-base font-normal mb-4 leading-relaxed list-decimal list-inside pl-2">
+                {cards[0].list.map((item, i) => (
+                  <li key={i} className="mb-1">{item}</li>
+                ))}
+              </ol>
             </div>
-            {/* Right: Image */}
             {cards[0].img && (
-              <div className="relative flex-shrink-0 flex items-end justify-end w-full md:w-[40%] h-32 md:h-full p-0 md:pr-4">
-                <div className="absolute bottom-0 right-0 h-auto w-full md:w-auto transition-transform duration-300 ease-out translate-y-2 md:translate-y-4 group-hover:translate-y-1">
-                  <Image 
-                    src={cards[0].img} 
-                    alt="card1" 
-                    width={400} 
-                    height={400} 
-                    className="object-cover md:object-contain h-32 md:h-auto w-full md:w-auto rounded-b-2xl md:rounded-none" 
-                  />
-                </div>
+              <div className="relative w-full md:w-[40%] h-48 md:h-auto">
+                <Image
+                  src={cards[0].img}
+                  alt="card1"
+                  fill
+                  className="object-cover"
+                />
+                {/* Button over image */}
+                {cards[0].button === 'over-image' && (
+                  <button className="absolute bottom-4 right-6 bg-white border border-gray-300 text-gray-700 text-sm px-6 py-2 rounded-full shadow-md hover:bg-gray-100 transition-colors flex items-center gap-2">
+                    {cards[0].buttonText}
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#fff" fillOpacity="0.18"/><path d="M8 7L14 10L8 13V7Z" fill="#6B7280"/></svg>
+                  </button>
+                )}
               </div>
             )}
           </div>
-          <div className="bg-[#5E5E5E]/15 rounded-2xl sm:rounded-3xl min-h-[120px] flex flex-col justify-between p-4 sm:p-6 md:p-8 w-full md:basis-[40%] md:max-w-[40%]">
-            <h3 className="text-white text-lg sm:text-xl md:text-2xl lg:text-[32px] mb-1 sm:mb-2 md:mb-3 leading-tight">
+          {/* Card 2: Text only, button top-right, heading with line breaks */}
+          <div className="relative bg-white rounded-2xl border border-gray-200 shadow-md min-h-[220px] flex flex-col justify-between p-6 w-full md:basis-[40%] md:max-w-[40%] text-left">
+            {cards[1].button === 'top-right' && (
+              <div className="absolute top-4 right-4">
+                <button className="bg-white border border-gray-300 text-gray-700 text-sm px-6 py-2 rounded-full shadow-md hover:bg-gray-100 transition-colors flex items-center gap-2">
+                  {cards[1].buttonText}
+                  <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#fff" fillOpacity="0.18"/><path d="M8 7L14 10L8 13V7Z" fill="#6B7280"/></svg>
+                </button>
+              </div>
+            )}
+            <h3 className="text-gray-900 text-2xl font-semibold mb-2 leading-tight">
               {cards[1].title}
             </h3>
-            <p className="text-white/70 text-sm sm:text-base md:text-lg font-normal leading-relaxed">
-              {cards[1].text}
+            <p className="text-gray-700 text-base font-normal leading-relaxed">
+              {cards[1].description}
             </p>
           </div>
         </div>
-        {/* Row 2: 30% + 70% */}
-        <div className="flex flex-col md:flex-row gap-4 sm:gap-6 w-full">
-          <div className="bg-[#5E5E5E]/15 rounded-2xl sm:rounded-3xl min-h-[120px] flex flex-col justify-between p-4 sm:p-6 md:p-8 w-full md:basis-[40%] md:max-w-[40%]">
-            <h3 className="text-white text-lg sm:text-xl md:text-2xl lg:text-[32px] mb-1 sm:mb-2 md:mb-3 leading-tight">
+        {/* Row 2 */}
+        <div className="flex flex-col md:flex-row gap-6 w-full">
+          {/* Card 3: Text only, button left-aligned below text */}
+          <div className="relative bg-white rounded-2xl border border-gray-200 shadow-md min-h-[220px] flex flex-col justify-between p-6 w-full md:basis-[40%] md:max-w-[40%] text-left">
+            <h3 className="text-gray-900 text-2xl font-semibold mb-2 leading-tight">
               {cards[2].title}
             </h3>
-            <p className="text-white/70 text-sm sm:text-base md:text-lg font-normal leading-relaxed">
-              {cards[2].text}
+            <p className="text-gray-700 text-base font-normal leading-relaxed mb-4">
+              {cards[2].description}
             </p>
+            {cards[2].button === 'left' && (
+              <div className="flex justify-start w-full mt-2">
+                <button className="bg-white border border-gray-300 text-gray-700 text-sm px-6 py-2 rounded-full shadow-md hover:bg-gray-100 transition-colors flex items-center gap-2">
+                  {cards[2].buttonText}
+                  <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#fff" fillOpacity="0.18"/><path d="M8 7L14 10L8 13V7Z" fill="#6B7280"/></svg>
+                </button>
+              </div>
+            )}
           </div>
-          <div className="relative bg-[#5E5E5E]/15 gap-4 sm:gap-6 rounded-2xl sm:rounded-3xl min-h-[220px] sm:min-h-[260px] md:min-h-[328px] overflow-hidden w-full md:basis-[60%] md:max-w-[60%] group flex flex-col md:flex-row">
-            {/* Left: Text */}
-            <div className="flex flex-col justify-between h-full flex-1 p-4 sm:p-6 md:pl-8 md:pb-8 md:pt-8">
-              <h3 className="text-white text-lg sm:text-xl md:text-2xl lg:text-[32px] mb-2 sm:mb-3 leading-tight">
+          {/* Card 4: Text left, image right, button left-aligned below text */}
+          <div className="relative bg-white rounded-2xl border border-gray-200 shadow-md min-h-[220px] flex flex-col md:flex-row w-full md:basis-[60%] md:max-w-[60%] overflow-hidden">
+            <div className="flex flex-col justify-between h-full flex-1 p-6 text-left">
+              <h3 className="text-gray-900 text-2xl font-semibold mb-2 leading-tight">
                 {cards[3].title}
               </h3>
-              <p className="text-white/70 text-sm sm:text-base md:text-lg font-normal mb-4 leading-relaxed">
-                {cards[3].text}
+              <p className="text-gray-700 text-base font-normal mb-4 leading-relaxed">
+                {cards[3].description}
               </p>
-            </div>
-            {/* Right: Image */}
-            {cards[3].img && (
-              <div className="relative flex-shrink-0 flex items-end justify-end w-full md:w-[40%] h-32 md:h-full p-0 md:pr-4">
-                <div className="absolute bottom-0 right-0 h-auto w-full md:w-auto transition-transform duration-300 ease-out translate-y-2 md:translate-y-4 group-hover:translate-y-1">
-                  <Image 
-                    src={cards[3].img} 
-                    alt="card4" 
-                    width={400} 
-                    height={400} 
-                    className="object-cover md:object-contain h-32 md:h-auto w-full md:w-auto rounded-b-2xl md:rounded-none" 
-                  />
+              {cards[3].button === 'left' && (
+                <div className="flex justify-start w-full mt-2">
+                  <button className="bg-white border border-gray-300 text-gray-700 text-sm px-6 py-2 rounded-full shadow-md hover:bg-gray-100 transition-colors flex items-center gap-2">
+                    {cards[3].buttonText}
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#fff" fillOpacity="0.18"/><path d="M8 7L14 10L8 13V7Z" fill="#6B7280"/></svg>
+                  </button>
                 </div>
+              )}
+            </div>
+            {cards[3].img && (
+              <div className="relative w-full md:w-[40%] h-48 md:h-auto">
+                <Image
+                  src={cards[3].img}
+                  alt="card4"
+                  fill
+                  className="object-cover"
+                />
               </div>
             )}
           </div>
         </div>
-        {/* Row 3: full width (optional, can be enabled if needed) */}
-        {/* <div className="bg-[#5E5E5E]/15 rounded-2xl sm:rounded-3xl min-h-[220px] sm:min-h-[260px] md:min-h-[328px] flex flex-col md:flex-row items-center justify-center p-4 sm:p-6 md:p-8 gap-4 sm:gap-6 w-full group">
-          <div className="flex-shrink-0 flex items-center justify-center w-full md:w-[447px] h-[120px] sm:h-[200px] md:h-[248px] transition-transform duration-300 ease-out group-hover:scale-105">
-            <Image src={cards[4].img} alt="card5" width={400} height={400} className="object-cover md:object-contain w-full md:w-[447px] h-[120px] sm:h-[200px] md:h-[248px] rounded-2xl md:rounded-none" />
-          </div>
-          <div className="flex-1 flex flex-col justify-center">
-            <h3 className="text-white text-lg sm:text-xl md:text-2xl lg:text-[32px] mb-2 sm:mb-3 leading-tight">{cards[4].title}</h3>
-            <p className="text-white/70 text-sm sm:text-base md:text-lg font-normal mb-4 leading-relaxed">{cards[4].text}</p>
-            <button className="mt-4 mb-2 ml-2 px-4 sm:px-6 py-2 rounded-full bg-[#232323] text-white text-sm sm:text-base font-semibold flex items-center gap-2 shadow-lg hover:bg-[#333] transition-all">
-              <svg width="16" height="16" sm:width="20" sm:height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#fff" fillOpacity="0.18"/><path d="M8 7L14 10L8 13V7Z" fill="white"/></svg>
-              Replay Live Runs
-            </button>
-          </div>
-        </div> */}
       </div>
     </section>
   );

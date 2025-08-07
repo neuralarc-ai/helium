@@ -51,15 +51,21 @@ export const MODELS = {
   // },
 
   // Premium/Paid tier models (require subscription) - except specific free models
-  'moonshotai/kimi-k2:free': { 
+  'openrouter/moonshotai/kimi-k2:free': { 
     tier: 'free', 
     priority: 99,
     recommended: false,
     lowQuality: false
   },
-  'z-ai/glm-4.5-air:free': { 
+  'openrouter/z-ai/glm-4.5-air:free': { 
     tier: 'free', 
     priority: 97,
+    recommended: false,
+    lowQuality: false
+  },
+  'openrouter/agentica-org/deepcoder-14b-preview:free': { 
+    tier: 'free', 
+    priority: 96,
     recommended: false,
     lowQuality: false
   },
@@ -120,16 +126,25 @@ export const PRODUCTION_MODELS = {
     label: 'Helio o1',
     description: 'Our most powerful model for complex tasks',
     tier: 'free',
+    priority: 90,
+    recommended: false,
+    lowQuality: false
+  },
+  'helio-o1-lite': {
+    id: 'openrouter/moonshotai/kimi-k2:free',
+    label: 'Helio o1 Lite',
+    description: 'Fast and efficient for everyday tasks',
+    tier: 'free',
     priority: 100,
     recommended: true,
     lowQuality: false
   },
-  'helio-o1-lite': {
-    id: 'openrouter/deepseek/deepseek-chat-v3-0324:free',
-    label: 'Helio o1 Lite',
-    description: 'Fast and efficient for everyday tasks',
+  'helio-g1': {
+    id: 'openrouter/z-ai/glm-4.5-air:free',
+    label: 'Helio g1',
+    description: 'Great for coding and analysis',
     tier: 'free',
-    priority: 90,
+    priority: 80,
     recommended: false,
     lowQuality: false
   }

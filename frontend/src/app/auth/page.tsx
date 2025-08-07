@@ -36,6 +36,12 @@ import { ReleaseBadge } from '@/components/auth/release-badge';
 import LoginFooter from './login-footer/login-footer';
 import { motion } from 'framer-motion';
 
+// Helper function to check if we're in production mode
+const isProductionMode = (): boolean => {
+  const envMode = process.env.NEXT_PUBLIC_ENV_MODE?.toLowerCase();
+  return envMode === 'production';
+};
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -48,6 +54,7 @@ function LoginContent() {
   const isSignUp = mode === 'signup';
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [mounted, setMounted] = useState(false);
+  const isProduction = isProductionMode();
 
   const { wasLastMethod: wasEmailLastMethod, markAsUsed: markEmailAsUsed } = useAuthMethodTracking('email');
 
@@ -224,7 +231,7 @@ function LoginContent() {
   // Registration success view
   if (registrationSuccess) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#EDEDED] flex items-center justify-center p-4">
         <div className="w-full max-w-md mx-auto">
           <div className="text-center">
             <div className="bg-green-50 dark:bg-green-950/20 rounded-full p-4 mb-6 inline-flex">
@@ -270,7 +277,7 @@ function LoginContent() {
   }
 
   return (
-      <div className="min-h-screen bg-background relative">
+      <div className="min-h-screen bg-[#EDEDED] relative">
         <div className="flex min-h-screen items-center justify-center gap-8">
           <motion.div
             initial={{ opacity: 0 }}
@@ -349,7 +356,7 @@ function LoginContent() {
             >
               <Link
                 href="/"
-                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-black transition-colors"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to home
@@ -366,32 +373,26 @@ function LoginContent() {
               layout
               className="w-[500px] bg-white/77 rounded-[24px] p-8"
             >
-              {/* <div className="mb-4 flex items-center flex-col gap-4 justify-center">
-                {customAgentsEnabled && <ReleaseBadge className='mb-4' text="Custom Agents, Workflows, and more!" link="/changelog" />}
-                <h1 className="text-2xl font-semibold text-foreground">
-                  {isSignUp ? 'Create your account' : 'Log into your account'}
-                </h1>
-              </div> */}
             <form className="space-y-3 mb-4">
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-foreground">
-                  User Name
+                <label htmlFor="email" className="text-sm font-medium text-black">
+                  Email
                 </label>
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   placeholder="Email address"
-                  className="h-10 rounded-lg"
+                  className="h-14 py-3 rounded-lg dark:bg-transparent dark:border-black/20 text-black placeholder:text-black/70"
                   required
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label htmlFor="password" className="text-sm font-medium text-foreground">
+                  <label htmlFor="password" className="text-sm font-medium text-black">
                     Password
                   </label>
-                  {!isSignUp && (
+                  {!isSignUp && !isProduction && (
                     <button
                       type="button"
                       onClick={() => setForgotPasswordOpen(true)}
@@ -406,13 +407,13 @@ function LoginContent() {
                   name="password"
                   type="password"
                   placeholder="Password"
-                  className="h-10 rounded-lg"
+                  className="h-14 py-3 rounded-lg dark:bg-transparent dark:border-black/20 text-black placeholder:text-black/70"
                   required
                 />
               </div>
               {isSignUp && (
                 <div className="space-y-2">
-                  <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+                  <label htmlFor="confirmPassword" className="text-sm font-medium text-black">
                     Confirm Password
                   </label>
                   <Input
@@ -420,7 +421,7 @@ function LoginContent() {
                     name="confirmPassword"
                     type="password"
                     placeholder="Confirm password"
-                    className="h-10 rounded-lg"
+                    className="h-14 py-3 rounded-lg dark:bg-transparent text-black placeholder:text-black/70"
                     required
                   />
                 </div>
@@ -429,50 +430,58 @@ function LoginContent() {
                 <div className="relative">
                   <SubmitButton
                     formAction={isSignUp ? handleSignUp : handleSignIn}
-                    className="w-full h-10 bg-gradient-to-r from-helium-pink to-helium-teal text-white hover:opacity-90 transition-opacity rounded-lg"
+                    className="w-full h-12 bg-gradient-to-r from-helium-pink to-helium-teal text-white hover:opacity-90 transition-opacity rounded-lg"
                     pendingText={isSignUp ? "Creating account..." : "Initiating..."}
                   >
                     {isSignUp ? 'Create account' : 'Ready to Initiate Intelligence'}
                   </SubmitButton>
-                  {wasEmailLastMethod && (
+                  {/* {wasEmailLastMethod && (
                     <div className="absolute -top-1 -right-1 w-3 h-3 bg-black rounded-full border-2 border-background shadow-sm">
                       <div className="w-full h-full bg-black rounded-full animate-pulse" />
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
             </form>
             
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2  text-muted-foreground">
-                  or continue with
-                </span>
-              </div>
-            </div>
+            {/* Social login section - only show if not in production */}
+            {!isProduction && (
+              <>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2  text-muted-foreground">
+                      or continue with
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <GoogleSignIn returnUrl={returnUrl || undefined} />
+                  <GitHubSignIn returnUrl={returnUrl || undefined} />
+                </div>
+              </>
+            )}
             
-            <div className="space-y-3">
-              <GoogleSignIn returnUrl={returnUrl || undefined} />
-              <GitHubSignIn returnUrl={returnUrl || undefined} />
-            </div>
-            
-            <div className="mt-4 text-center text-sm">
-              <Link
-                href={isSignUp 
-                  ? `/auth${returnUrl ? `?returnUrl=${returnUrl}` : ''}`
-                  : `/auth?mode=signup${returnUrl ? `&returnUrl=${returnUrl}` : ''}`
-                }
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {isSignUp 
-                  ? 'Already have an account? Sign in' 
-                  : "Don't have an account? Sign up"
-                }
-                              </Link>
+            {/* Sign up/Sign in link - only show if not in production */}
+            {!isProduction && (
+              <div className="mt-4 text-center text-sm">
+                <Link
+                  href={isSignUp 
+                    ? `/auth${returnUrl ? `?returnUrl=${returnUrl}` : ''}`
+                    : `/auth?mode=signup${returnUrl ? `&returnUrl=${returnUrl}` : ''}`
+                  }
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {isSignUp 
+                    ? 'Already have an account? Sign in' 
+                    : "Don't have an account? Sign up"
+                  }
+                </Link>
               </div>
+            )}
             </motion.div>
           </div>
       </div>
@@ -493,7 +502,7 @@ function LoginContent() {
               placeholder="Email address"
               value={forgotPasswordEmail}
               onChange={(e) => setForgotPasswordEmail(e.target.value)}
-              className="h-11 rounded-xl"
+              className="h-12 py-3 rounded-xl"
               required
             />
             {forgotPasswordStatus.message && (

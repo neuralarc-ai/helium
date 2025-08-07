@@ -30,6 +30,12 @@ import { BillingModal } from '@/components/billing/billing-modal';
 import { useRouter } from 'next/navigation';
 import { BorderBeam } from '@/components/magicui/border-beam';
 
+// Helper function to check if we're in production mode
+const isProductionMode = (): boolean => {
+  const envMode = process.env.NEXT_PUBLIC_ENV_MODE?.toLowerCase();
+  return envMode === 'production';
+};
+
 export interface ChatInputHandles {
   getPendingFiles: () => File[];
   clearPendingFiles: () => void;
@@ -150,16 +156,21 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const queryClient = useQueryClient();
 
     // Show usage preview logic:
-    // - Always show to free users when showToLowCreditUsers is true
-    // - For paid users, only show when they're at 70% or more of their cost limit (30% or below remaining)
-    const shouldShowUsage = !isLocalMode() && subscriptionData && showToLowCreditUsers && (() => {
-      // Free users: always show
+    // - Disabled in production environment
+    // - Disabled when usage goes over $5
+    // - Always show to free users when showToLowCreditUsers is true (if not in production and under $5)
+    // - For paid users, only show when they're at 70% or more of their cost limit (30% or below remaining) (if not in production and under $5)
+    const isProduction = isProductionMode();
+    const currentUsage = subscriptionData?.current_usage || 0;
+    const usageOver5Dollars = currentUsage > 5;
+    
+    const shouldShowUsage = !isLocalMode() && !isProduction && !usageOver5Dollars && subscriptionData && showToLowCreditUsers && (() => {
+      // Free users: always show (if not in production and under $5)
       if (subscriptionStatus === 'no_subscription') {
         return true;
       }
 
-      // Paid users: only show when at 70% or more of cost limit
-      const currentUsage = subscriptionData.current_usage || 0;
+      // Paid users: only show when at 70% or more of cost limit (if not in production and under $5)
       const costLimit = subscriptionData.cost_limit || 0;
 
       if (costLimit === 0) return false; // No limit set

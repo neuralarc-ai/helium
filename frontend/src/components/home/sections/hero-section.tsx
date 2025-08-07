@@ -9,7 +9,7 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 export default function HeroSection() {
   const { user } = useAuth();
   const [waitlistOpen, setWaitlistOpen] = React.useState(false);
-  
+ 
   // Parallax scroll effect
   const { scrollY } = useScroll();
   const parallaxY1 = useTransform(scrollY, [0, 1000], [0, -200]);
@@ -171,227 +171,86 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="w-full flex flex-col items-center justify-center pt-12 sm:pt-16 md:pt-20 lg:pt-24 py-4 sm:py-6 relative px-4 sm:px-6 lg:px-8">
-      {/* Small white dots background */}
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <div className="bg-white rounded-full absolute top-[3%] left-[12%] w-[3px] h-[3px] opacity-90" />
-        <div className="bg-white rounded-full absolute top-[5%] left-[92%] w-[3px] h-[3px] opacity-90" />
-        <div className="bg-white rounded-full absolute top-[7%] left-[95%] w-[4px] h-[4px] opacity-80" />
-        <div className="bg-white rounded-full absolute top-[20%] left-[2%] w-[4px] h-[4px] opacity-90" />
-      </div>
-
-      {/* Interactive gradient circles - Responsive positioning */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.div
-            className="absolute top-[5%] sm:top-[8%] md:top-[6%] lg:top-[5%] left-[9%] sm:left-[8%] md:left-[10%] lg:left-[9%] w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] md:w-[14px] md:h-[14px] lg:w-[14px] lg:h-[14px] opacity-90 cursor-pointer z-10"
-            style={{ y: agent1Y, x: agent1X }}
-            whileHover={{ scale: 1.25 }}
-            initial="hidden"
-            animate={showHero ? 'visible' : 'hidden'}
-            variants={agentVariants}
-            transition={{ delay: 1 + 0 * 0.08, duration: 0.6, ease: 'easeOut' }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-[#FBD8E3] via-[#9A96CC] to-[#3987BE]" />
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>H1(HR Agent)</p>
-        </TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.div 
-            className="absolute top-[15%] sm:top-[18%] md:top-[20%] lg:top-[25%] left-[85%] sm:left-[88%] md:left-[90%] lg:left-[90%] w-[8px] h-[8px] sm:w-[10px] sm:h-[10px] md:w-[12px] md:h-[12px] lg:w-[12px] lg:h-[12px] opacity-80 cursor-pointer z-10"
-            style={{ y: agent2Y, x: agent2X }}
-            whileHover={{ scale: 1.25 }}
-            initial="hidden"
-            animate={showHero ? 'visible' : 'hidden'}
-            variants={agentVariants}
-            transition={{ delay: 1 + 1 * 0.08, duration: 0.6, ease: 'easeOut' }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-[#A46B5E] to-[#62C77F]" />
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>L1(Legal Agent)</p>
-        </TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.div 
-            className="absolute top-[20%] sm:top-[22%] md:top-[25%] lg:top-[30%] left-[80%] sm:left-[82%] md:left-[85%] lg:left-[85%] w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] md:w-[14px] md:h-[14px] lg:w-[16px] lg:h-[16px] opacity-90 cursor-pointer z-10"
-            style={{ y: agent3Y, x: agent3X }}
-            whileHover={{ scale: 1.25 }}
-            initial="hidden"
-            animate={showHero ? 'visible' : 'hidden'}
-            variants={agentVariants}
-            transition={{ delay: 1 + 2 * 0.08, duration: 0.6, ease: 'easeOut' }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-[#5E5EDE] to-[#EFD336]" />
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>S1(Sales Agent)</p>
-        </TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.div 
-            className="absolute top-[25%] sm:top-[28%] md:top-[30%] lg:top-[35%] left-[8%] sm:left-[10%] md:left-[12%] lg:left-[12%] w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] md:w-[14px] md:h-[14px] lg:w-[16px] lg:h-[16px] opacity-95 cursor-pointer z-10"
-            style={{ y: agent4Y, x: agent4X }}
-            whileHover={{ scale: 1.25 }}
-            initial="hidden"
-            animate={showHero ? 'visible' : 'hidden'}
-            variants={agentVariants}
-            transition={{ delay: 1 + 3 * 0.08, duration: 0.6, ease: 'easeOut' }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-bl from-[#FFDEAB] via-[#AFC38D] to-[#535D43]" />
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>F1(Finance Agent)</p>
-        </TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.div 
-            className="absolute top-[30%] sm:top-[32%] md:top-[35%] lg:top-[40%] left-[85%] sm:left-[87%] md:left-[89%] lg:left-[89%] w-[10px] h-[10px] sm:w-[12px] sm:h-[12px] md:w-[14px] md:h-[14px] lg:w-[16px] lg:h-[16px] opacity-80 cursor-pointer z-10"
-            style={{ y: agent5Y, x: agent5X }}
-            whileHover={{ scale: 1.25 }}
-            initial="hidden"
-            animate={showHero ? 'visible' : 'hidden'}
-            variants={agentVariants}
-            transition={{ delay: 1 + 4 * 0.08, duration: 0.6, ease: 'easeOut' }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-pink-300 via-purple-400 to-white " />
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>B1(Operations Agent)</p>
-        </TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <motion.div 
-            className="absolute top-[35%] sm:top-[38%] md:top-[40%] lg:top-[45%] left-[5%] sm:left-[8%] md:left-[10%] lg:left-[10%] w-[8px] h-[8px] sm:w-[10px] sm:h-[10px] md:w-[12px] md:h-[12px] lg:w-[12px] lg:h-[12px] opacity-85 cursor-pointer z-10"
-            style={{ y: agent6Y, x: agent6X }}
-            whileHover={{ scale: 1.25 }}
-            initial="hidden"
-            animate={showHero ? 'visible' : 'hidden'}
-            variants={agentVariants}
-            transition={{ delay: 1 + 5 * 0.08, duration: 0.6, ease: 'easeOut' }}
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-bl from-pink-300 via-orange-400 to-red-400" />
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>M1(Marketing Agent)</p>
-        </TooltipContent>
-      </Tooltip>
-
-      {/* Gradient Circle with Text */}
-      <motion.div 
-        className="relative flex flex-col items-center justify-center mb-8 sm:mb-10 md:mb-12 mt-8 sm:mt-10 md:mt-12"
-        style={{ y: useTransform(scrollY, [0, 1000], [0, 100]) }}
-        initial="hidden"
-        animate={showHero ? 'visible' : 'hidden'}
-        variants={contentVariants}
-      >
-        {/* Central gradient circle - positioned to extend from above */}
-        <motion.div
-          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] sm:w-[250px] sm:h-[250px] md:w-[350px] md:h-[350px] lg:w-[450px] lg:h-[450px] xl:w-[600px] xl:h-[600px] object-contain rounded-full blur-[60px] sm:blur-[70px] md:blur-[80px] shadow-[0_0_60px_10px_rgba(54,189,160,0.4)]"
-          style={{
-            background: 'linear-gradient(135deg, #5B502F 0%, #7A9B6A 55%, #36BDA0 100%)',
-            boxShadow: '0 0 60px 10px rgba(54,189,160,0.4), 0 0 120px 30px rgba(54,189,160,0.15)',
-            animation: 'pulseGlow 2.5s ease-in-out infinite',
-          }}
+    <>
+      {/* Hero Top Section: background image, text, buttons */}
+      <section className="w-full flex flex-col items-center justify-center min-h-[calc(100vh-5rem)] pt-20 mt-5 relative px-4 sm:px-6 lg:px-8 overflow-hidden rounded-[33.93px]">
+        <Image
+          src="/auth/bg.png"
+          alt="Helium background"
+          fill
+          priority
+          className="absolute inset-0 w-full h-full object-cover z-0 !opacity-100 !brightness-100 !blur-0 transition-none"
+          style={{ objectPosition: 'center center', borderRadius: '33.93px' }}
+        />
+        <motion.div 
+          className="relative flex flex-col items-center justify-center h-full w-full z-10"
+          style={{ y: useTransform(scrollY, [0, 1000], [0, 100]) }}
           initial="hidden"
           animate={showHero ? 'visible' : 'hidden'}
-          variants={circleVariants}
-          transition={{ repeat: Infinity, duration: 12, ease: 'linear' }}
-        />
-        <motion.div
-          className="relative flex flex-col items-center justify-center w-full max-w-6xl"
+          variants={contentVariants}
         >
-          <motion.h1
-            className="text-center text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl 2xl:text-[92px] font-extralight text-white leading-tight tracking-tight mb-6 sm:mb-8 z-2 mt-8 sm:mt-10 md:mt-12 px-4 sm:px-6"
-            initial="hidden"
-            animate={showHero ? 'visible' : 'hidden'}
-            variants={contentVariants}
-            transition={{ ease: 'easeOut' }}
-          >
-            Helium is abundant in <br className="hidden md:block" />the universe, yet <br className="hidden md:block" />strategic on Earth
-          </motion.h1>
           <motion.div
-            className="flex flex-row gap-2 sm:gap-3 md:gap-4 mt-2 w-auto px-4 sm:px-0 z-2"
-            initial="hidden"
-            animate={showHero ? 'visible' : 'hidden'}
-            variants={contentVariants}
-            transition={{ ease: 'easeOut' }}
+            className="relative flex flex-col items-center justify-center w-full max-w-6xl"
           >
-            <Link
-              href="#"
-              onClick={e => { e.preventDefault(); setWaitlistOpen(true); }}
-              className="px-2 sm:px-6 md:px-4 lg:px-6 py-1.5 sm:py-4 md:py-3 lg:py-4 liquid-glass-btn rounded-full text-white text-xs sm:text-sm md:text-base lg:text-lg font-normal backdrop-blur-lg hover:bg-white/20 transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2"
+            <motion.h1
+              className="text-center text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl 2xl:text-[92px] font-extralight text-white leading-tight tracking-tight mb-6 sm:mb-8 z-2 px-4 sm:px-6"
+              initial="hidden"
+              animate={showHero ? 'visible' : 'hidden'}
+              variants={contentVariants}
+              transition={{ ease: 'easeOut' }}
             >
-              <span className="liquid-glass-gradient-border rounded-full"></span>
-              <span className="whitespace-nowrap">Join Helium Waitlist</span>
-              <Image src="/arrow.svg" alt="arrow" width={30} height={30} className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 flex-shrink-0" />
-            </Link>
-            <Link
-              href={user ? '/dashboard' : '/auth'}
-              className="px-2 sm:px-6 md:px-4 lg:px-6 py-1.5 sm:py-4 md:py-3 lg:py-4 liquid-glass-btn rounded-full text-white text-xs sm:text-sm md:text-base lg:text-lg font-normal backdrop-blur-lg hover:bg-white/20 transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2"
+              Helium is abundant in <br className="hidden md:block" />the universe, yet <br className="hidden md:block" />strategic on Earth
+            </motion.h1>
+            <motion.div
+              className="flex flex-row gap-2 sm:gap-3 md:gap-4 mt-2 w-auto px-4 sm:px-0 z-2"
+              initial="hidden"
+              animate={showHero ? 'visible' : 'hidden'}
+              variants={contentVariants}
+              transition={{ ease: 'easeOut' }}
             >
-              <span className="liquid-glass-gradient-border rounded-full"></span>
-              <span className="whitespace-nowrap">{user ? 'Get Started' : 'Log In'}</span>
-              <Image src="/arrow.svg" alt="arrow" width={30} height={30} className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 flex-shrink-0" />
-            </Link>
+              <Link
+                href="#"
+                onClick={e => { e.preventDefault(); setWaitlistOpen(true); }}
+                className="px-2 sm:px-6 md:px-4 lg:px-6 py-1.5 sm:py-4 md:py-3 lg:py-4 liquid-glass-btn rounded-full text-white text-xs sm:text-sm md:text-base lg:text-lg font-normal backdrop-blur-lg hover:bg-white/20 transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2"
+              >
+                <span className="liquid-glass-gradient-border rounded-full"></span>
+                <span className="whitespace-nowrap">Join Helium Waitlist</span>
+                <Image src="/arrow.svg" alt="arrow" width={30} height={30} className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 flex-shrink-0" />
+              </Link>
+              <Link
+                href={user ? '/dashboard' : '/auth'}
+                className="px-2 sm:px-6 md:px-4 lg:px-6 py-1.5 sm:py-4 md:py-3 lg:py-4 liquid-glass-btn rounded-full text-white text-xs sm:text-sm md:text-base lg:text-lg font-normal backdrop-blur-lg hover:bg-white/20 transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2"
+              >
+                <span className="liquid-glass-gradient-border rounded-full"></span>
+                <span className="whitespace-nowrap">{user ? 'Get Started' : 'Log In'}</span>
+                <Image src="/arrow.svg" alt="arrow" width={30} height={30} className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 lg:w-5 lg:h-5 xl:w-6 xl:h-6 flex-shrink-0" />
+              </Link>
+            </motion.div>
+            <WaitlistForm isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} />
           </motion.div>
-          <WaitlistForm isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} />
         </motion.div>
-      </motion.div>
-
-      {/* Video Section */}
-      <motion.div
-        className="w-full flex justify-center mt-8 sm:mt-10 md:mt-12 mb-8 sm:mb-10 md:mb-12 px-4 sm:px-6 lg:px-8"
-        initial="hidden"
-        animate={showHero ? 'visible' : 'hidden'}
-        variants={videoVariants}
-        transition={{ ease: 'easeOut' }}
-      >
-        <video
-          src="/videos/helium-demo-video.mp4"
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="rounded-2xl sm:rounded-3xl md:rounded-[48px] shadow-lg border border-white/10 max-w-4xl w-full h-auto"
+      </section>
+      {/* Hero Video Section (separate) */}
+      <section className="w-full flex justify-center mt-8 sm:mt-10 md:mt-12 mb-8 sm:mb-10 md:mb-12 px-4 sm:px-6 lg:px-8">
+        <motion.div
+          className="w-full flex justify-center"
+          initial="hidden"
+          animate={showHero ? 'visible' : 'hidden'}
+          variants={videoVariants}
+          transition={{ ease: 'easeOut' }}
         >
-          Your browser does not support the video tag.
-        </video>
-      </motion.div>
-
-      {/* Stats Grid */}
-      {/* <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 w-full max-w-7xl px-4 sm:px-6 lg:px-8 mt-4">
-        {heroStats.map((stat, idx) => (
-          <div
-            key={idx}
-            className="liquid-glass-btn rounded-2xl sm:rounded-3xl p-3 sm:p-4 md:p-6 flex flex-col min-h-[100px] sm:min-h-[120px] md:min-h-[150px]"
+          <video
+            src="/videos/helium-demo-video.mp4"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="rounded-2xl sm:rounded-3xl md:rounded-[48px] shadow-lg border border-white/10 max-w-4xl w-full h-auto"
           >
-            <span className="liquid-glass-gradient-border rounded-2xl sm:rounded-3xl opacity-70"></span>
-            <div className="relative z-10 flex flex-col justify-between h-full w-full">
-              <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl text-white mb-1 sm:mb-2 font-medium">{stat.value}</span>
-              <span className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl text-white/70 font-normal leading-tight">{stat.text}</span>
-            </div>
-          </div>
-        ))}
-      </div>  */}
-    </section>
+            Your browser does not support the video tag.
+          </video>
+        </motion.div>
+      </section>
+    </>
   );
 }

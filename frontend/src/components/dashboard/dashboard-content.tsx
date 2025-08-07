@@ -213,8 +213,13 @@ export function DashboardContent() {
         )}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[650px] max-w-[90%]">
           <div className="flex flex-col items-center text-center w-full">
-            <p className="tracking-tight text-3xl font-normal text-muted-foreground/80 mt-2">
-              {getGreeting()} {firstName}
+            <p className="tracking-tight text-4xl font-normal text-muted-foreground/80 mt-2">
+              {getGreeting()}{' '}
+              <span 
+                className="font-semibold text-foreground/80"
+              >
+                {firstName}
+              </span>
             </p>
           </div>
           <div className={cn(

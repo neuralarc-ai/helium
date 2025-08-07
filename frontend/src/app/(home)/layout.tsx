@@ -6,7 +6,7 @@ export default function HomeLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="w-full relative bg-[#1F1F1F]">
+    <div className="w-full relative bg-white">
       <Navbar />
       {children}
     </div>

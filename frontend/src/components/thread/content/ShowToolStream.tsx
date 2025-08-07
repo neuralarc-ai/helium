@@ -110,7 +110,7 @@ export const ShowToolStream: React.FC<ShowToolStreamProps> = ({
     // Always show tool button, conditionally show content below for file operations only
     if (showExpanded && (isFileOperationTool || isEditFile)) {
         return (
-            <div className="my-1">
+            <div className="">
                 {shouldShowContent ? (
                     // Expanded view with content - show after 1500ms for file operations
                     <div className={`border border-neutral-200 dark:border-neutral-700/50 rounded-2xl overflow-hidden transition-all duration-500 ease-in-out ${shouldShowContent ? 'bg-zinc-100 dark:bg-neutral-900' : 'bg-muted'
@@ -123,7 +123,7 @@ export const ShowToolStream: React.FC<ShowToolStreamProps> = ({
                             <div className=' flex items-center justify-center p-1 rounded-sm'>
                                 <CircleDashed className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 animate-spin animation-duration-2000" />
                             </div>
-                            <span className="font-mono text-xs text-foreground">{displayName}</span>
+                            <span className="font-mono text-xs text-foreground/80">{displayName}</span>
                             {paramDisplay && <span className="ml-1 text-muted-foreground truncate max-w-[200px]" title={paramDisplay}>{paramDisplay}</span>}
                         </button>
 
@@ -160,7 +160,7 @@ export const ShowToolStream: React.FC<ShowToolStreamProps> = ({
                         <div className='border-2 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-800 flex items-center justify-center p-0.5 rounded-sm border-neutral-400/20 dark:border-neutral-600'>
                             <CircleDashed className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 animate-spin animation-duration-2000" />
                         </div>
-                        <span className="font-mono text-xs text-foreground">{displayName}</span>
+                        <span className="font-mono text-xs text-foreground/80">{displayName}</span>
                         {paramDisplay && <span className="ml-1 text-muted-foreground truncate max-w-[200px]" title={paramDisplay}>{paramDisplay}</span>}
                     </button>
                 )}
@@ -170,7 +170,7 @@ export const ShowToolStream: React.FC<ShowToolStreamProps> = ({
 
     // Show normal tool button (non-file-operation tools or non-expanded case)
     return (
-        <div className="my-1">
+        <div className="">
             <button
                 onClick={() => onToolClick?.(messageId, toolName)}
                 className="animate-shimmer inline-flex items-center gap-1.5 py-1 px-1 pr-1.5 text-xs text-muted-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors cursor-pointer border border-neutral-200 dark:border-neutral-700/50"
@@ -178,7 +178,7 @@ export const ShowToolStream: React.FC<ShowToolStreamProps> = ({
                 <div className='border-2 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-800 flex items-center justify-center p-0.5 rounded-sm border-neutral-400/20 dark:border-neutral-600'>
                     <CircleDashed className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 animate-spin animation-duration-2000" />
                 </div>
-                <span className="font-mono text-xs text-foreground">{displayName}</span>
+                <span className="font-mono text-xs text-foreground/80">{displayName}</span>
                 {paramDisplay && <span className="ml-1 text-muted-foreground truncate max-w-[200px]" title={paramDisplay}>{paramDisplay}</span>}
             </button>
         </div>
