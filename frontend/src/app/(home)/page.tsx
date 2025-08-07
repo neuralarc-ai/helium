@@ -15,8 +15,10 @@ export default function Home() {
     <>
       <ModalProviders />
       <main className="flex flex-col items-center justify-center min-h-screen w-full bg-white">
+        <div className="w-full">
+          <HeroSection />
+        </div>
         <div className="w-full max-w-[1440px] mx-auto">
-            <HeroSection />
             <HeliumPoweredActions />
             <StrategicServiceSection />
             <NeuralArcSection />

@@ -173,14 +173,17 @@ export default function HeroSection() {
   return (
     <>
       {/* Hero Top Section: background image, text, buttons */}
-      <section className="w-full flex flex-col items-center justify-center min-h-[calc(100vh-5rem)] pt-20 mt-5 relative px-4 sm:px-6 lg:px-8 overflow-hidden rounded-[33.93px]">
+      <section
+        className="absolute top-0 left-0 right-0 w-screen h-[100vh] flex flex-col items-center justify-center pt-24 relative overflow-hidden z-0"
+        style={{ margin: 0, padding: 0, borderRadius: 0, maxWidth: '100%' }}
+      >
         <Image
-          src="/auth/bg.png"
+          src="/auth/bg-image.png"
           alt="Helium background"
           fill
           priority
-          className="absolute inset-0 w-full h-full object-cover z-0 !opacity-100 !brightness-100 !blur-0 transition-none"
-          style={{ objectPosition: 'center center', borderRadius: '33.93px' }}
+          className="absolute top-0 left-0 w-full h-full object-cover z-0 !opacity-100 !brightness-100 !blur-0 transition-none"
+          style={{ objectPosition: 'center center', borderRadius: 0 }}
         />
         <motion.div 
           className="relative flex flex-col items-center justify-center h-full w-full z-10"
@@ -192,6 +195,20 @@ export default function HeroSection() {
           <motion.div
             className="relative flex flex-col items-center justify-center w-full max-w-6xl"
           >
+            <motion.div 
+              className="relative w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 xl:w-20 xl:h-20 2xl:w-24 2xl:h-24 mb-1 sm:mb-2 md:mb-3 lg:mb-4 xl:mb-5 2xl:mb-6 z-2"
+              initial="hidden"
+              animate={showHero ? 'visible' : 'hidden'}
+              variants={contentVariants}
+              transition={{ ease: 'easeOut' }}
+            >
+              <Image
+                src="/helium-agent.png"
+                alt="Helium Agent"
+                fill
+                className="object-contain"
+              />
+            </motion.div>
             <motion.h1
               className="text-center text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl 2xl:text-[92px] font-extralight text-white leading-tight tracking-tight mb-6 sm:mb-8 z-2 px-4 sm:px-6"
               initial="hidden"
