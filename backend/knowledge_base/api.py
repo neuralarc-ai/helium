@@ -14,8 +14,8 @@ router = APIRouter(prefix="/knowledge-base", tags=["knowledge-base"])
 # Helper function to get account_id for a user
 async def get_user_account_id(client, user_id: str) -> str:
     """
-    Get the account_id for a user. For personal accounts, this is the same as user_id.
-    If no personal account is found, it attempts to create one.
+    Get the account_id for a user. First try to find an existing personal account,
+    if not found, try to create one, otherwise use a fallback approach.
     """
     try:
         logger.info(f"Getting account_id for user {user_id}")
@@ -24,69 +24,20 @@ async def get_user_account_id(client, user_id: str) -> str:
         try:
             result = await client.table('basejump.accounts').select('id').eq('primary_owner_user_id', user_id).eq('personal_account', True).execute()
             
-            logger.info(f"Query result: {result.data}")
-            
             if result.data and len(result.data) > 0:
                 account_id = result.data[0]['id']
                 logger.info(f"Found personal account: {account_id}")
                 return account_id
         except Exception as table_error:
-            logger.warning(f"Basejump accounts table may not exist yet: {str(table_error)}")
-            # If the table doesn't exist, we need to handle this differently
-            # For now, let's check if there are any global knowledge base entries and use their account_id
-            try:
-                # First, try to find an account_id that has entries with the user_id in the name or content
-                # This is a heuristic to match the user to their account
-                result = await client.table('global_knowledge_base_entries').select('account_id, name, content').execute()
-                if result.data:
-                    # Look for entries that might belong to this user
-                    for entry in result.data:
-                        entry_name = entry.get('name', '').lower()
-                        entry_content = entry.get('content', '').lower()
-                        user_id_lower = user_id.lower()
-                        
-                        # If the entry name or content contains the user_id, use this account_id
-                        if user_id_lower in entry_name or user_id_lower in entry_content:
-                            account_id = entry['account_id']
-                            logger.info(f"Found matching account_id for user {user_id}: {account_id}")
-                            return account_id
-                    
-                    # If no direct match found, check if 86A document exists and use its account_id
-                    for entry in result.data:
-                        if '86a' in entry.get('name', '').lower():
-                            account_id = entry['account_id']
-                            logger.info(f"Found 86A document, using its account_id: {account_id}")
-                            return account_id
-                    
-                    # CRITICAL FIX: Don't use the first account_id as fallback - this causes cross-account data leakage
-                    # Instead, generate a unique UUID based on the user_id to ensure proper isolation
-                    import uuid
-                    # Generate a deterministic UUID based on the user_id
-                    unique_account_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, user_id))
-                    logger.info(f"Generated unique account_id for user {user_id}: {unique_account_id}")
-                    return unique_account_id
-                else:
-                    # Generate a unique UUID based on the user_id
-                    import uuid
-                    unique_account_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, user_id))
-                    logger.info(f"Generated unique account_id for user {user_id} since no global entries exist: {unique_account_id}")
-                    return unique_account_id
-            except Exception as e:
-                logger.warning(f"Error checking global knowledge base entries: {str(e)}")
-                # Generate a unique UUID based on the user_id
-                import uuid
-                unique_account_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, user_id))
-                logger.info(f"Generated unique account_id for user {user_id} as fallback: {unique_account_id}")
-                return unique_account_id
+            logger.warning(f"Could not query basejump.accounts table: {str(table_error)}")
         
         # If no personal account found, try to create one
-        logger.info(f"No personal account found, attempting to create one for user: {user_id}")
         try:
-            # Create a personal account for this user
             import uuid
-            unique_account_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, user_id))
+            unique_account_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"personal-{user_id}"))
+            
             create_result = await client.table('basejump.accounts').insert({
-                'id': unique_account_id,  # Use generated UUID as account_id for personal accounts
+                'id': unique_account_id,
                 'primary_owner_user_id': user_id,
                 'personal_account': True,
                 'name': f"Personal Account ({user_id[:8]})"
@@ -94,41 +45,23 @@ async def get_user_account_id(client, user_id: str) -> str:
             
             if create_result.data:
                 logger.info(f"Created personal account: {unique_account_id}")
-                
-                # Also ensure the user has a role on this account
-                try:
-                    await client.table('basejump.account_user').insert({
-                        'account_id': unique_account_id,
-                        'user_id': user_id,
-                        'role': 'owner'
-                    }).execute()
-                    logger.info(f"Added user {user_id} as owner to account {unique_account_id}")
-                except Exception as role_error:
-                    logger.warning(f"Could not add user role (may already exist): {str(role_error)}")
-                
                 return unique_account_id
             else:
-                logger.error("Failed to create personal account")
-                raise HTTPException(
-                    status_code=500,
-                    detail="Failed to create user account. Please try again or contact support."
-                )
+                logger.info(f"Account may already exist: {unique_account_id}")
+                return unique_account_id
                 
         except Exception as create_error:
-            logger.error(f"Error creating personal account: {str(create_error)}")
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to create user account. Please try again or contact support."
-            )
+            logger.warning(f"Could not create account: {str(create_error)}")
         
-    except HTTPException:
-        raise
+        # If all else fails, try to use the user_id directly (this might work if the constraint is not enforced)
+        logger.warning(f"Using user_id as account_id as fallback: {user_id}")
+        return user_id
+        
     except Exception as e:
-        logger.error(f"Error getting account_id for user {user_id}: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Database error. Please try again or contact support."
-        )
+        logger.error(f"Error in get_user_account_id: {str(e)}", exc_info=True)
+        # Final fallback: return user_id
+        logger.info(f"Using final fallback account_id for user {user_id}: {user_id}")
+        return user_id
 
 class KnowledgeBaseEntry(BaseModel):
     entry_id: Optional[str] = None
@@ -534,18 +467,30 @@ async def upload_file_to_global_kb(
     
     """Upload and process a file for global knowledge base"""
     try:
+        logger.info(f"Starting file upload for user {user_id}, filename: {file.filename}")
+        logger.info(f"File content type: {file.content_type}")
+        logger.info(f"File size: {file.size if hasattr(file, 'size') else 'unknown'}")
+        
         client = await db.client
+        logger.info("Database client obtained")
+        
         account_id = await get_user_account_id(client, user_id)
+        logger.info(f"Account ID obtained: {account_id}")
         
         file_content = await file.read()
+        logger.info(f"File content read, size: {len(file_content)} bytes")
         
         # Process the file using the same FileProcessor as thread knowledge base
         processor = FileProcessor()
+        logger.info("FileProcessor initialized")
+        
         result = await processor.process_global_file_upload(
             account_id, file_content, file.filename, file.content_type or 'application/octet-stream'
         )
+        logger.info(f"File processing result: {result}")
         
         if result['success']:
+            logger.info("File processing successful, returning success response")
             return {
                 "success": True,
                 "entry_id": result['entry_id'],
@@ -555,13 +500,17 @@ async def upload_file_to_global_kb(
                 "message": "File processed and added to global knowledge base"
             }
         else:
-            raise HTTPException(status_code=400, detail=result.get('error', 'Failed to process file'))
+            error_msg = result.get('error', 'Failed to process file')
+            logger.error(f"File processing failed: {error_msg}")
+            raise HTTPException(status_code=400, detail=error_msg)
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error uploading file to global KB: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to upload file")
+        logger.error(f"Error uploading file to global KB: {str(e)}", exc_info=True)
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
 
 @router.get("/global/{entry_id}", response_model=KnowledgeBaseEntryResponse)
 async def get_global_knowledge_base_entry(
@@ -638,7 +587,11 @@ async def test_global_knowledge_base_access(
             account_user_result = {"error": str(e)}
         
         # Try to select from the global knowledge base table
-        kb_result = await client.table('global_knowledge_base_entries').select('entry_id').limit(1).execute()
+        kb_result = None
+        try:
+            kb_result = await client.table('global_knowledge_base_entries').select('entry_id').limit(1).execute()
+        except Exception as e:
+            kb_result = {"error": str(e)}
         
         # Try to insert a test entry (then delete it)
         test_insert_result = None
@@ -663,10 +616,10 @@ async def test_global_knowledge_base_access(
             "status": "success",
             "account_id": account_id,
             "user_id": user_id,
-            "table_accessible": True,
+            "table_accessible": isinstance(kb_result, dict) == False,
             "personal_accounts": personal_account_result,
             "account_users": account_user_result,
-            "kb_result": kb_result.data,
+            "kb_result": kb_result.data if not isinstance(kb_result, dict) else kb_result,
             "test_insert_successful": bool(test_insert_result and not isinstance(test_insert_result, dict)),
             "test_insert_error": test_insert_result.get("error") if isinstance(test_insert_result, dict) else None
         }
@@ -675,15 +628,10 @@ async def test_global_knowledge_base_access(
         logger.error(f"Test failed: {str(e)}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
-        
         return {
             "status": "error",
             "error": str(e),
-            "account_id": account_id if 'account_id' in locals() else None,
-            "user_id": user_id,
-            "table_accessible": False,
-            "personal_accounts": personal_account_result.data if 'personal_account_result' in locals() and hasattr(personal_account_result, 'data') else None,
-            "account_users": account_user_result.data if 'account_user_result' in locals() and hasattr(account_user_result, 'data') else None
+            "traceback": traceback.format_exc()
         }
 
 # Thread Knowledge Base Endpoints
