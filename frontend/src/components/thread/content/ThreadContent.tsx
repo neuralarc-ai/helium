@@ -389,7 +389,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 <>
                     {isSunaAgent ? (
                         <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
-                            <HeliumLogo size={16} />
+                            <HeliumLogo size={16} animated={agentStatus === 'running' || agentStatus === 'connecting'} />
                         </div>
                     ) : (
                         <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
@@ -399,7 +399,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 </>
             ) : (
                 <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
-                    <HeliumLogo size={16} />
+                    <HeliumLogo size={16} animated={agentStatus === 'running' || agentStatus === 'connecting'} />
                 </div>
             );
             return {
@@ -409,9 +409,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
         }
         return {
             name: agentName || 'o1',
-            avatar: agentAvatar
+            avatar: <HeliumLogo size={16} animated={agentStatus === 'running' || agentStatus === 'connecting'} />
         };
-    }, [threadMetadata, displayMessages, agentName, agentAvatar]);
+    }, [threadMetadata, displayMessages, agentName, agentAvatar, agentStatus]);
 
     const handleScroll = () => {
         if (!messagesContainerRef.current) return;
