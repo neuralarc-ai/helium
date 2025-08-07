@@ -108,74 +108,156 @@ export default function PerformanceSection() {
           </div>
         ))}
       </div> */}
-           {/* NEW: 5-column Super-Agent Grid */}
-           <div className="max-w-5xl w-full mx-auto mb-6 sm:mb-8 md:mb-12 px-3 sm:px-4 md:px-0 space-y-6">
-            {/* First row: 3 cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-              {[
-                {
-                  title: 'SALES SUPER-AGENT',
-                  image: '/neuralarc/sales-super-agent.png'
-                },
-                {
-                  title: 'HUMAN RESOURCE SUPER-AGENT',
-                  image: '/neuralarc/hr-super-agent.png'
-                },
-                {
-                  title: 'OPERATIONS SUPER-AGENT',
-                  image: '/neuralarc/operations-super-agent.png'
-                }
-              ].map(({ title, image }) => (
-                <div
-                  key={title}
-                  className="bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col items-center text-center p-4 sm:p-5 md:p-6 min-h-[220px]"
-                >
-                  <Image
-                    src={image}
-                    alt={title}
-                    width={200}
-                    height={200}
-                    className="object-cover w-full h-auto rounded-[33px] mb-2"
-                    style={{ aspectRatio: '1/1' }}
-                  />
-                  <h4 className="text-gray-700 text-xs sm:text-sm font-medium uppercase tracking-wider mt-2 mb-1">
-                    {title}
-                  </h4>
-                </div>
-              ))}
-            </div>
+           {/* NEW: 5-column Super-Agent Grid for md and up */}
+            <div className="max-w-5xl w-full mx-auto mb-6 sm:mb-8 md:mb-12 px-3 sm:px-4 md:px-0 space-y-6 hidden md:block">
+  {/* First row: 3 cards */}
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+    {[
+      {
+        title: 'SALES SUPER-AGENT',
+        image: '/neuralarc/sales-super-agent.png'
+      },
+      {
+        title: 'HUMAN RESOURCE SUPER-AGENT',
+        image: '/neuralarc/hr-super-agent.png'
+      },
+      {
+        title: 'OPERATIONS SUPER-AGENT',
+        image: '/neuralarc/operations-super-agent.png'
+      }
+    ].map(({ title, image }) => (
+      <div
+        key={title}
+        className="bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col items-center text-center p-4 sm:p-5 md:p-6 min-h-[220px]"
+      >
+        <Image
+          src={image}
+          alt={title}
+          width={200}
+          height={200}
+          className="object-cover w-full h-auto rounded-[33px] mb-2"
+          style={{ aspectRatio: '1/1' }}
+        />
+        <h4 className="text-gray-700 text-xs sm:text-sm font-medium uppercase tracking-wider mt-2 mb-1">
+          {title}
+        </h4>
+      </div>
+    ))}
+  </div>
 
-            {/* Second row: 2 cards centered */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 place-content-center justify-center md:w-[66.66%] mx-auto">
-              {[
-                {
-                  title: 'LEGAL SUPER-AGENT',
-                  image: '/neuralarc/legal-super-agent.png'
-                },
-                {
-                  title: 'FINANCE SUPER-AGENT',
-                  image: '/neuralarc/finance-super-agent.png'
-                }
-              ].map(({ title, image }) => (
-                <div
-                  key={title}
-                  className="bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col items-center text-center p-4 sm:p-5 md:p-6 min-h-[220px]"
-                >
-                  <Image
-                    src={image}
-                    alt={title}
-                    width={200}
-                    height={200}
-                    className="object-cover w-full h-auto rounded-[33px] mb-2"
-                    style={{ aspectRatio: '1/1' }}
-                  />
-                  <h4 className="text-gray-700 text-xs sm:text-sm font-medium uppercase tracking-wider mt-2 mb-1">
-                    {title}
-                  </h4>
-                </div>
-              ))}
-            </div>
-          </div>
+  {/* Second row: 2 cards centered */}
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 place-content-center justify-center md:w-[66.66%] mx-auto">
+    {[
+      {
+        title: 'LEGAL SUPER-AGENT',
+        image: '/neuralarc/legal-super-agent.png'
+      },
+      {
+        title: 'FINANCE SUPER-AGENT',
+        image: '/neuralarc/finance-super-agent.png'
+      }
+    ].map(({ title, image }) => (
+      <div
+        key={title}
+        className="bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col items-center text-center p-4 sm:p-5 md:p-6 min-h-[220px]"
+      >
+        <Image
+          src={image}
+          alt={title}
+          width={200}
+          height={200}
+          className="object-cover w-full h-auto rounded-[33px] mb-2"
+          style={{ aspectRatio: '1/1' }}
+        />
+        <h4 className="text-gray-700 text-xs sm:text-sm font-medium uppercase tracking-wider mt-2 mb-1">
+          {title}
+        </h4>
+      </div>
+    ))}
+  </div>
+</div>
+
+{/* Responsive 2-2-1 layout for below md */}
+<div className="max-w-5xl w-full mx-auto mb-6 sm:mb-8 md:mb-12 px-3 sm:px-4 md:px-0 space-y-6 md:hidden">
+  {/* First row: 2 cards */}
+  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+    {[
+      {
+        title: 'SALES SUPER-AGENT',
+        image: '/neuralarc/sales-super-agent.png'
+      },
+      {
+        title: 'HUMAN RESOURCE SUPER-AGENT',
+        image: '/neuralarc/hr-super-agent.png'
+      }
+    ].map(({ title, image }) => (
+      <div
+        key={title}
+        className="flex-1 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col items-center text-center p-4 sm:p-5 md:p-6 min-h-[220px]"
+      >
+        <Image
+          src={image}
+          alt={title}
+          width={200}
+          height={200}
+          className="object-cover w-full h-auto rounded-[33px] mb-2"
+          style={{ aspectRatio: '1/1' }}
+        />
+        <h4 className="text-gray-700 text-xs sm:text-sm font-medium uppercase tracking-wider mt-2 mb-1">
+          {title}
+        </h4>
+      </div>
+    ))}
+  </div>
+
+  {/* Second row: 2 cards */}
+  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+    {[
+      {
+        title: 'OPERATIONS SUPER-AGENT',
+        image: '/neuralarc/operations-super-agent.png'
+      },
+      {
+        title: 'LEGAL SUPER-AGENT',
+        image: '/neuralarc/legal-super-agent.png'
+      }
+    ].map(({ title, image }) => (
+      <div
+        key={title}
+        className="flex-1 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col items-center text-center p-4 sm:p-5 md:p-6 min-h-[220px]"
+      >
+        <Image
+          src={image}
+          alt={title}
+          width={200}
+          height={200}
+          className="object-cover w-full h-auto rounded-[33px] mb-2"
+          style={{ aspectRatio: '1/1' }}
+        />
+        <h4 className="text-gray-700 text-xs sm:text-sm font-medium uppercase tracking-wider mt-2 mb-1">
+          {title}
+        </h4>
+      </div>
+    ))}
+  </div>
+
+  {/* Third row: 1 card, centered */}
+  <div className="flex justify-center">
+    <div className="w-full sm:w-1/2 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col items-center text-center p-4 sm:p-5 md:p-6 min-h-[220px]">
+      <Image
+        src="/neuralarc/finance-super-agent.png"
+        alt="FINANCE SUPER-AGENT"
+        width={200}
+        height={200}
+        className="object-cover w-full h-auto rounded-[33px] mb-2"
+        style={{ aspectRatio: '1/1' }}
+      />
+      <h4 className="text-gray-700 text-xs sm:text-sm font-medium uppercase tracking-wider mt-2 mb-1">
+        FINANCE SUPER-AGENT
+      </h4>
+    </div>
+  </div>
+</div>
 
       {/* Bottom two-column feature block */}
       {/* <div className="max-w-7xl w-full mx-auto flex flex-col md:flex-row gap-0 rounded-3xl overflow-hidden bg-white dark:bg-[#232323] border border-[#e5e7eb] dark:border-[#FFFFFF12] shadow-md">

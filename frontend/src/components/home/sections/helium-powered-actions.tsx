@@ -66,7 +66,7 @@ export default function HeliumPoweredActions() {
             key={feature.title}
             className="w-full min-w-[140px] bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col items-center p-3 sm:p-5 transition-all duration-200 hover:shadow-md"
           >
-            <div className="w-full aspect-square rounded-xl overflow-hidden mb-4 flex items-center justify-center bg-gray-50">
+            <div className="w-full aspect-square rounded-[33px] overflow-hidden mb-4 flex items-center justify-center bg-gray-50">
               <Image
                 src={feature.image}
                 alt={feature.title}

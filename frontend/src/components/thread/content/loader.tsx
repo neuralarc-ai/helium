@@ -3,22 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AnimatedShinyText } from '@/components/ui/animated-shiny-text';
 
 const items = [
-    { id: 1, content: "Initializing neural pathways..." },
-    { id: 2, content: "Analyzing query complexity..." },
-    { id: 3, content: "Assembling cognitive framework..." },
-    { id: 4, content: "Orchestrating thought processes..." },
-    { id: 5, content: "Synthesizing contextual understanding..." },
-    { id: 6, content: "Calibrating response parameters..." },
-    { id: 7, content: "Engaging reasoning algorithms..." },
-    { id: 8, content: "Processing semantic structures..." },
-    { id: 9, content: "Formulating strategic approach..." },
-    { id: 10, content: "Optimizing solution pathways..." },
-    { id: 11, content: "Harmonizing data streams..." },
-    { id: 12, content: "Architecting intelligent response..." },
-    { id: 13, content: "Fine-tuning cognitive models..." },
-    { id: 14, content: "Weaving narrative threads..." },
-    { id: 15, content: "Crystallizing insights..." },
-    { id: 16, content: "Preparing comprehensive analysis..." }
+  { id: 1, content: "Connecting to Helium Core..." },
+  { id: 2, content: "01 is decoding user intent..." },
+  { id: 3, content: "Routing task through Helium’s neural grid..." },
+  { id: 4, content: "Helium Core is evaluating optimal strategy..." },
+  { id: 5, content: "01 is scanning cognitive modules..." },
+  { id: 6, content: "Establishing link with artifact systems..." },
+  { id: 7, content: "Deploying agent protocols from Core memory..." },
+  { id: 8, content: "Synchronizing with LLM orchestration layer..." },
+  { id: 9, content: "Helium Core initiating agent collaboration..." },
+  { id: 10, content: "Agent 01 is constructing semantic scaffold..." },
+  { id: 11, content: "Query embedded into Core's reasoning matrix..." },
+  { id: 12, content: "Helium Core is aligning response parameters..." },
+  { id: 13, content: "Engaging recursive agent feedback loop..." },
+  { id: 14, content: "01 consolidating knowledge streams..." },
+  { id: 15, content: "Finalizing insight with Helium Core precision..." },
+  { id: 16, content: "Response encrypted and released by 01..." }
   ];
 
 export const AgentLoader = () => {
@@ -35,7 +35,6 @@ export const AgentLoader = () => {
 
   return (
     <div className="flex py-2 items-center w-full">
-      <div>✨</div>
             <AnimatePresence>
             <motion.div
                 key={items[index].id}

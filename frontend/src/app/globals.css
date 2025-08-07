@@ -3,6 +3,7 @@
 @plugin 'tailwind-scrollbar';
 @plugin 'tailwind-scrollbar-hide';
 
+/* Re-enable dark mode for theme toggle functionality */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
@@ -527,11 +528,14 @@
   /* Dark mode adjustments */
   .dark & {
     & pre {
-      background-color: var(--muted);
+      background-color: theme('colors.background/95');
+      border: 1px solid theme('colors.zinc.700');
     }
 
     & code:not([class*='language-']) {
-      background-color: var(--muted);
+      background-color: theme('colors.background/95');
+      color: theme('colors.zinc.200');
+      border: 1px solid theme('colors.zinc.700');
     }
 
     & th {
