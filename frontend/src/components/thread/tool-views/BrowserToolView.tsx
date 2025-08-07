@@ -267,14 +267,12 @@ export function BrowserToolView({
 
   return (
     <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-14 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-sm border-b p-2 px-4 space-y-2">
+      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-[12px] mx-2 mt-2 mb-1">
         <div className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="relative p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/20">
-              <MonitorPlay className="w-5 h-5 text-purple-500 dark:text-purple-400" />
-            </div>
+            <MonitorPlay className="w-5 h-5 text-white" />
             <div>
-              <CardTitle className="text-base font-medium text-zinc-900 dark:text-zinc-100">
+              <CardTitle className="text-base font-medium text-white">
                 {toolTitle}
               </CardTitle>
             </div>
@@ -300,7 +298,7 @@ export function BrowserToolView({
 
           {isRunning && (
             <Badge className="bg-gradient-to-b from-blue-200 to-blue-100 text-blue-700 dark:from-blue-800/50 dark:to-blue-900/60 dark:text-blue-300">
-              <CircleDashed className="h-3.5 w-3.5 animate-spin" />
+              <CircleDashed className="h-3.5 w-3.5 animate-spin mr-1" />
               Executing browser action
             </Badge>
           )}
