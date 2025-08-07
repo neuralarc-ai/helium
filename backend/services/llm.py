@@ -27,6 +27,9 @@ litellm.modify_params=True
 MAX_RETRIES = 2
 RATE_LIMIT_DELAY = 30
 RETRY_DELAY = 0.1
+# Add timeout configuration for different providers
+BEDROCK_TIMEOUT = 300  # 5 minutes for Bedrock calls
+DEFAULT_TIMEOUT = 120  # 2 minutes for other providers
 
 class LLMError(Exception):
     """Base exception for LLM-related errors."""
@@ -67,10 +70,35 @@ def setup_api_keys() -> None:
 
     if aws_access_key and aws_secret_key and aws_region:
         logger.debug(f"AWS credentials set for Bedrock in region: {aws_region}")
+        
+        # Validate AWS region format
+        if not aws_region or not isinstance(aws_region, str):
+            logger.error(f"Invalid AWS region: {aws_region}")
+            return
+            
+        # Validate AWS credentials format
+        if not aws_access_key.startswith('AKIA') or len(aws_access_key) != 20:
+            logger.warning(f"AWS access key format may be invalid: {aws_access_key[:10]}...")
+        
+        # Validate AWS secret key format (should be 40 characters)
+        if len(aws_secret_key) != 40:
+            logger.warning(f"AWS secret key format may be invalid (length: {len(aws_secret_key)})")
+        
         # Configure LiteLLM to use AWS credentials
         os.environ['AWS_ACCESS_KEY_ID'] = aws_access_key
         os.environ['AWS_SECRET_ACCESS_KEY'] = aws_secret_key
+        # Set both AWS_REGION and AWS_DEFAULT_REGION for compatibility
+        os.environ['AWS_REGION'] = aws_region
+        os.environ['AWS_DEFAULT_REGION'] = aws_region
+        # Also set AWS_REGION_NAME for backward compatibility
         os.environ['AWS_REGION_NAME'] = aws_region
+        logger.info(f"AWS region set to: {aws_region}")
+        
+        # Debug: Log the environment variables that were set
+        logger.debug(f"AWS_ACCESS_KEY_ID: {os.environ.get('AWS_ACCESS_KEY_ID', 'NOT_SET')[:10]}...")
+        logger.debug(f"AWS_SECRET_ACCESS_KEY: {os.environ.get('AWS_SECRET_ACCESS_KEY', 'NOT_SET')[:10]}...")
+        logger.debug(f"AWS_REGION: {os.environ.get('AWS_REGION', 'NOT_SET')}")
+        logger.debug(f"AWS_DEFAULT_REGION: {os.environ.get('AWS_DEFAULT_REGION', 'NOT_SET')}")
     else:
         logger.warning(f"Missing AWS credentials for Bedrock integration - access_key: {bool(aws_access_key)}, secret_key: {bool(aws_secret_key)}, region: {aws_region}")
 
@@ -95,14 +123,6 @@ def get_openrouter_fallback(model_name: str) -> Optional[str]:
     for key, value in fallback_mapping.items():
         if key in model_name:
             return value
-    
-    # Default fallbacks by provider
-    if "claude" in model_name.lower() or "anthropic" in model_name.lower():
-        return "openrouter/anthropic/claude-sonnet-4"
-    elif "xai" in model_name.lower() or "grok" in model_name.lower():
-        return "openrouter/x-ai/grok-4"
-    
-    return None
 
 async def handle_error(error: Exception, attempt: int, max_attempts: int) -> None:
     """Handle API errors with appropriate delays and logging."""
@@ -215,10 +235,67 @@ def prepare_params(
     if model_name.startswith("bedrock/"):
         logger.debug(f"Preparing AWS Bedrock parameters for model: {model_name}")
 
-        if not model_id and "anthropic.claude-3-7-sonnet" in model_name:
-            params["model_id"] = "arn:aws:bedrock:us-west-2:935064898258:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0"
-            logger.debug(f"Auto-set model_id for Claude 3.7 Sonnet: {params['model_id']}")
+        # Auto-set model_id for specific models if not provided
+        if not model_id:
+            bedrock_model_mapping = {
+                "bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                "bedrock/anthropic.claude-sonnet-4-20250514-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+                "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+                "bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.anthropic.claude-3-5-sonnet-20240620-v1:0",
+                "bedrock/meta.llama3-3-70b-instruct-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.meta.llama3-3-70b-instruct-v1:0",
+                "bedrock/meta.llama4-scout-17b-instruct-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.meta.llama4-scout-17b-instruct-v1:0",
+                "bedrock/meta.llama4-maverick-17b-instruct-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.meta.llama4-maverick-17b-instruct-v1:0",
+                "bedrock/deepseek.r1-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.deepseek.r1-v1:0",
+            }
+            
+            # Check if the model name is in our mapping
+            if model_name in bedrock_model_mapping:
+                # For LiteLLM, we need to use the full ARN as the model name
+                arn_model_name = f"bedrock/{bedrock_model_mapping[model_name]}"
+                params["model"] = arn_model_name
+                logger.debug(f"Updated model name to use inference profile ARN: {params['model']}")
+                # Store the original model name for later use
+                original_model_name = model_name
+                # Update model_name to the ARN format for this function
+                model_name = arn_model_name
 
+        # For AWS Bedrock, we rely on environment variables rather than api_key parameter
+        # The credentials are already set in setup_api_keys()
+        if api_key:
+            logger.debug("API key provided for Bedrock, but using environment variables instead")
+            # Remove api_key to avoid conflicts with environment variables
+            params.pop("api_key", None)
+        else:
+            logger.debug("Using AWS credentials from environment variables for Bedrock")
+        
+        # Set AWS region
+        if config.AWS_REGION_NAME:
+            params["api_base"] = f"https://bedrock-runtime.{config.AWS_REGION_NAME}.amazonaws.com"
+            logger.debug(f"Set Bedrock API base to: {params['api_base']}")
+            
+            # Validate that the region is supported by Bedrock
+            # Updated to include us-east-2
+            supported_regions = [
+                "us-east-1", "us-east-2", "us-west-2", "eu-west-1", "ap-southeast-1"
+            ]
+            if config.AWS_REGION_NAME not in supported_regions:
+                logger.error(f"AWS region {config.AWS_REGION_NAME} is not supported by Bedrock. Supported regions: {supported_regions}")
+                logger.error("Please update your AWS_REGION_NAME to one of the supported regions.")
+                logger.error("Recommended: us-west-2 (most comprehensive Bedrock support)")
+            else:
+                logger.info(f"AWS region {config.AWS_REGION_NAME} is supported by Bedrock")
+        else:
+            logger.error("No AWS region configured for Bedrock!")
+            
+        # Add timeout configuration for Bedrock calls
+        params["timeout"] = BEDROCK_TIMEOUT
+        logger.debug(f"Set Bedrock timeout to {BEDROCK_TIMEOUT} seconds")
+
+    # Add timeout configuration for non-Bedrock calls
+    if not model_name.startswith("bedrock/"):
+        params["timeout"] = DEFAULT_TIMEOUT
+        logger.debug(f"Set default timeout to {DEFAULT_TIMEOUT} seconds for {model_name}")
+    
     fallback_model = get_openrouter_fallback(model_name)
     if fallback_model:
         params["fallbacks"] = [{
@@ -230,7 +307,9 @@ def prepare_params(
     # Apply Anthropic prompt caching (minimal implementation)
     # Check model name *after* potential modifications (like adding bedrock/ prefix)
     effective_model_name = params.get("model", model_name) # Use model from params if set, else original
-    if "claude" in effective_model_name.lower() or "anthropic" in effective_model_name.lower():
+    
+    # Skip prompt caching for Bedrock models as they don't support it
+    if ("claude" in effective_model_name.lower() or "anthropic" in effective_model_name.lower()) and not effective_model_name.startswith("bedrock/"):
         messages = params["messages"] # Direct reference, modification affects params
 
         # Ensure messages is a list
@@ -361,19 +440,48 @@ async def make_llm_api_call(
             if "api_key" in params:
                 logger.info(f"Making LiteLLM call with API key (length: {len(params['api_key'])}, starts with: {params['api_key'][:10]}...)")
             else:
-                logger.error("No API key found in params for LiteLLM call!")
+                logger.info("No API key in params - using environment variables or default credentials")
+                
+            # Debug: Log AWS environment variables for Bedrock calls
+            if "bedrock" in model_name.lower():
+                logger.debug(f"AWS environment check - ACCESS_KEY_ID: {'SET' if os.environ.get('AWS_ACCESS_KEY_ID') else 'NOT_SET'}")
+                logger.debug(f"AWS environment check - SECRET_ACCESS_KEY: {'SET' if os.environ.get('AWS_SECRET_ACCESS_KEY') else 'NOT_SET'}")
+                logger.debug(f"AWS environment check - REGION: {os.environ.get('AWS_REGION', 'NOT_SET')}")
+                logger.debug(f"AWS environment check - DEFAULT_REGION: {os.environ.get('AWS_DEFAULT_REGION', 'NOT_SET')}")
 
-            response = await litellm.acompletion(**params)
+            # Get timeout from params or use default
+            timeout = params.get("timeout", DEFAULT_TIMEOUT)
+            logger.debug(f"Using timeout of {timeout} seconds for {model_name}")
+            
+            # Wrap the LiteLLM call with timeout
+            response = await asyncio.wait_for(litellm.acompletion(**params), timeout=timeout)
             logger.debug(f"Successfully received API response from {model_name}")
             # logger.debug(f"Response: {response}")
             return response
 
+        except asyncio.TimeoutError as e:
+            timeout_used = params.get("timeout", DEFAULT_TIMEOUT)
+            error_msg = f"API call timed out after {timeout_used} seconds for model {model_name}"
+            logger.error(error_msg)
+            last_error = e
+            await handle_error(e, attempt, MAX_RETRIES)
+            
         except (litellm.exceptions.RateLimitError, OpenAIError, json.JSONDecodeError) as e:
             last_error = e
             await handle_error(e, attempt, MAX_RETRIES)
 
         except Exception as e:
             logger.error(f"Unexpected error during API call: {str(e)}", exc_info=True)
+            
+            # Add additional debugging for AWS Bedrock errors
+            if "bedrock" in model_name.lower() and "credential" in str(e).lower():
+                logger.error("AWS Bedrock credential error detected. Checking environment variables:")
+                logger.error(f"AWS_ACCESS_KEY_ID: {'SET' if os.environ.get('AWS_ACCESS_KEY_ID') else 'NOT_SET'}")
+                logger.error(f"AWS_SECRET_ACCESS_KEY: {'SET' if os.environ.get('AWS_SECRET_ACCESS_KEY') else 'NOT_SET'}")
+                logger.error(f"AWS_REGION: {os.environ.get('AWS_REGION', 'NOT_SET')}")
+                logger.error(f"AWS_DEFAULT_REGION: {os.environ.get('AWS_DEFAULT_REGION', 'NOT_SET')}")
+                logger.error(f"Config AWS_REGION_NAME: {config.AWS_REGION_NAME}")
+            
             raise LLMError(f"API call failed: {str(e)}")
 
     error_msg = f"Failed to make API call after {MAX_RETRIES} attempts"

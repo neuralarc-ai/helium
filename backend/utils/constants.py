@@ -2,14 +2,72 @@
 MODELS = {
     # Free tier models
 
-    "anthropic/claude-sonnet-4-20250514": {
-        "aliases": ["claude-sonnet-4"],
+    # AWS Bedrock Models
+    "bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0": {
+        "aliases": ["bedrock-claude-3-7-sonnet"],
         "pricing": {
             "input_cost_per_million_tokens": 3.00,
             "output_cost_per_million_tokens": 15.00
         },
-        "tier_availability": ["free", "paid"]
+        "tier_availability": ["free"]
     },
+    "bedrock/anthropic.claude-sonnet-4-20250514-v1:0": {
+        "aliases": ["bedrock-claude-sonnet-4"],
+        "pricing": {
+            "input_cost_per_million_tokens": 3.00,
+            "output_cost_per_million_tokens": 15.00
+        },
+        "tier_availability": ["free"]
+    },
+    "bedrock/meta.llama4-scout-17b-instruct-v1:0": {
+        "aliases": ["bedrock-llama4-scout"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.59,
+            "output_cost_per_million_tokens": 1.97
+        },
+        "tier_availability": ["free"]
+    },
+    "bedrock/meta.llama4-maverick-17b-instruct-v1:0": {
+        "aliases": ["bedrock-llama4-maverick"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.59,
+            "output_cost_per_million_tokens": 1.97
+        },
+        "tier_availability": ["free"]
+    },
+    "bedrock/deepseek.r1-v1:0": {
+        "aliases": ["bedrock-deepseek-r1"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.50,
+            "output_cost_per_million_tokens": 1.50
+        },
+        "tier_availability": ["free"]
+    },
+    "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0": {
+        "aliases": ["bedrock-claude-3-5-sonnet-v2"],
+        "pricing": {
+            "input_cost_per_million_tokens": 3.00,
+            "output_cost_per_million_tokens": 15.00
+        },
+        "tier_availability": ["free"]
+    },
+    "bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0": {
+        "aliases": ["bedrock-claude-3-5-sonnet-v1"],
+        "pricing": {
+            "input_cost_per_million_tokens": 3.00,
+            "output_cost_per_million_tokens": 15.00
+        },
+        "tier_availability": ["free"]
+    },
+    "bedrock/meta.llama3-3-70b-instruct-v1:0": {
+        "aliases": ["bedrock-llama3-3-70b-instruct"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.59,
+            "output_cost_per_million_tokens": 1.97
+        },
+        "tier_availability": ["free"]
+    },
+    
     # "openrouter/qwen/qwen3-235b-a22b": {
     #     "aliases": ["qwen3"],
     #     "pricing": {
@@ -147,9 +205,8 @@ def _generate_model_structures():
             legacy_name = model_name.replace("gemini/", "")
             pricing[legacy_name] = config["pricing"]
         elif model_name.startswith("anthropic/"):
-            # Add anthropic/claude-sonnet-4 alias for claude-sonnet-4-20250514
-            if "claude-sonnet-4-20250514" in model_name:
-                pricing["anthropic/claude-sonnet-4"] = config["pricing"]
+            # Legacy pricing mapping removed - using Bedrock models now
+            pass
         elif model_name.startswith("xai/"):
             # Add pricing for OpenRouter x-ai models
             openrouter_name = model_name.replace("xai/", "openrouter/x-ai/")

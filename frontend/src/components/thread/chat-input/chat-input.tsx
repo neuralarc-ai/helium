@@ -164,19 +164,23 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const currentUsage = subscriptionData?.current_usage || 0;
     const usageOver5Dollars = currentUsage > 5;
     
-    const shouldShowUsage = !isLocalMode() && !isProduction && !usageOver5Dollars && subscriptionData && showToLowCreditUsers && (() => {
-      // Free users: always show (if not in production and under $5)
-      if (subscriptionStatus === 'no_subscription') {
-        return true;
-      }
+    // DISABLED: Billing check functionality for production
+    // const shouldShowUsage = !isLocalMode() && !isProduction && !usageOver5Dollars && subscriptionData && showToLowCreditUsers && (() => {
+    //   // Free users: always show (if not in production and under $5)
+    //   if (subscriptionStatus === 'no_subscription') {
+    //     return true;
+    //   }
 
-      // Paid users: only show when at 70% or more of cost limit (if not in production and under $5)
-      const costLimit = subscriptionData.cost_limit || 0;
+    //   // Paid users: only show when at 70% or more of cost limit (if not in production and under $5)
+    //   const costLimit = subscriptionData.cost_limit || 0;
 
-      if (costLimit === 0) return false; // No limit set
+    //   if (costLimit === 0) return false; // No limit set
 
-      return currentUsage >= (costLimit * 0.7); // 70% or more used (30% or less remaining)
-    })();
+    //   return currentUsage >= (costLimit * 0.7); // 70% or more used (30% or less remaining)
+    // })();
+    
+    // Always return false to disable usage preview
+    const shouldShowUsage = false;
 
     // Auto-show usage preview when we have subscription data
     useEffect(() => {

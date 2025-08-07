@@ -310,13 +310,14 @@ export default function ThreadPage({
 
           if (error instanceof BillingError) {
             console.log("Caught BillingError:", error.detail);
-            setBillingData({
-              currentUsage: error.detail.currentUsage as number | undefined,
-              limit: error.detail.limit as number | undefined,
-              message: error.detail.message || 'Monthly usage limit reached. Please upgrade.',
-              accountId: project?.account_id || null
-            });
-            setShowBillingAlert(true);
+            // DISABLED: Billing error handling for production
+            // setBillingData({
+            //   currentUsage: error.detail.currentUsage as number | undefined,
+            //   limit: error.detail.limit as number | undefined,
+            //   message: error.detail.message || 'Monthly usage limit reached. Please upgrade.',
+            //   accountId: project?.account_id || null
+            // });
+            // setShowBillingAlert(true);
 
             setMessages(prev => prev.filter(m => m.message_id !== optimisticUserMessage.message_id));
             return;
@@ -529,15 +530,16 @@ export default function ThreadPage({
       const currentUsage = subscriptionData?.current_usage || 0;
       const usageOver5Dollars = currentUsage > 5;
       
+      // DISABLED: Billing check functionality for production
       // Only show upgrade dialog if:
       // 1. Not in production environment
       // 2. Usage is under $5
       // 3. User hasn't seen the dialog before
       // 4. User is on free tier
       // 5. Not in local mode
-      if (!hasSeenUpgradeDialog && isFreeTier && !isLocalMode() && !isProduction && !usageOver5Dollars) {
-        setShowUpgradeDialog(true);
-      }
+      // if (!hasSeenUpgradeDialog && isFreeTier && !isLocalMode() && !isProduction && !usageOver5Dollars) {
+      //   setShowUpgradeDialog(true);
+      // }
     }
   }, [subscriptionData, subscriptionStatus, initialLoadCompleted]);
 
