@@ -369,23 +369,23 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
             <Globe className="h-5 w-5 text-blue-400" />
           </div>
           <div className="flex-1">
-            <h2 className="text-lg font-semibold text-white mb-2">Global Knowledge Base</h2>
-            <p className="text-sm text-white/70 mb-3">
+            <h2 className="text-lg font-semibold text-black mb-2">Global Knowledge Base</h2>
+            <p className="text-sm text-black/60 mb-3">
               Add knowledge entries that will be available across all your chat threads. Specify when each piece of knowledge should be used, 
               and your AI will automatically include this information in relevant conversations.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                <span className="text-white/60">Available in all chats</span>
+                <span className="text-black/60">Available in all chats</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                <span className="text-white/60">Automatic context injection</span>
+                <span className="text-black/60">Automatic context injection</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-purple-500"></div>
-                <span className="text-white/60">No need to re-add per thread</span>
+                <span className="text-black/60">No need to re-add per thread</span>
               </div>
             </div>
           </div>
