@@ -17,6 +17,7 @@ import { AgentLoader } from './loader';
 import { parseXmlToolCalls, isNewXmlFormat } from '@/components/thread/tool-views/xml-parser';
 import { ShowToolStream } from './ShowToolStream';
 import { PipedreamUrlDetector } from './pipedream-url-detector';
+import { StreamingIndicator } from './StreamingIndicator';
 
 const HIDE_STREAMING_XML_TAGS = new Set([
     'execute-command',
@@ -818,7 +819,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                                                     <PipedreamUrlDetector content={textBeforeTag} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere" />
                                                                                 )}
                                                                                 {showCursor && (
-                                                                                    <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
+                                                                                    <StreamingIndicator type="streaming" className="inline-flex ml-0.5 -mb-1" />
                                                                                 )}
 
                                                                                 {detectedTag && (
@@ -881,7 +882,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                                                             <PipedreamUrlDetector content={textBeforeTag} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere" />
                                                                                         )}
                                                                                         {showCursor && (
-                                                                                            <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
+                                                                                            <StreamingIndicator type="streaming" className="inline-flex ml-0.5 -mb-1" />
                                                                                         )}
 
                                                                                         {detectedTag && (
@@ -980,9 +981,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                         {/* Streaming indicator content */}
                                         <div className="max-w-[90%] px-4 py-3 text-sm">
                                             <div className="flex items-center gap-1.5 py-1">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse" />
-                                                <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-150" />
-                                                <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-300" />
+                                                <StreamingIndicator type="loading" />
                                             </div>
                                         </div>
                                     </div>

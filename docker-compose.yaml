@@ -13,21 +13,6 @@ services:
       timeout: 5s
       retries: 3
 
-  rabbitmq:
-    image: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
   backend:
     image: ghcr.io/suna-ai/suna-backend:latest
     platform: linux/amd64
@@ -45,12 +30,8 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=
       - REDIS_SSL=False
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
     depends_on:
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
       worker:
         condition: service_started
@@ -71,12 +52,8 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=
       - REDIS_SSL=False
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
     depends_on:
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
 
   frontend:
@@ -93,4 +70,3 @@ services:
 
 volumes:
   redis_data:
-  rabbitmq_data:

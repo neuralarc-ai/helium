@@ -85,17 +85,22 @@ export const apiClient = {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const error: ApiError = new Error(`HTTP ${response.status}: ${response.statusText}`);
-        error.status = response.status;
-        error.response = response;
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        let errorData: any = null;
 
         try {
-          const errorData = await response.json();
-          error.details = errorData;
+          errorData = await response.json();
           if (errorData.message) {
-            error.message = errorData.message;
+            errorMessage = errorData.message;
           }
         } catch {
+        }
+
+        const error: ApiError = new Error(errorMessage);
+        error.status = response.status;
+        error.response = response;
+        if (errorData) {
+          error.details = errorData;
         }
 
         if (showErrors) {

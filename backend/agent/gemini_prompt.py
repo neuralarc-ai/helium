@@ -1761,7 +1761,8 @@ Is there anything specific you'd like me to adjust or explain in more detail abo
 def get_gemini_system_prompt():
   return SYSTEM_PROMPT.format(
         current_date=datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d'),
-        current_time=datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S')
+        current_time=datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S'),
+        current_year=datetime.datetime.now(datetime.timezone.utc).strftime('%Y')
     ) + EXAMPLE
   
 

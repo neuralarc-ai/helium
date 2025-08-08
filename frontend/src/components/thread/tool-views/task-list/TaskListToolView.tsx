@@ -1,7 +1,7 @@
 import type React from "react"
 import { Check, Clock, CheckCircle, AlertTriangle, ListTodo, X, Circle, CircleCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { extractTaskListData, type Task, type Section } from "@/components/thread/tool-views/task-list/_utils"
+import { extractTaskListData, type Task, type Section } from "./_utils"
 import { getToolTitle } from "../utils"
 import type { ToolViewProps } from "../types"
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -173,7 +173,6 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
           </div>
         )}
       </CardContent>
-
       <div className="px-4 py-2 h-10 bg-gradient-to-r from-zinc-50/90 to-zinc-100/90 dark:from-zinc-900/90 dark:to-zinc-800/90 backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4">
         <div className="h-full flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
           {!isStreaming && hasData && (
@@ -183,7 +182,7 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
                 {sections.length} sections
               </Badge>
               {completedTasks === totalTasks && totalTasks > 0 && (
-                <Badge variant="outline" className="h-6 py-0.5 bg-green-50 text-green-700 border-green-200">
+                <Badge variant="outline" className="h-6 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 border-green-200 dark:border-green-700">
                   <Check className="h-3 w-3" />
                   All complete
                 </Badge>
@@ -191,7 +190,6 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
             </div>
           )}
         </div>
-
         <div className="text-xs text-zinc-500 dark:text-zinc-400">
           {toolTimestamp && !isStreaming
             ? new Date(toolTimestamp).toLocaleTimeString()

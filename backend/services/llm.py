@@ -237,27 +237,92 @@ def prepare_params(
 
         # Auto-set model_id for specific models if not provided
         if not model_id:
-            bedrock_model_mapping = {
-                "bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-                "bedrock/anthropic.claude-sonnet-4-20250514-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
-                "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-                "bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.anthropic.claude-3-5-sonnet-20240620-v1:0",
-                "bedrock/meta.llama3-3-70b-instruct-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.meta.llama3-3-70b-instruct-v1:0",
-                "bedrock/meta.llama4-scout-17b-instruct-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.meta.llama4-scout-17b-instruct-v1:0",
-                "bedrock/meta.llama4-maverick-17b-instruct-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.meta.llama4-maverick-17b-instruct-v1:0",
-                "bedrock/deepseek.r1-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.deepseek.r1-v1:0",
-            }
+            # Region-aware bedrock model mapping
+            def get_bedrock_arn(model_name: str, region: str = "us-east-2") -> str:
+                """Generate Bedrock ARN for a model in a specific region."""
+                # Extract the model identifier from the full model name
+                if model_name.startswith("bedrock/"):
+                    model_id = model_name.replace("bedrock/", "")
+                else:
+                    model_id = model_name
+                
+                # Map model IDs to their ARN patterns
+                model_arn_patterns = {
+                    "anthropic.claude-3-7-sonnet-20250219-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                    "anthropic.claude-sonnet-4-20250514-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "anthropic.claude-3-5-sonnet-20241022-v2:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+                    "anthropic.claude-3-5-sonnet-20240620-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.anthropic.claude-3-5-sonnet-20240620-v1:0",
+                    "meta.llama3-3-70b-instruct-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.meta.llama3-3-70b-instruct-v1:0",
+                    "meta.llama4-scout-17b-instruct-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.meta.llama4-scout-17b-instruct-v1:0",
+                    "meta.llama4-maverick-17b-instruct-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.meta.llama4-maverick-17b-instruct-v1:0",
+                    "deepseek.r1-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.deepseek.r1-v1:0",
+                    # Add new models that support inference profiles
+                    "amazon.nova-pro-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.amazon.nova-pro-v1:0",
+                    "amazon.nova-express-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.amazon.nova-express-v1:0",
+                    "cohere.command-r-plus-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.cohere.command-r-plus-v1:0",
+                    "cohere.command-r-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.cohere.command-r-v1:0",
+                    "ai21.j2-ultra-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.ai21.j2-ultra-v1:0",
+                    "ai21.j2-mid-v1:0": "arn:aws:bedrock:{region}:492597629786:inference-profile/us.ai21.j2-mid-v1:0"
+                }
+                
+                if model_id in model_arn_patterns:
+                    return model_arn_patterns[model_id].format(region=region)
+                return None
             
             # Check if the model name is in our mapping
-            if model_name in bedrock_model_mapping:
+            # Use region-aware selection based on model availability
+            if any(gpt_model in model_name.lower() for gpt_model in ["gpt-oss", "gpt"]):
+                # GPT models are only available in us-west-2
+                current_region = "us-west-2"
+                logger.debug(f"Using us-west-2 region for GPT model: {model_name}")
+            else:
+                # For other models, check if they're available in the configured region
+                # If not, fall back to us-west-2 which has the most comprehensive support
+                configured_region = config.AWS_REGION_NAME or "us-west-2"
+                
+                # Check if the model is available in the configured region
+                from utils.constants import MODELS
+                model_config = MODELS.get(model_name, {})
+                available_regions = model_config.get("regions", ["us-west-2"])
+                
+                if configured_region in available_regions:
+                    current_region = configured_region
+                    logger.debug(f"Using configured region {current_region} for model: {model_name}")
+                else:
+                    # Fall back to the first available region (usually us-west-2)
+                    current_region = available_regions[0] if available_regions else "us-west-2"
+                    logger.debug(f"Model {model_name} not available in {configured_region}, using {current_region}")
+            
+            arn = get_bedrock_arn(model_name, current_region)
+            if arn:
                 # For LiteLLM, we need to use the full ARN as the model name
-                arn_model_name = f"bedrock/{bedrock_model_mapping[model_name]}"
+                arn_model_name = f"bedrock/{arn}"
                 params["model"] = arn_model_name
                 logger.debug(f"Updated model name to use inference profile ARN: {params['model']}")
                 # Store the original model name for later use
                 original_model_name = model_name
                 # Update model_name to the ARN format for this function
                 model_name = arn_model_name
+            else:
+                # For models not in the ARN mapping, use the model name directly
+                # Remove the bedrock/ prefix for LiteLLM compatibility
+                if model_name.startswith("bedrock/"):
+                    direct_model_name = model_name.replace("bedrock/", "")
+                    params["model"] = direct_model_name
+                    logger.debug(f"Using direct model name for {model_name}: {direct_model_name}")
+                    
+                    # Add additional logging for problematic models
+                    problematic_models = [
+                        # These models are now working properly with direct model names
+                        # "mistral.mistral-7b-instruct-v0:2",
+                        # "openai.gpt-oss-120b-1:0", 
+                        # "openai.gpt-oss-20b-1:0",
+                        # "anthropic.claude-3-5-haiku-20241022-v1:0"
+                    ]
+                    if direct_model_name in problematic_models:
+                        logger.info(f"Using direct model name for problematic model: {direct_model_name}")
+                else:
+                    logger.debug(f"Using model name directly for {model_name} (no ARN mapping found)")
 
         # For AWS Bedrock, we rely on environment variables rather than api_key parameter
         # The credentials are already set in setup_api_keys()
@@ -269,21 +334,44 @@ def prepare_params(
             logger.debug("Using AWS credentials from environment variables for Bedrock")
         
         # Set AWS region
-        if config.AWS_REGION_NAME:
-            params["api_base"] = f"https://bedrock-runtime.{config.AWS_REGION_NAME}.amazonaws.com"
+        # Use region-aware selection based on model availability
+        if any(gpt_model in model_name.lower() for gpt_model in ["gpt-oss", "gpt"]):
+            # GPT models are only available in us-west-2
+            bedrock_region = "us-west-2"
+            logger.debug(f"Using us-west-2 region for GPT model API base: {model_name}")
+        else:
+            # For other models, check if they're available in the configured region
+            # If not, fall back to us-west-2 which has the most comprehensive support
+            configured_region = config.AWS_REGION_NAME or "us-west-2"
+            
+            # Check if the model is available in the configured region
+            from utils.constants import MODELS
+            model_config = MODELS.get(model_name, {})
+            available_regions = model_config.get("regions", ["us-west-2"])
+            
+            if configured_region in available_regions:
+                bedrock_region = configured_region
+                logger.debug(f"Using configured region {bedrock_region} for model API base: {model_name}")
+            else:
+                # Fall back to the first available region (usually us-west-2)
+                bedrock_region = available_regions[0] if available_regions else "us-west-2"
+                logger.debug(f"Model {model_name} not available in {configured_region}, using {bedrock_region} for API base")
+        
+        if bedrock_region:
+            params["api_base"] = f"https://bedrock-runtime.{bedrock_region}.amazonaws.com"
             logger.debug(f"Set Bedrock API base to: {params['api_base']}")
             
             # Validate that the region is supported by Bedrock
-            # Updated to include us-east-2
+            # Updated to include all supported regions
             supported_regions = [
-                "us-east-1", "us-east-2", "us-west-2", "eu-west-1", "ap-southeast-1"
+                "us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"
             ]
-            if config.AWS_REGION_NAME not in supported_regions:
-                logger.error(f"AWS region {config.AWS_REGION_NAME} is not supported by Bedrock. Supported regions: {supported_regions}")
+            if bedrock_region not in supported_regions:
+                logger.error(f"AWS region {bedrock_region} is not supported by Bedrock. Supported regions: {supported_regions}")
                 logger.error("Please update your AWS_REGION_NAME to one of the supported regions.")
                 logger.error("Recommended: us-west-2 (most comprehensive Bedrock support)")
             else:
-                logger.info(f"AWS region {config.AWS_REGION_NAME} is supported by Bedrock")
+                logger.info(f"AWS region {bedrock_region} is supported by Bedrock")
         else:
             logger.error("No AWS region configured for Bedrock!")
             

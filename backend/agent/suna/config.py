@@ -35,7 +35,8 @@ class SunaConfig:
     def get_system_prompt(cls) -> str:
         return cls.SYSTEM_PROMPT.format(
             current_date=datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d'),
-            current_time=datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S')
+            current_time=datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S'),
+            current_year=datetime.datetime.now(datetime.timezone.utc).strftime('%Y')
         )
     
     @classmethod

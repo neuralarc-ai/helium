@@ -78,6 +78,12 @@ const defaultRegistry: ToolViewRegistryType = {
   'get-credential-profiles': GetCredentialProfilesToolView,
   'get-current-agent-config': GetCurrentAgentConfigToolView,
 
+  'create-tasks': TaskListToolView,
+  'view-tasks': TaskListToolView,
+  'update-tasks': TaskListToolView,
+  'delete-tasks': TaskListToolView,
+  'clear-all': TaskListToolView,
+
   'expose-port': ExposePortToolView,
 
   'see-image': SeeImageToolView,

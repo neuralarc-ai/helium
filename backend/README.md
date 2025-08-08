@@ -23,10 +23,10 @@ docker compose down && docker compose up --build
 
 You can run individual services from the docker-compose file. This is particularly useful during development:
 
-### Running only Redis and RabbitMQ
+### Running only Redis
 
 ```bash
-docker compose up redis rabbitmq
+docker compose up redis
 ```
 
 ### Running only the API and Worker
@@ -46,7 +46,7 @@ For local development, you might only need to run Redis and RabbitMQ, while work
 To run just Redis and RabbitMQ for development:
 
 ```bash
-docker compose up redis rabbitmq
+docker compose up redis
 ```
 
 Then you can run your API service locally with the following commands:
@@ -133,7 +133,6 @@ When running the API locally with Redis in Docker, you need to set the correct R
 
 When running the API locally with RabbitMQ in Docker, you need to set the correct RabbitMQ host in your `.env` file:
 
-- For Docker-to-Docker communication (when running both services in Docker): use `RABBITMQ_HOST=rabbitmq`
 - For local-to-Docker communication (when running API locally): use `RABBITMQ_HOST=localhost`
 
 Example `.env` configuration for local development:
@@ -143,8 +142,6 @@ REDIS_HOST=localhost # (instead of 'redis')
 REDIS_PORT=6379
 REDIS_PASSWORD=
 
-RABBITMQ_HOST=localhost # (instead of 'rabbitmq')
-RABBITMQ_PORT=5672
 ```
 
 ---

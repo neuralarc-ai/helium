@@ -94,21 +94,20 @@ uv run dramatiq --processes 4 --threads 4 run_agent_background
 
 ---
 
-## 5. Start Redis & RabbitMQ
+## 5. Start Redis
 
 You can run these services either via Docker Compose or locally:
 
 ### Option 1: Docker Compose
 
 ```bash
-docker compose up redis rabbitmq
+docker compose up redis
 ```
 
 ### Option 2: Homebrew (macOS)
 
 ```bash
 brew services start redis
-brew services start rabbitmq
 ```
 
 ---
@@ -124,4 +123,3 @@ brew services start rabbitmq
 - Frontend: http://localhost:3000
 - Backend: http://localhost:8000
 - Redis: localhost:6379
-- RabbitMQ: localhost:5672 (default)

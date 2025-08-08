@@ -924,3 +924,14 @@
     box-shadow: 0 0 90px 20px rgba(54,189,160,0.7), 0 0 180px 60px rgba(54,189,160,0.25);
   }
 }
+
+@keyframes wave {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}

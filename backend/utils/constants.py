@@ -2,14 +2,15 @@
 MODELS = {
     # Free tier models
 
-    # AWS Bedrock Models
+    # AWS Bedrock Models - Updated with comprehensive regional availability
     "bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0": {
         "aliases": ["bedrock-claude-3-7-sonnet"],
         "pricing": {
             "input_cost_per_million_tokens": 3.00,
             "output_cost_per_million_tokens": 15.00
         },
-        "tier_availability": ["free"]
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
     },
     "bedrock/anthropic.claude-sonnet-4-20250514-v1:0": {
         "aliases": ["bedrock-claude-sonnet-4"],
@@ -17,31 +18,8 @@ MODELS = {
             "input_cost_per_million_tokens": 3.00,
             "output_cost_per_million_tokens": 15.00
         },
-        "tier_availability": ["free"]
-    },
-    "bedrock/meta.llama4-scout-17b-instruct-v1:0": {
-        "aliases": ["bedrock-llama4-scout"],
-        "pricing": {
-            "input_cost_per_million_tokens": 0.59,
-            "output_cost_per_million_tokens": 1.97
-        },
-        "tier_availability": ["free"]
-    },
-    "bedrock/meta.llama4-maverick-17b-instruct-v1:0": {
-        "aliases": ["bedrock-llama4-maverick"],
-        "pricing": {
-            "input_cost_per_million_tokens": 0.59,
-            "output_cost_per_million_tokens": 1.97
-        },
-        "tier_availability": ["free"]
-    },
-    "bedrock/deepseek.r1-v1:0": {
-        "aliases": ["bedrock-deepseek-r1"],
-        "pricing": {
-            "input_cost_per_million_tokens": 0.50,
-            "output_cost_per_million_tokens": 1.50
-        },
-        "tier_availability": ["free"]
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
     },
     "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0": {
         "aliases": ["bedrock-claude-3-5-sonnet-v2"],
@@ -49,7 +27,8 @@ MODELS = {
             "input_cost_per_million_tokens": 3.00,
             "output_cost_per_million_tokens": 15.00
         },
-        "tier_availability": ["free"]
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
     },
     "bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0": {
         "aliases": ["bedrock-claude-3-5-sonnet-v1"],
@@ -57,7 +36,17 @@ MODELS = {
             "input_cost_per_million_tokens": 3.00,
             "output_cost_per_million_tokens": 15.00
         },
-        "tier_availability": ["free"]
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/anthropic.claude-3-5-haiku-20241022-v1:0": {
+        "aliases": ["bedrock-claude-3-5-haiku"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.25,
+            "output_cost_per_million_tokens": 1.25
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
     },
     "bedrock/meta.llama3-3-70b-instruct-v1:0": {
         "aliases": ["bedrock-llama3-3-70b-instruct"],
@@ -65,7 +54,144 @@ MODELS = {
             "input_cost_per_million_tokens": 0.59,
             "output_cost_per_million_tokens": 1.97
         },
-        "tier_availability": ["free"]
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/meta.llama3-1-8b-instruct-v1:0": {
+        "aliases": ["bedrock-llama3-1-8b-instruct"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.20,
+            "output_cost_per_million_tokens": 0.20
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/meta.llama4-scout-17b-instruct-v1:0": {
+        "aliases": ["bedrock-llama4-scout"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.59,
+            "output_cost_per_million_tokens": 1.97
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/meta.llama4-maverick-17b-instruct-v1:0": {
+        "aliases": ["bedrock-llama4-maverick"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.59,
+            "output_cost_per_million_tokens": 1.97
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/mistral.mistral-7b-instruct-v0:2": {
+        "aliases": ["bedrock-mistral-7b-instruct"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.15,
+            "output_cost_per_million_tokens": 0.15
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/mistral.mistral-large-2402-v1:0": {
+        "aliases": ["bedrock-mistral-large-2402"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.50,
+            "output_cost_per_million_tokens": 1.50
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/mistral.mistral-small-2402-v1:0": {
+        "aliases": ["bedrock-mistral-small-2402"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.25,
+            "output_cost_per_million_tokens": 0.25
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/amazon.nova-pro-v1:0": {
+        "aliases": ["bedrock-nova-pro"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.50,
+            "output_cost_per_million_tokens": 1.50
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/amazon.nova-express-v1:0": {
+        "aliases": ["bedrock-nova-express"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.25,
+            "output_cost_per_million_tokens": 0.75
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/deepseek.r1-v1:0": {
+        "aliases": ["bedrock-deepseek-r1"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.50,
+            "output_cost_per_million_tokens": 1.50
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/cohere.command-r-plus-v1:0": {
+        "aliases": ["bedrock-cohere-command-r-plus"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.50,
+            "output_cost_per_million_tokens": 1.50
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/cohere.command-r-v1:0": {
+        "aliases": ["bedrock-cohere-command-r"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.25,
+            "output_cost_per_million_tokens": 0.75
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/ai21.j2-ultra-v1:0": {
+        "aliases": ["bedrock-ai21-j2-ultra"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.50,
+            "output_cost_per_million_tokens": 1.50
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    "bedrock/ai21.j2-mid-v1:0": {
+        "aliases": ["bedrock-ai21-j2-mid"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.25,
+            "output_cost_per_million_tokens": 0.75
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "ap-southeast-1"]
+    },
+    # GPT models - only available in us-west-2
+    "bedrock/openai.gpt-oss-120b-1:0": {
+        "aliases": ["bedrock-gpt-oss-120b"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.60,
+            "output_cost_per_million_tokens": 0.60
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-west-2"]
+    },
+    "bedrock/openai.gpt-oss-20b-1:0": {
+        "aliases": ["bedrock-gpt-oss-20b"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.10,
+            "output_cost_per_million_tokens": 0.10
+        },
+        "tier_availability": ["free"],
+        "regions": ["us-west-2"]
     },
     
     # "openrouter/qwen/qwen3-235b-a22b": {
