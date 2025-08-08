@@ -463,7 +463,7 @@ export function WorkflowSidePanel({
                         'fixed top-2 right-2 bottom-4 border border-zinc-200 dark:border-zinc-800 rounded-3xl flex flex-col z-30 bg-card',
                         isMobile
                             ? 'left-2'
-                            : 'w-[40vw] sm:w-[450px] md:w-[500px] lg:w-[550px] xl:w-[645px]',
+                            : 'w-[50vw] sm:w-[50vw] md:w-[50vw] lg:w-[50vw] xl:w-[50vw]',
                     )}
                     style={{
                         overflow: 'hidden',

@@ -4,21 +4,21 @@ import { AnimatedShinyText } from '@/components/ui/animated-shiny-text';
 
 const items = [
   { id: 1, content: "Connecting to Helium Core..." },
-  { id: 2, content: "01 is decoding user intent..." },
+  { id: 2, content: "o1 is decoding user intent..." },
   { id: 3, content: "Routing task through Helium’s neural grid..." },
   { id: 4, content: "Helium Core is evaluating optimal strategy..." },
-  { id: 5, content: "01 is scanning cognitive modules..." },
+  { id: 5, content: "o1 is scanning cognitive modules..." },
   { id: 6, content: "Establishing link with artifact systems..." },
   { id: 7, content: "Deploying agent protocols from Core memory..." },
   { id: 8, content: "Synchronizing with LLM orchestration layer..." },
   { id: 9, content: "Helium Core initiating agent collaboration..." },
-  { id: 10, content: "Agent 01 is constructing semantic scaffold..." },
+  { id: 10, content: "o1 is constructing semantic scaffold..." },
   { id: 11, content: "Query embedded into Core's reasoning matrix..." },
   { id: 12, content: "Helium Core is aligning response parameters..." },
   { id: 13, content: "Engaging recursive agent feedback loop..." },
-  { id: 14, content: "01 consolidating knowledge streams..." },
+  { id: 14, content: "o1 consolidating knowledge streams..." },
   { id: 15, content: "Finalizing insight with Helium Core precision..." },
-  { id: 16, content: "Response encrypted and released by 01..." }
+  { id: 16, content: "Response encrypted and released by o1..." }
   ];
 
 export const AgentLoader = () => {

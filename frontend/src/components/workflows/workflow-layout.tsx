@@ -54,7 +54,7 @@ export function WorkflowLayout({
         <div className="flex h-screen">
             <div
                 className={`flex flex-col flex-1 overflow-hidden transition-all duration-200 ease-in-out ${isSidePanelOpen
-                    ? 'mr-[90%] sm:mr-[450px] md:mr-[500px] lg:mr-[550px] xl:mr-[650px]'
+                    ? 'mr-[50vw]'
                     : ''
                     }`}
             >
