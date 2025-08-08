@@ -784,7 +784,7 @@ export default function ThreadPage({
   return (
     <div className="flex h-screen">
       <div
-        className={`flex flex-col flex-1 overflow-hidden transition-all duration-200 ease-in-out ${isSidePanelOpen ? 'mr-[90%] sm:mr-[450px] md:mr-[500px] lg:mr-[550px] xl:mr-[650px]' : ''}`}
+        className={`flex flex-col flex-1 overflow-hidden transition-[margin] duration-200 ease-in-out will-change-[margin] ${isSidePanelOpen ? 'mr-[50vw]' : ''}`}
       >
         {renderHeader()}
         <ThreadContent
@@ -799,6 +799,7 @@ export default function ThreadPage({
           currentToolCall={playbackState.currentToolCall}
           sandboxId={sandboxId || ''}
           project={project}
+          isSidePanelOpen={isSidePanelOpen}
         />
         {renderWelcomeOverlay()}
         {renderFloatingControls()}
@@ -818,6 +819,8 @@ export default function ThreadPage({
         externalNavigateToIndex={externalNavIndex}
         project={project}
         onFileClick={handleOpenFileViewer}
+        // No sidebar on share page, but keep API consistent
+        isLeftSidebarExpanded={false}
       />
 
       <FileViewerModal

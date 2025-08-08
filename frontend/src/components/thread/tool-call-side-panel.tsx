@@ -49,6 +49,8 @@ interface ToolCallSidePanelProps {
   agentName?: string;
   onFileClick?: (filePath: string) => void;
   disableInitialAnimation?: boolean;
+  // When the left sidebar is expanded, slightly reduce the panel width to free up space
+  isLeftSidebarExpanded?: boolean;
 }
 
 interface ToolCallSnapshot {
@@ -75,6 +77,7 @@ export function ToolCallSidePanel({
   agentName,
   onFileClick,
   disableInitialAnimation,
+  isLeftSidebarExpanded = false,
 }: ToolCallSidePanelProps) {
   const [dots, setDots] = React.useState('');
   const [internalIndex, setInternalIndex] = React.useState(0);
@@ -83,6 +86,13 @@ export function ToolCallSidePanel({
   const [isInitialized, setIsInitialized] = React.useState(false);
 
   const isMobile = useIsMobile();
+
+  // Compute responsive width class; shrink a bit when the left sidebar is expanded
+  const widthClass = React.useMemo(() => {
+    if (isMobile) return 'left-2';
+    const base = isLeftSidebarExpanded ? 'w-[45vw]' : 'w-[50vw]';
+    return `${base} sm:${base} md:${base} lg:${base} xl:${base}`;
+  }, [isMobile, isLeftSidebarExpanded]);
 
   const handleClose = React.useCallback(() => {
     onClose();
@@ -361,21 +371,9 @@ export function ToolCallSidePanel({
 
   React.useEffect(() => {
     if (!isOpen) return;
-    const handleSidebarToggle = (event: CustomEvent) => {
-      if (event.detail.expanded) {
-        handleClose();
-      }
-    };
-
-    window.addEventListener(
-      'sidebar-left-toggled',
-      handleSidebarToggle as EventListener,
-    );
-    return () =>
-      window.removeEventListener(
-        'sidebar-left-toggled',
-        handleSidebarToggle as EventListener,
-      );
+    // Previously, expanding the left sidebar closed the panel.
+    // We now keep the panel open and smoothly adjust its width instead.
+    // Listener intentionally removed to avoid abrupt close.
   }, [isOpen, handleClose]);
 
   React.useEffect(() => {
@@ -406,10 +404,8 @@ export function ToolCallSidePanel({
         <div className="p-4 h-full flex items-stretch justify-end pointer-events-auto">
           <div
             className={cn(
-              'border rounded-2xl flex flex-col shadow-2xl bg-background',
-              isMobile
-                ? 'w-full'
-                : 'w-[90%] sm:w-[450px] md:w-[500px] lg:w-[550px] xl:w-[650px]',
+              'border rounded-2xl flex flex-col shadow-2xl bg-background transition-[width] duration-200 ease-in-out will-change-[width]',
+              isMobile ? 'w-full' : widthClass,
             )}
           >
             <div className="flex-1 flex flex-col overflow-hidden">
@@ -678,10 +674,8 @@ export function ToolCallSidePanel({
             }
           }}
           className={cn(
-            'fixed top-2 right-2 bottom-4 border rounded-3xl flex flex-col z-30',
-            isMobile
-              ? 'left-2'
-              : 'w-[40vw] sm:w-[450px] md:w-[500px] lg:w-[550px] xl:w-[645px]',
+            'fixed top-2 right-2 bottom-4 border rounded-3xl flex flex-col z-30 transition-[width] duration-200 ease-in-out will-change-[width]',
+            widthClass,
           )}
           style={{
             overflow: 'hidden',

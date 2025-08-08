@@ -312,6 +312,8 @@ export interface ThreadContentProps {
     agentAvatar?: React.ReactNode;
     emptyStateComponent?: React.ReactNode; // Add custom empty state component prop
     threadMetadata?: any; // Add thread metadata prop
+    // Align content to the left edge of the content area (useful when side panel is open)
+    isSidePanelOpen?: boolean;
 }
 
 export const ThreadContent: React.FC<ThreadContentProps> = ({
@@ -335,6 +337,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     agentAvatar = <HeliumLogo size={24} />,
     emptyStateComponent,
     threadMetadata,
+    isSidePanelOpen = false,
 }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -479,7 +482,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                     className={containerClassName}
                     onScroll={handleScroll}
                 >
-                    <div className="mx-auto max-w-3xl md:px-8 min-w-0">
+                    <div className={isSidePanelOpen ? "mr-auto ml-0 max-w-3xl md:px-8 min-w-0" : "mx-auto max-w-3xl md:px-8 min-w-0"}>
                         <div className="space-y-8 min-w-0">
                             {(() => {
 

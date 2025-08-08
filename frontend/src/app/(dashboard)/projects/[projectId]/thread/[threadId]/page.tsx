@@ -73,6 +73,7 @@ export default function ThreadPage({
 
   // Sidebar
   const { state: leftSidebarState, setOpen: setLeftSidebarOpen } = useSidebar();
+  const isLeftSidebarExpanded = leftSidebarState === 'expanded';
 
   // Custom hooks
   const {
@@ -663,19 +664,20 @@ export default function ThreadPage({
           debugMode={debugMode}
           agentName={agent && agent.name}
           agentAvatar={agent && agent.avatar}
+          isSidePanelOpen={isSidePanelOpen}
         />
 
         <div
           className={cn(
             "fixed bottom-0 z-10 bg-gradient-to-t from-background via-background/90 to-transparent px-4 pt-16 pb-6",
-            isSidePanelAnimating ? "" : "transition-all duration-200 ease-in-out",
+            "transition-[left,right] duration-200 ease-in-out will-change-[left,right]",
             leftSidebarState === 'expanded' ? 'left-[72px] md:left-[256px]' : 'left-[72px]',
-            isSidePanelOpen ? 'right-[90%] sm:right-[450px] md:right-[500px] lg:right-[550px] xl:right-[650px]' : 'right-0',
+            isSidePanelOpen ? (isLeftSidebarExpanded ? 'right-[45vw]' : 'right-[50vw]') : 'right-0',
             isMobile ? 'left-0 right-0 pb-6' : ''
           )}>
           <div className={cn(
-            "mx-auto",
-            isMobile ? "w-full" : "max-w-3xl"
+            isSidePanelOpen ? "mr-auto ml-0" : "mx-auto",
+            isMobile ? "w-full" : isSidePanelOpen ? "max-w-2xl" : "max-w-3xl"
           )}>
             <ChatInput
               value={newMessage}
