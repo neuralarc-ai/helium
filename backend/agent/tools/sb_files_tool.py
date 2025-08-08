@@ -7,7 +7,6 @@ from utils.config import config
 import os
 import json
 import litellm
-import openai
 import asyncio
 from typing import Optional
 
@@ -340,64 +339,71 @@ class SandboxFilesTool(SandboxToolsBase):
         except Exception as e:
             return self.fail_response(f"Error deleting file: {str(e)}")
 
-    async def _call_morph_api(self, file_content: str, code_edit: str, instructions: str, file_path: str) -> tuple[Optional[str], Optional[str]]:
+    async def _call_ai_edit_api(self, file_content: str, code_edit: str, instructions: str, file_path: str) -> tuple[Optional[str], Optional[str]]:
         """
-        Call Morph API to apply edits to file content.
+        Call OpenRouter API to apply edits to file content using free models.
         Returns a tuple (new_content, error_message).
         On success, error_message is None.
         On failure, new_content is None.
         """
         try:
-            morph_api_key = getattr(config, 'MORPH_API_KEY', None) or os.getenv('MORPH_API_KEY')
             openrouter_key = getattr(config, 'OPENROUTER_API_KEY', None) or os.getenv('OPENROUTER_API_KEY')
+            
+            if not openrouter_key:
+                error_msg = "No OpenRouter API key found, cannot perform AI edit."
+                logger.warning(error_msg)
+                return None, error_msg
             
             messages = [{
                 "role": "user", 
                 "content": f"<instruction>{instructions}</instruction>\n<code>{file_content}</code>\n<update>{code_edit}</update>"
             }]
 
-            response = None
-            if morph_api_key:
-                logger.debug("Using direct Morph API for file editing.")
-                client = openai.AsyncOpenAI(
-                    api_key=morph_api_key,
-                    base_url="https://openrouter.ai/api/v1"
-                )
-                response = await client.chat.completions.create(
-                    model="openrouter/z-ai/glm-4.5-air:free",
-                    messages=messages,
-                    temperature=0.0,
-                    timeout=120.0
-                )
-            elif openrouter_key:
-                logger.debug("Morph API key not set, falling back to OpenRouter for file editing via litellm.")
-                response = await litellm.acompletion(
-                    model="openrouter/agentica-org/deepcoder-14b-preview:free",
-                    messages=messages,
-                    api_key=openrouter_key,
-                    api_base="https://openrouter.ai/api/v1",
-                    temperature=0.0,
-                    timeout=120.0
-                )
-            else:
-                error_msg = "No Morph or OpenRouter API key found, cannot perform AI edit."
-                logger.warning(error_msg)
-                return None, error_msg
+            # Define models in order of preference
+            models = [
+                "openrouter/qwen/qwen3-coder:free",
+                "openrouter/z-ai/glm-4.5-air:free", 
+                "openrouter/moonshotai/kimi-k2:free"
+            ]
             
-            if response and response.choices and len(response.choices) > 0:
-                content = response.choices[0].message.content.strip()
+            last_error = None
+            
+            for model in models:
+                try:
+                    logger.debug(f"Attempting file edit with model: {model}")
+                    response = await litellm.acompletion(
+                        model=model,
+                        messages=messages,
+                        api_key=openrouter_key,
+                        api_base="https://openrouter.ai/api/v1",
+                        temperature=0.0,
+                        timeout=120.0
+                    )
+                    
+                    if response and response.choices and len(response.choices) > 0:
+                        content = response.choices[0].message.content.strip()
 
-                # Extract code block if wrapped in markdown
-                if content.startswith("```") and content.endswith("```"):
-                    lines = content.split('\n')
-                    if len(lines) > 2:
-                        content = '\n'.join(lines[1:-1])
-                
-                return content, None
-            else:
-                error_msg = f"Invalid response from Morph/OpenRouter API: {response}"
-                logger.error(error_msg)
-                return None, error_msg
+                        # Extract code block if wrapped in markdown
+                        if content.startswith("```") and content.endswith("```"):
+                            lines = content.split('\n')
+                            if len(lines) > 2:
+                                content = '\n'.join(lines[1:-1])
+                        
+                        logger.info(f"Successfully edited file using model: {model}")
+                        return content, None
+                    else:
+                        last_error = f"Invalid response from {model}: {response}"
+                        logger.warning(f"Model {model} returned invalid response, trying next model...")
+                        
+                except Exception as e:
+                    last_error = f"Error with model {model}: {str(e)}"
+                    logger.warning(f"Model {model} failed: {str(e)}, trying next model...")
+                    continue
+            
+            # If we get here, all models failed
+            error_message = f"All AI models failed for file edit. Last error: {last_error}"
+            logger.error(error_message)
+            return None, error_message
                 
         except Exception as e:
             error_message = f"AI model call for file edit failed. Exception: {str(e)}"
@@ -406,7 +412,7 @@ class SandboxFilesTool(SandboxToolsBase):
                 error_message += f"\n\nAPI Response Body:\n{e.response.text}"
             elif hasattr(e, 'body'): # litellm sometimes puts it in body
                 error_message += f"\n\nAPI Response Body:\n{e.body}"
-            logger.error(f"Error calling Morph/OpenRouter API: {error_message}", exc_info=True)
+            logger.error(f"Error calling OpenRouter API: {error_message}", exc_info=True)
             return None, error_message
 
     @openapi_schema({
@@ -494,9 +500,9 @@ def authenticate_user(username, password):
             # Read current content
             original_content = (await self.sandbox.fs.download_file(full_path)).decode()
             
-            # Try Morph AI editing first
+            # Try AI editing first
             logger.info(f"Attempting AI-powered edit for file '{target_file}' with instructions: {instructions[:100]}...")
-            new_content, error_message = await self._call_morph_api(original_content, code_edit, instructions, target_file)
+            new_content, error_message = await self._call_ai_edit_api(original_content, code_edit, instructions, target_file)
 
             if error_message:
                 return ToolResult(success=False, output=json.dumps({

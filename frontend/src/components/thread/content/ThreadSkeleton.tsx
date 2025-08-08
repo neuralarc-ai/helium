@@ -145,7 +145,7 @@ export function ThreadSkeleton({
 
             {/* Side Panel - Always visible in skeleton with exact responsive widths */}
             <div className="hidden sm:block">
-                <div className="h-screen w-[90%] sm:w-[450px] md:w-[500px] lg:w-[550px] xl:w-[650px] border-l">
+                <div className="h-screen w-[50vw] border-l">
                     <div className="p-4">
                         <Skeleton className="h-8 w-32 mb-4" />
                         <Skeleton className="h-20 w-full rounded-md mb-4" />

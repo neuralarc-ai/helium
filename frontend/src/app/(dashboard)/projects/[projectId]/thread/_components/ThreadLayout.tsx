@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSidebar } from '@/components/ui/sidebar';
 import { SiteHeader } from '@/components/thread/thread-site-header';
 import { FileViewerModal } from '@/components/thread/file-viewer-modal';
 import { ToolCallSidePanel } from '@/components/thread/tool-call-side-panel';
@@ -76,6 +77,8 @@ export function ThreadLayout({
   agentName,
   disableInitialAnimation = false
 }: ThreadLayoutProps) {
+  const { state: leftSidebarState } = useSidebar();
+  const isLeftSidebarExpanded = leftSidebarState === 'expanded';
   return (
     <div className="flex h-screen">
       {debugMode && (
@@ -85,8 +88,8 @@ export function ThreadLayout({
       )}
 
       <div
-        className={`flex flex-col flex-1 overflow-hidden transition-all duration-200 ease-in-out ${(!initialLoadCompleted || isSidePanelOpen)
-          ? 'mr-[90%] sm:mr-[450px] md:mr-[500px] lg:mr-[550px] xl:mr-[650px]'
+        className={`flex flex-col flex-1 overflow-hidden transition-[margin] duration-200 ease-in-out will-change-[margin] ${(!initialLoadCompleted || isSidePanelOpen)
+          ? (isLeftSidebarExpanded ? 'mr-[45vw]' : 'mr-[50vw]')
           : ''
           }`}
       >
@@ -120,6 +123,7 @@ export function ThreadLayout({
         onFileClick={onViewFiles}
         agentName={agentName}
         disableInitialAnimation={disableInitialAnimation}
+        isLeftSidebarExpanded={isLeftSidebarExpanded}
       />
 
       {sandboxId && (

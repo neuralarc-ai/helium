@@ -413,9 +413,11 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             }}
           >
             <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
-              <CardContent className={`w-full shadow-sm p-1.5 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${bgColor} border ${enableAdvancedConfig && selectedAgentId ? 'rounded-t-2xl' : 'rounded-2xl'}`}>
-              <BorderBeam duration={4} borderWidth={1.5} size={200} className="from-transparent via-helium-teal to-transparent"/>
-              <BorderBeam duration={4} borderWidth={1.5} delay={2} size={200} className="from-transparent via-helium-pink to-transparent"/>
+              <CardContent className={`w-full shadow-sm p-1.5 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${bgColor} border-0 ${enableAdvancedConfig && selectedAgentId ? 'rounded-t-2xl' : 'rounded-2xl'} overflow-hidden relative`}>
+              <div className="absolute inset-0 rounded-[inherit] overflow-hidden">
+                <BorderBeam duration={4} borderWidth={1.5} size={200} className="from-transparent via-helium-teal to-transparent"/>
+                <BorderBeam duration={4} borderWidth={1.5} delay={2} size={200} className="from-transparent via-helium-pink to-transparent"/>
+              </div>
                 <AttachmentGroup
                   files={uploadedFiles || []}
                   sandboxId={sandboxId}

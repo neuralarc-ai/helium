@@ -336,7 +336,7 @@ export const AgentPreview = ({ agent, agentMetadata }: AgentPreviewProps) => {
 
 
   return (
-    <div className="h-full flex flex-col bg-muted dark:bg-muted/30">
+    <div className="h-full flex flex-col bg-muted dark:bg-muted/30 overflow-hidden">
       <div className="flex-shrink-0 flex items-center gap-3 p-8">
         {isSunaAgent ? (
           <div className="h-10 w-10 bg-background rounded-lg border-border flex items-center justify-center">
@@ -385,7 +385,7 @@ export const AgentPreview = ({ agent, agentMetadata }: AgentPreviewProps) => {
           <div ref={messagesEndRef} />
         </div>
       </div>
-      <div className="flex-shrink-0">
+      <div className="flex-shrink-0 overflow-hidden">
         <div className="p-0 md:p-4 md:px-10">
           <ChatInput
             ref={chatInputRef}

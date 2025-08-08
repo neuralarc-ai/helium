@@ -75,8 +75,9 @@ async def start_supervisord_session(sandbox: AsyncSandbox):
         ))
         logger.info(f"Supervisord started in session {session_id}")
     except Exception as e:
-        logger.error(f"Error starting supervisord session: {str(e)}")
-        raise e
+        logger.warning(f"Error starting supervisord session: {str(e)}")
+        logger.warning("Continuing without supervisord session - this is not critical for basic functionality")
+        # Don't raise the exception - this is not critical for sandbox creation
 
 async def create_sandbox(password: str, project_id: str = None) -> AsyncSandbox:
     """Create a new sandbox with all required services configured and running."""
@@ -116,11 +117,19 @@ async def create_sandbox(password: str, project_id: str = None) -> AsyncSandbox:
     )
     
     # Create the sandbox
-    sandbox = await daytona.create(params)
-    logger.debug(f"Sandbox created with ID: {sandbox.id}")
+    try:
+        sandbox = await daytona.create(params)
+        logger.debug(f"Sandbox created with ID: {sandbox.id}")
+    except Exception as e:
+        logger.error(f"Failed to create sandbox: {str(e)}")
+        raise e
     
-    # Start supervisord in a session for new sandbox
-    await start_supervisord_session(sandbox)
+    # Start supervisord in a session for new sandbox (non-critical)
+    try:
+        await start_supervisord_session(sandbox)
+    except Exception as e:
+        logger.warning(f"Failed to start supervisord session: {str(e)}")
+        logger.warning("Continuing without supervisord session - this is not critical for basic functionality")
     
     logger.debug(f"Sandbox environment successfully initialized")
     return sandbox

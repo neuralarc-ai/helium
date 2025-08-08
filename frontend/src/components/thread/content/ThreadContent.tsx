@@ -411,61 +411,52 @@ export function renderMarkdownContent(
 }
 
 export interface ThreadContentProps {
-  messages: UnifiedMessage[];
-  streamingTextContent?: string;
-  streamingToolCall?: any;
-  agentStatus: 'idle' | 'running' | 'connecting' | 'error';
-  handleToolClick: (
-    assistantMessageId: string | null,
-    toolName: string,
-  ) => void;
-  handleOpenFileViewer: (filePath?: string, filePathList?: string[]) => void;
-  readOnly?: boolean;
-  visibleMessages?: UnifiedMessage[]; // For playback mode
-  streamingText?: string; // For playback mode
-  isStreamingText?: boolean; // For playback mode
-  currentToolCall?: any; // For playback mode
-  streamHookStatus?: string; // Add this prop
-  sandboxId?: string; // Add sandboxId prop
-  project?: Project; // Add project prop
-  debugMode?: boolean; // Add debug mode parameter
-  isPreviewMode?: boolean;
-  agentName?: string;
-  agentAvatar?: React.ReactNode;
-  emptyStateComponent?: React.ReactNode; // Add custom empty state component prop
-  threadMetadata?: any; // Add thread metadata prop
-  onSubmit?: (
-    message: string,
-    options?: { model_name?: string; enable_thinking?: boolean },
-  ) => void; // Add onSubmit prop for retry functionality
-  setInputValue?: (value: string) => void;
-  isFloatingToolPreviewVisible?: boolean;
+    messages: UnifiedMessage[];
+    streamingTextContent?: string;
+    streamingToolCall?: any;
+    agentStatus: 'idle' | 'running' | 'connecting' | 'error';
+    handleToolClick: (assistantMessageId: string | null, toolName: string) => void;
+    handleOpenFileViewer: (filePath?: string, filePathList?: string[]) => void;
+    readOnly?: boolean;
+    visibleMessages?: UnifiedMessage[]; // For playback mode
+    streamingText?: string; // For playback mode
+    isStreamingText?: boolean; // For playback mode
+    currentToolCall?: any; // For playback mode
+    streamHookStatus?: string; // Add this prop
+    sandboxId?: string; // Add sandboxId prop
+    project?: Project; // Add project prop
+    debugMode?: boolean; // Add debug mode parameter
+    isPreviewMode?: boolean;
+    agentName?: string;
+    agentAvatar?: React.ReactNode;
+    emptyStateComponent?: React.ReactNode; // Add custom empty state component prop
+    threadMetadata?: any; // Add thread metadata prop
+    // Align content to the left edge of the content area (useful when side panel is open)
+    isSidePanelOpen?: boolean;
 }
 
 export const ThreadContent: React.FC<ThreadContentProps> = ({
-  messages,
-  streamingTextContent = '',
-  streamingToolCall,
-  agentStatus,
-  handleToolClick,
-  handleOpenFileViewer,
-  readOnly = false,
-  visibleMessages,
-  streamingText = '',
-  isStreamingText = false,
-  currentToolCall,
-  streamHookStatus = 'idle',
-  sandboxId,
-  project,
-  debugMode = false,
-  isPreviewMode = false,
-  agentName = 'Helium',
-  agentAvatar = <HeliumLogo size={24} />,
-  emptyStateComponent,
-  threadMetadata,
-  onSubmit,
-  isFloatingToolPreviewVisible = false,
-  setInputValue,
+    messages,
+    streamingTextContent = "",
+    streamingToolCall,
+    agentStatus,
+    handleToolClick,
+    handleOpenFileViewer,
+    readOnly = false,
+    visibleMessages,
+    streamingText = "",
+    isStreamingText = false,
+    currentToolCall,
+    streamHookStatus = "idle",
+    sandboxId,
+    project,
+    debugMode = false,
+    isPreviewMode = false,
+    agentName = 'Helium',
+    agentAvatar = <HeliumLogo size={24} />,
+    emptyStateComponent,
+    threadMetadata,
+    isSidePanelOpen = false,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -840,177 +831,74 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                             </pre>
                           </div>
                         </div>
-                      );
-                    }
+                    )}
+                </div>
+            ) : (
+                // Render scrollable content container
+                <div
+                    ref={messagesContainerRef}
+                    className={containerClassName}
+                    onScroll={handleScroll}
+                >
+                    <div className={isSidePanelOpen ? "mr-auto ml-0 max-w-3xl md:px-8 min-w-0" : "mx-auto max-w-3xl md:px-8 min-w-0"}>
+                        <div className="space-y-8 min-w-0">
+                            {(() => {
 
-                    // Extract attachments from the message content
-                    const attachmentsMatch = messageContent.match(
-                      /\[Uploaded File: (.*?)\]/g,
-                    );
-                    const attachments = attachmentsMatch
-                      ? attachmentsMatch
-                          .map((match: string) => {
-                            const pathMatch = match.match(
-                              /\[Uploaded File: (.*?)\]/,
-                            );
-                            return pathMatch ? pathMatch[1] : null;
-                          })
-                          .filter(Boolean)
-                      : [];
+                                type MessageGroup = {
+                                    type: 'user' | 'assistant_group';
+                                    messages: UnifiedMessage[];
+                                    key: string;
+                                };
+                                const groupedMessages: MessageGroup[] = [];
+                                let currentGroup: MessageGroup | null = null;
+                                let assistantGroupCounter = 0; // Counter for assistant groups
 
-                    // Remove attachment info from the message content
-                    const cleanContent = messageContent
-                      .replace(/\[Uploaded File: .*?\]/g, '')
-                      .trim();
+                                displayMessages.forEach((message, index) => {
+                                    const messageType = message.type;
+                                    const key = message.message_id || `msg-${index}`;
 
-                    // return (
-                    //   <div key={group.key} className="flex justify-end">
-                    //     <div className="flex max-w-[85%] rounded-3xl rounded-br-lg bg-card border px-4 py-3 break-words overflow-hidden">
-                    //       <div className="space-y-3 min-w-0 flex-1">
-                    //         {cleanContent && (
-                    //           <PipedreamUrlDetector
-                    //             content={cleanContent}
-                    //             className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
-                    //           />
-                    //         )}
+                                    if (messageType === 'user') {
+                                        // Finalize any existing assistant group
+                                        if (currentGroup) {
+                                            groupedMessages.push(currentGroup);
+                                            currentGroup = null;
+                                        }
+                                        // Create a new user message group
+                                        groupedMessages.push({ type: 'user', messages: [message], key });
+                                    } else if (messageType === 'assistant' || messageType === 'tool' || messageType === 'browser_state') {
+                                        // Check if we can add to existing assistant group (same agent)
+                                        const canAddToExistingGroup = currentGroup &&
+                                            currentGroup.type === 'assistant_group' &&
+                                            (() => {
+                                                // For assistant messages, check if agent matches
+                                                if (messageType === 'assistant') {
+                                                    const lastAssistantMsg = currentGroup.messages.findLast(m => m.type === 'assistant');
+                                                    if (!lastAssistantMsg) return true; // No assistant message yet, can add
 
-                    //         {/* Use the helper function to render user attachments */}
-                    //         {renderAttachments(
-                    //           attachments as string[],
-                    //           handleOpenFileViewer,
-                    //           sandboxId,
-                    //           project,
-                    //         )}
-                    //       </div>
-                    //     </div>
-                    //   </div>
-                    // );
-                    return (
-                      <div
-                        key={group.key}
-                        className="flex justify-end"
-                        data-message-id={group.key}
-                      >
-                        <div className="flex flex-col gap-2">
-                          <div
-                            className={cn('flex max-w-[100%]')}
-                            style={{ gap: '4px', opacity: 1 }}
-                          >
-                            <div
-                              style={{
-                                background: '#FFFFFF',
-                                color: 'black',
-                                paddingTop: '16px',
-                                paddingRight: '24px',
-                                paddingBottom: '16px',
-                                paddingLeft: '24px',
-                                borderTopLeftRadius: '24px',
-                                borderTopRightRadius: '24px',
-                                borderBottomRightRadius: '8px',
-                                borderBottomLeftRadius: '24px',
-                              }}
-                              className="break-words overflow-hidden"
-                            >
-                              <div className="space-y-3 min-w-0 flex-1">
-                                {cleanContent && (
-                                  <div
-                                    className={cn(
-                                      'message-content',
-                                      editingMessageId === group.key &&
-                                        'outline-none ring-0 border-0 shadow-none',
-                                    )}
-                                    contentEditable={
-                                      editingMessageId === group.key
-                                        ? 'true'
-                                        : undefined
-                                    }
-                                    suppressContentEditableWarning
-                                    onInput={(e) => {
-                                      setEditValue(
-                                        (e.target as HTMLElement).textContent ||
-                                          '',
-                                      );
-                                    }}
-                                    style={
-                                      editingMessageId === group.key &&
-                                      originalDimensions
-                                        ? {
-                                            minWidth: `${originalDimensions.width}px`,
-                                            minHeight: `${originalDimensions.height}px`,
-                                            maxHeight: '300px',
-                                            overflowY: 'auto',
-                                          }
-                                        : undefined
-                                    }
-                                  >
-                                    <PipedreamUrlDetector
-                                      content={cleanContent}
-                                      className="text-sm prose prose-sm chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere text-black md:text-lg"
-                                    />
-                                  </div>
-                                )}
-                                {renderAttachments(
-                                  attachments as string[],
-                                  handleOpenFileViewer,
-                                  sandboxId,
-                                  project,
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          {/* Copy and Edit buttons for user prompt */}
-                          <div className="flex justify-end gap-2 mt-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 hover:bg-accent"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(
-                                      messageContent,
-                                    );
-                                    setCopiedPromptIdx(groupIndex);
-                                    setTimeout(
-                                      () => setCopiedPromptIdx(null),
-                                      1500,
-                                    );
-                                  }}
-                                >
-                                  {copiedPromptIdx === groupIndex ? (
-                                    <Check className="h-4 w-4" />
-                                  ) : (
-                                    <Copy className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Copy prompt</p>
-                              </TooltipContent>
-                            </Tooltip>
-                            {editingMessageId === group.key ? (
-                              // Send and Cancel buttons when editing
-                              <>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-8 p-0 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                                      onClick={() => {
-                                        const messageElement =
-                                          document.querySelector(
-                                            `[data-message-id="${group.key}"] .message-content`,
-                                          ) as HTMLElement;
+                                                    // Compare agent info - both null/undefined should be treated as same (default agent)
+                                                    const currentAgentId = message.agent_id;
+                                                    const lastAgentId = lastAssistantMsg.agent_id;
+                                                    return currentAgentId === lastAgentId;
+                                                }
+                                                // For tool/browser_state messages, always add to current group
+                                                return true;
+                                            })();
 
-                                        if (messageElement && onSubmit) {
-                                          const newContent =
-                                            messageElement.textContent || '';
-                                          messageElement.contentEditable =
-                                            'false';
-                                          setEditingMessageId(null);
-                                          setOriginalDimensions(null);
-                                          onSubmit(newContent);
+                                        if (canAddToExistingGroup) {
+                                            // Add to existing assistant group
+                                            currentGroup?.messages.push(message);
+                                        } else {
+                                            // Finalize any existing group
+                                            if (currentGroup) {
+                                                groupedMessages.push(currentGroup);
+                                            }
+                                            // Create a new assistant group with a group-level key
+                                            assistantGroupCounter++;
+                                            currentGroup = {
+                                                type: 'assistant_group',
+                                                messages: [message],
+                                                key: `assistant-group-${assistantGroupCounter}`
+                                            };
                                         }
                                       }}
                                       disabled={editValue.trim() === ''}

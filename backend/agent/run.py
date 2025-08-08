@@ -30,6 +30,8 @@ from langfuse.client import StatefulTraceClient
 from agent.gemini_prompt import get_gemini_system_prompt
 from agent.tools.mcp_tool_wrapper import MCPToolWrapper
 from agentpress.tool import SchemaType
+from utils.account_utils import normalize_account_id, get_account_id_variants
+from utils.knowledge_base_manager import global_kb_manager
 
 load_dotenv()
 
@@ -220,6 +222,79 @@ class PromptManager:
                 
                 current_agent_id = agent_config.get('agent_id') if agent_config else None
                 
+                logger.info(f"Retrieving knowledge base context for thread {thread_id}, agent {current_agent_id}")
+                
+                # First, let's check if there are any global knowledge base entries
+                try:
+                    # Get thread account_id
+                    thread_result = await kb_client.table('threads').select('account_id').eq('thread_id', thread_id).execute()
+                    thread_account_id = thread_result.data[0]['account_id'] if thread_result.data else None
+                    logger.info(f"Thread account_id: {thread_account_id}")
+                    
+                    if thread_account_id:
+                        global_kb_entries = []
+                        
+                        # Try the KnowledgeBaseManager first
+                        try:
+                            global_kb_entries = await global_kb_manager.get_global_kb_entries(str(thread_account_id))
+                            logger.info(f"KnowledgeBaseManager found {len(global_kb_entries)} global knowledge base entries")
+                        except Exception as kb_error:
+                            logger.warning(f"KnowledgeBaseManager failed: {kb_error}, trying direct database query...")
+                        
+                        # If KnowledgeBaseManager didn't find entries, try direct database query as fallback
+                        if not global_kb_entries:
+                            logger.info("Trying direct database query for global knowledge base entries...")
+                            
+                            # Normalize the account_id for consistent lookup
+                            normalized_account_id = normalize_account_id(thread_account_id)
+                            logger.info(f"Normalized account_id: {normalized_account_id}")
+                            
+                            # Get all possible variants of the account_id for flexible matching
+                            account_id_variants = get_account_id_variants(thread_account_id)
+                            logger.info(f"Account ID variants: {account_id_variants}")
+                            
+                            # Direct database query with multiple account_id variants
+                            global_entries_result = await kb_client.table('global_knowledge_base_entries').select('*').in_('account_id', account_id_variants).eq('is_active', True).in_('usage_context', ['always', 'contextual']).execute()
+                            
+                            if global_entries_result.data:
+                                global_kb_entries = []
+                                for entry in global_entries_result.data:
+                                    global_kb_entries.append({
+                                        'entry_id': entry.get('entry_id'),
+                                        'name': entry.get('name'),
+                                        'description': entry.get('description'),
+                                        'content': entry.get('content'),
+                                        'content_tokens': entry.get('content_tokens'),
+                                        'usage_context': entry.get('usage_context'),
+                                        'is_active': entry.get('is_active'),
+                                        'created_at': entry.get('created_at')
+                                    })
+                                logger.info(f"Direct database query found {len(global_kb_entries)} entries")
+                        
+                        if global_kb_entries:
+                            # Build global knowledge base context from the entries
+                            global_context = "# GLOBAL KNOWLEDGE BASE\n\nThe following is your global knowledge base. Use this information as context when responding:\n\n"
+                            
+                            for entry in global_kb_entries:
+                                logger.info(f"Global entry: {entry['name']} - {entry['usage_context']} - Active: {entry['is_active']}")
+                                
+                                # Add entry to context
+                                global_context += f"## Global Knowledge: {entry['name']}\n"
+                                if entry.get('description'):
+                                    global_context += f"{entry['description']}\n\n"
+                                global_context += f"{entry['content']}\n\n"
+                            
+                            # Add the global context to the system content
+                            system_content += "\n\n" + global_context
+                            logger.info(f"Added global knowledge base context to system prompt (length: {len(global_context)})")
+                        else:
+                            logger.info("No global knowledge base entries found")
+                except Exception as e:
+                    logger.error(f"Error checking global entries: {e}")
+                    import traceback
+                    logger.error(f"Traceback: {traceback.format_exc()}")
+                
+                # Get thread and agent specific knowledge base context
                 kb_result = await kb_client.rpc('get_combined_knowledge_base_context', {
                     'p_thread_id': thread_id,
                     'p_agent_id': current_agent_id,
@@ -227,10 +302,29 @@ class PromptManager:
                 }).execute()
                 
                 if kb_result.data and kb_result.data.strip():
-                    system_content += "\n\n" + kb_result.data
+                    logger.info(f"Thread/Agent knowledge base context retrieved successfully. Length: {len(kb_result.data)}")
+                    # Log a preview of the context to help debug
+                    preview = kb_result.data[:500] + "..." if len(kb_result.data) > 500 else kb_result.data
+                    logger.info(f"Thread/Agent knowledge base context preview: {preview}")
+                    
+                    # Add explicit instruction to prioritize knowledge base content
+                    knowledge_base_instruction = "\n\n🚨 CRITICAL KNOWLEDGE BASE INSTRUCTIONS 🚨\n"
+                    knowledge_base_instruction += "You have access to knowledge base content that should be your PRIMARY source of information.\n"
+                    knowledge_base_instruction += "1. ALWAYS check the knowledge base content FIRST before searching the web\n"
+                    knowledge_base_instruction += "2. If the knowledge base contains relevant information, use it as your primary source\n"
+                    knowledge_base_instruction += "3. Only search the web if the knowledge base doesn't contain the specific information needed\n"
+                    knowledge_base_instruction += "4. When using knowledge base content, explicitly reference it in your response\n"
+                    knowledge_base_instruction += "5. Do NOT search the web for information that is already available in your knowledge base\n"
+                    knowledge_base_instruction += "\nIMPORTANT: Knowledge base content takes priority over web searches!\n"
+                    
+                    system_content += knowledge_base_instruction + "\n\n" + kb_result.data
+                else:
+                    logger.info("No thread/agent knowledge base context found or empty result")
                         
             except Exception as e:
                 logger.error(f"Error retrieving knowledge base context for thread {thread_id}: {e}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
 
         if agent_config and (agent_config.get('configured_mcps') or agent_config.get('custom_mcps')) and mcp_wrapper_instance and mcp_wrapper_instance._initialized:
             mcp_info = "\n\n--- MCP Tools Available ---\n"

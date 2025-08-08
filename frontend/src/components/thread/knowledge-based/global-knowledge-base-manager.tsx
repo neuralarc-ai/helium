@@ -239,9 +239,10 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
     try {
       setIsUploading(true);
       
-      // For PDF files, we need to use the backend upload endpoint to extract text properly
-      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        // Use the backend file upload endpoint for PDFs
+      // For PDF and CSV files, we need to use the backend upload endpoint to extract text properly
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') ||
+          file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
+        // Use the backend file upload endpoint for PDFs and CSVs
         const response = await uploadFileMutation.mutateAsync(file);
         
         if (response && response.success) {
@@ -251,10 +252,10 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
           // Refresh the knowledge base list to show the new entry
           refetchGlobal();
         } else {
-          throw new Error('Failed to upload PDF file');
+          throw new Error('Failed to upload file');
         }
       } else {
-        // For non-PDF files, read as text
+        // For other files, read as text
         const content = await readFileContent(file);
         setUploadedFiles(prev => [...prev, { file, content }]);
       }
@@ -368,23 +369,23 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
             <Globe className="h-5 w-5 text-blue-400" />
           </div>
           <div className="flex-1">
-            <h2 className="text-lg font-semibold text-white mb-2">Global Knowledge Base</h2>
-            <p className="text-sm text-white/70 mb-3">
+            <h2 className="text-lg font-semibold text-black mb-2">Global Knowledge Base</h2>
+            <p className="text-sm text-black/60 mb-3">
               Add knowledge entries that will be available across all your chat threads. Specify when each piece of knowledge should be used, 
               and your AI will automatically include this information in relevant conversations.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                <span className="text-white/60">Available in all chats</span>
+                <span className="text-black/60">Available in all chats</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                <span className="text-white/60">Automatic context injection</span>
+                <span className="text-black/60">Automatic context injection</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-purple-500"></div>
-                <span className="text-white/60">No need to re-add per thread</span>
+                <span className="text-black/60">No need to re-add per thread</span>
               </div>
             </div>
           </div>
