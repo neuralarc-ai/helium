@@ -665,6 +665,8 @@ export default function ThreadPage({
           debugMode={debugMode}
           agentName={agent && agent.name}
           agentAvatar={agent && agent.avatar}
+          isFloatingToolPreviewVisible={!isSidePanelOpen && toolCalls.length > 0}
+          onSubmit={handleSubmitMessage}
         />
 
         <div
