@@ -8,6 +8,8 @@ from services.supabase import DBConnection
 from knowledge_base.file_processor import FileProcessor
 from utils.logger import logger
 from flags.flags import is_enabled
+from utils.account_utils import normalize_account_id, get_account_id_variants, normalize_account_id_for_storage
+from utils.knowledge_base_manager import global_kb_manager
 
 router = APIRouter(prefix="/knowledge-base", tags=["knowledge-base"])
 
@@ -27,7 +29,7 @@ async def get_user_account_id(client, user_id: str) -> str:
             if result.data and len(result.data) > 0:
                 account_id = result.data[0]['id']
                 logger.info(f"Found personal account: {account_id}")
-                return account_id
+                return normalize_account_id(account_id)
         except Exception as table_error:
             logger.warning(f"Could not query basejump.accounts table: {str(table_error)}")
         
@@ -45,23 +47,23 @@ async def get_user_account_id(client, user_id: str) -> str:
             
             if create_result.data:
                 logger.info(f"Created personal account: {unique_account_id}")
-                return unique_account_id
+                return normalize_account_id(unique_account_id)
             else:
                 logger.info(f"Account may already exist: {unique_account_id}")
-                return unique_account_id
+                return normalize_account_id(unique_account_id)
                 
         except Exception as create_error:
             logger.warning(f"Could not create account: {str(create_error)}")
         
         # If all else fails, try to use the user_id directly (this might work if the constraint is not enforced)
         logger.warning(f"Using user_id as account_id as fallback: {user_id}")
-        return user_id
+        return normalize_account_id(user_id)
         
     except Exception as e:
         logger.error(f"Error in get_user_account_id: {str(e)}", exc_info=True)
         # Final fallback: return user_id
         logger.info(f"Using final fallback account_id for user {user_id}: {user_id}")
-        return user_id
+        return normalize_account_id(user_id)
 
 class KnowledgeBaseEntry(BaseModel):
     entry_id: Optional[str] = None
@@ -168,8 +170,12 @@ async def get_global_knowledge_base(
         # Get the proper account_id for this user
         account_id = await get_user_account_id(client, user_id)
         
-        # Query the table directly instead of using the function
-        query = client.table('global_knowledge_base_entries').select('*').eq('account_id', account_id)
+        # Get all possible variants of the account_id for flexible matching
+        account_id_variants = get_account_id_variants(account_id)
+        
+        # Query the table with multiple account_id variants
+        # For Supabase, we need to use 'in' operator for multiple values
+        query = client.table('global_knowledge_base_entries').select('*').in_('account_id', account_id_variants)
         
         if not include_inactive:
             query = query.eq('is_active', True)
@@ -226,9 +232,20 @@ async def create_global_knowledge_base_entry(
     try:
         client = await db.client
         
-        # Get the proper account_id for this user
+        # Get the proper account_id for this user and normalize it for storage
         account_id = await get_user_account_id(client, user_id)
-        logger.info(f"Using account_id: {account_id} for user: {user_id}")
+        normalized_account_id = normalize_account_id_for_storage(account_id)
+        logger.info(f"Using normalized account_id: {normalized_account_id} for user: {user_id}")
+        
+        # Also check what account_id is in the threads table for this user
+        try:
+            threads_result = await client.table('threads').select('account_id').eq('account_id', account_id).limit(1).execute()
+            if threads_result.data:
+                logger.info(f"Found thread with account_id: {threads_result.data[0]['account_id']}")
+            else:
+                logger.warning(f"No threads found for account_id: {account_id}")
+        except Exception as e:
+            logger.warning(f"Could not check threads table: {e}")
         
         # Sanitize content to remove problematic characters
         sanitized_content = entry_data.content
@@ -240,28 +257,32 @@ async def create_global_knowledge_base_entry(
             # Normalize line endings
             sanitized_content = sanitized_content.replace('\r\n', '\n').replace('\r', '\n')
         
-        # Prepare the insert data
-        insert_data = {
-            'account_id': account_id,
+        # Prepare the KB document data for storage
+        kb_document_data = {
             'name': entry_data.name,
             'description': entry_data.description,
             'content': sanitized_content,
+            'content_tokens': len(sanitized_content) // 4,  # Estimate tokens
             'usage_context': entry_data.usage_context,
             'is_active': entry_data.is_active
         }
         
-        logger.info(f"Inserting data: {insert_data}")
+        # Store using the new KnowledgeBaseManager
+        success = await global_kb_manager.store_global_kb_entry(normalized_account_id, kb_document_data)
         
-        # Create the entry
-        result = await client.table('global_knowledge_base_entries').insert(insert_data).execute()
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to store global knowledge base entry")
         
-        logger.info(f"Insert result: {result.data}")
+        # Refresh the global KB map to include the new entry
+        await global_kb_manager.refresh_global_kb_map()
+        
+        # Get the created entry for response
+        result = await client.table('global_knowledge_base_entries').select('*').eq('account_id', normalized_account_id).eq('name', entry_data.name).order('created_at', desc=True).limit(1).execute()
         
         if not result.data:
-            raise HTTPException(status_code=500, detail="Failed to create knowledge base entry")
+            raise HTTPException(status_code=500, detail="Failed to retrieve created global knowledge base entry")
         
         entry = result.data[0]
-        logger.info(f"Created entry: {entry}")
         
         return KnowledgeBaseEntryResponse(
             entry_id=entry['entry_id'],
@@ -282,25 +303,7 @@ async def create_global_knowledge_base_entry(
     except HTTPException:
         raise
     except Exception as e:
-        error_msg = str(e)
-        logger.error(f"Error creating global knowledge base entry: {error_msg}")
-        
-        # Check if it's a foreign key constraint error
-        if "foreign key constraint" in error_msg.lower() or "23503" in error_msg:
-            logger.error("Foreign key constraint error detected. This indicates the accounts table is missing.")
-            raise HTTPException(
-                status_code=500, 
-                detail="Knowledge base setup incomplete. Please contact support to complete the database setup."
-            )
-        
-        # Check if it's a Unicode error
-        if "unicode escape sequence" in error_msg.lower() or "22P05" in error_msg or "\\u0000" in error_msg:
-            logger.error("Unicode error detected. Content contains invalid characters.")
-            raise HTTPException(
-                status_code=400, 
-                detail="The uploaded content contains invalid characters. Please try uploading a different file or check the file content."
-            )
-        
+        logger.error(f"Error creating global knowledge base entry: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to create global knowledge base entry")
 
 @router.get("/global/context")
@@ -321,13 +324,13 @@ async def get_global_knowledge_base_context(
         # Get the proper account_id for this user
         account_id = await get_user_account_id(client, user_id)
         
-        # Query the table directly instead of using the function
-        result = await client.table('global_knowledge_base_entries').select('*').eq('account_id', account_id).eq('is_active', True).in_('usage_context', ['always', 'contextual']).order('created_at', desc=True).execute()
+        # Use the new KnowledgeBaseManager to get entries
+        global_kb_entries = await global_kb_manager.get_global_kb_entries(account_id)
         
         context_text = ''
         current_tokens = 0
         
-        for entry in result.data or []:
+        for entry in global_kb_entries:
             # Estimate tokens if not set
             estimated_tokens = entry.get('content_tokens') or len(entry['content']) // 4
             
@@ -376,6 +379,9 @@ async def update_global_knowledge_base_entry(
         # Get the proper account_id for this user
         account_id = await get_user_account_id(client, user_id)
         
+        # Get all possible variants of the account_id for flexible matching
+        account_id_variants = get_account_id_variants(account_id)
+        
         # Build update data
         update_data = {}
         if entry_data.name is not None:
@@ -392,8 +398,17 @@ async def update_global_knowledge_base_entry(
         if not update_data:
             raise HTTPException(status_code=400, detail="No fields to update")
         
-        # Update the entry
-        result = await client.table('global_knowledge_base_entries').update(update_data).eq('entry_id', entry_id).eq('account_id', account_id).execute()
+        # Query the table with multiple account_id variants
+        query = client.table('global_knowledge_base_entries').update(update_data).eq('entry_id', entry_id)
+        
+        # Use OR condition for multiple account_id variants
+        if len(account_id_variants) == 1:
+            query = query.eq('account_id', account_id_variants[0])
+        else:
+            # For multiple variants, we need to use 'in' operator
+            query = query.in_('account_id', account_id_variants)
+        
+        result = await query.execute()
         
         if not result.data:
             raise HTTPException(status_code=404, detail="Global knowledge base entry not found")
@@ -440,8 +455,20 @@ async def delete_global_knowledge_base_entry(
         # Get the proper account_id for this user
         account_id = await get_user_account_id(client, user_id)
         
+        # Get all possible variants of the account_id for flexible matching
+        account_id_variants = get_account_id_variants(account_id)
+        
         # Delete the entry
-        result = await client.table('global_knowledge_base_entries').delete().eq('entry_id', entry_id).eq('account_id', account_id).execute()
+        query = client.table('global_knowledge_base_entries').delete().eq('entry_id', entry_id)
+        
+        # Use OR condition for multiple account_id variants
+        if len(account_id_variants) == 1:
+            query = query.eq('account_id', account_id_variants[0])
+        else:
+            # For multiple variants, we need to use 'in' operator
+            query = query.in_('account_id', account_id_variants)
+        
+        result = await query.execute()
         
         if not result.data:
             raise HTTPException(status_code=404, detail="Global knowledge base entry not found")
@@ -530,8 +557,20 @@ async def get_global_knowledge_base_entry(
         # Get the proper account_id for this user
         account_id = await get_user_account_id(client, user_id)
         
+        # Get all possible variants of the account_id for flexible matching
+        account_id_variants = get_account_id_variants(account_id)
+        
         # Get the entry
-        result = await client.table('global_knowledge_base_entries').select('*').eq('entry_id', entry_id).eq('account_id', account_id).execute()
+        query = client.table('global_knowledge_base_entries').select('*').eq('entry_id', entry_id)
+        
+        # Use OR condition for multiple account_id variants
+        if len(account_id_variants) == 1:
+            query = query.eq('account_id', account_id_variants[0])
+        else:
+            # For multiple variants, we need to use 'in' operator
+            query = query.in_('account_id', account_id_variants)
+        
+        result = await query.execute()
         
         if not result.data:
             raise HTTPException(status_code=404, detail="Global knowledge base entry not found")
@@ -571,6 +610,9 @@ async def test_global_knowledge_base_access(
         
         # Get the proper account_id for this user
         account_id = await get_user_account_id(client, user_id)
+        
+        # Get all possible variants of the account_id for flexible matching
+        account_id_variants = get_account_id_variants(account_id)
         
         # Check if user has a personal account
         personal_account_result = None
@@ -1483,8 +1525,20 @@ async def save_thread_knowledge_to_global(
         # Get the proper account_id for this user
         account_id = await get_user_account_id(client, user_id)
         
+        # Get all possible variants of the account_id for flexible matching
+        account_id_variants = get_account_id_variants(account_id)
+        
         # Get all active knowledge base entries for the thread
-        thread_kb_result = await client.table('knowledge_base_entries').select('*').eq('thread_id', thread_id).eq('is_active', True).execute()
+        query = client.table('knowledge_base_entries').select('*').eq('thread_id', thread_id).eq('is_active', True)
+        
+        # Use OR condition for multiple account_id variants
+        if len(account_id_variants) == 1:
+            query = query.eq('account_id', account_id_variants[0])
+        else:
+            # For multiple variants, we need to use 'in' operator
+            query = query.in_('account_id', account_id_variants)
+        
+        thread_kb_result = await query.execute()
         
         if not thread_kb_result.data:
             return {
@@ -1494,7 +1548,16 @@ async def save_thread_knowledge_to_global(
             }
         
         # Get existing global knowledge base entries to check for duplicates
-        global_kb_result = await client.table('global_knowledge_base_entries').select('*').eq('account_id', account_id).eq('is_active', True).execute()
+        query = client.table('global_knowledge_base_entries').select('*').eq('is_active', True)
+        
+        # Use OR condition for multiple account_id variants
+        if len(account_id_variants) == 1:
+            query = query.eq('account_id', account_id_variants[0])
+        else:
+            # For multiple variants, we need to use 'in' operator
+            query = query.in_('account_id', account_id_variants)
+        
+        global_kb_result = await query.execute()
         
         existing_global_entries = global_kb_result.data or []
         existing_content_hashes = {entry.get('content', '')[:100] for entry in existing_global_entries}
@@ -1539,3 +1602,77 @@ async def save_thread_knowledge_to_global(
     except Exception as e:
         logger.error(f"Error saving thread knowledge to global for thread {thread_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to save thread knowledge to global knowledge base") 
+
+@router.get("/test-combined-context/{thread_id}")
+async def test_combined_knowledge_base_context(
+    thread_id: str,
+    agent_id: Optional[str] = None,
+    max_tokens: int = 4000,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    """Test endpoint to debug combined knowledge base context function"""
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Test the get_combined_knowledge_base_context function directly"""
+    try:
+        client = await db.client
+        
+        # Test the function directly
+        result = await client.rpc('get_combined_knowledge_base_context', {
+            'p_thread_id': thread_id,
+            'p_agent_id': agent_id,
+            'p_max_tokens': max_tokens
+        }).execute()
+        
+        # Get thread info for debugging
+        thread_result = await client.table('threads').select('account_id').eq('thread_id', thread_id).execute()
+        thread_account_id = thread_result.data[0]['account_id'] if thread_result.data else None
+        
+        # Get all possible variants of the account_id for flexible matching
+        account_id_variants = get_account_id_variants(thread_account_id)
+        
+        # Get global knowledge base entries for this account
+        global_entries = []
+        if thread_account_id:
+            try:
+                # Try to get the user's account_id from basejump.accounts table first
+                account_result = await client.table('basejump.accounts').select('id').eq('id', thread_account_id).eq('personal_account', True).execute()
+                user_account_id = account_result.data[0]['id'] if account_result.data else thread_account_id
+                
+                query = client.table('global_knowledge_base_entries').select('*').eq('is_active', True)
+                
+                # Use OR condition for multiple account_id variants
+                if len(account_id_variants) == 1:
+                    query = query.eq('account_id', account_id_variants[0])
+                else:
+                    # For multiple variants, we need to use 'in' operator
+                    query = query.in_('account_id', account_id_variants)
+                
+                global_result = await query.in_('usage_context', ['always', 'contextual']).execute()
+                global_entries = global_result.data or []
+            except Exception as e:
+                logger.error(f"Error getting global entries: {e}")
+        
+        context = result.data if result.data else None
+        
+        return {
+            "context": context,
+            "context_length": len(context) if context else 0,
+            "max_tokens": max_tokens,
+            "thread_id": thread_id,
+            "agent_id": agent_id,
+            "thread_account_id": thread_account_id,
+            "global_entries_count": len(global_entries),
+            "global_entries": global_entries,
+            "function_result": result.data
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error testing combined knowledge base context for thread {thread_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to test combined knowledge base context: {str(e)}") 

@@ -19,7 +19,7 @@ from services.supabase import DBConnection
 
 class FileProcessor:
     SUPPORTED_TEXT_EXTENSIONS = {
-        '.txt'
+        '.txt', '.csv'
     }
     
     SUPPORTED_DOCUMENT_EXTENSIONS = {
@@ -570,7 +570,11 @@ class FileProcessor:
         try:
             if file_extension in self.SUPPORTED_TEXT_EXTENSIONS or mime_type.startswith('text/'):
                 logger.info("Processing as text file")
-                return self._extract_text_content(file_content)
+                if file_extension == '.csv':
+                    logger.info("Processing as CSV file")
+                    return self._extract_csv_content(file_content)
+                else:
+                    return self._extract_text_content(file_content)
             
             elif file_extension == '.pdf':
                 logger.info("Processing as PDF file")
@@ -582,7 +586,7 @@ class FileProcessor:
             
             else:
                 logger.error(f"Unsupported file format: {file_extension}")
-                raise ValueError(f"Unsupported file format: {file_extension}. Only .txt, .pdf, and .docx files are supported.")
+                raise ValueError(f"Unsupported file format: {file_extension}. Only .txt, .csv, .pdf, and .docx files are supported.")
         
         except Exception as e:
             logger.error(f"Error extracting content from {filename}: {str(e)}", exc_info=True)
@@ -598,6 +602,67 @@ class FileProcessor:
             raw_text = file_content.decode('utf-8', errors='replace')
         
         return self._sanitize_content(raw_text)
+    
+    def _extract_csv_content(self, file_content: bytes) -> str:
+        """Extract content from CSV files, preserving structure and headers"""
+        try:
+            logger.info("Starting CSV content extraction")
+            
+            # Use chardet to detect encoding
+            detected = chardet.detect(file_content)
+            encoding = detected.get('encoding', 'utf-8')
+            logger.info(f"Detected encoding: {encoding}")
+            
+            # Read the file content with the detected encoding
+            try:
+                raw_text = file_content.decode(encoding)
+            except UnicodeDecodeError:
+                logger.warning(f"Failed to decode with {encoding}, trying utf-8")
+                raw_text = file_content.decode('utf-8', errors='replace')
+            
+            # Split the content into lines
+            lines = raw_text.splitlines()
+            logger.info(f"CSV has {len(lines)} lines")
+            
+            if not lines:
+                return "Empty CSV file"
+            
+            # Process the CSV content to make it more readable
+            processed_lines = []
+            
+            # Add a header to indicate this is CSV content
+            processed_lines.append("=== CSV FILE CONTENT ===")
+            processed_lines.append("")
+            
+            for i, line in enumerate(lines):
+                if i == 0:
+                    # First line is usually headers
+                    processed_lines.append(f"COLUMN HEADERS: {line}")
+                    processed_lines.append("")
+                else:
+                    # Data rows - limit to first 100 rows to avoid overwhelming the context
+                    if i <= 100:
+                        processed_lines.append(f"Row {i}: {line}")
+                    elif i == 101:
+                        processed_lines.append(f"... (showing first 100 rows, total {len(lines)-1} data rows)")
+                        break
+            
+            # Add summary information
+            processed_lines.append("")
+            processed_lines.append(f"=== SUMMARY ===")
+            processed_lines.append(f"Total rows: {len(lines)}")
+            processed_lines.append(f"Total columns: {len(lines[0].split(',')) if lines else 0}")
+            processed_lines.append(f"Data rows: {len(lines) - 1 if len(lines) > 1 else 0}")
+            
+            # Combine lines into a single string
+            combined_text = '\n'.join(processed_lines)
+            logger.info(f"CSV extraction completed, total text length: {len(combined_text)}")
+            
+            return self._sanitize_content(combined_text)
+            
+        except Exception as e:
+            logger.error(f"Error extracting CSV content: {str(e)}", exc_info=True)
+            return f"Error extracting CSV content: {str(e)}"
     
     def _extract_pdf_content(self, file_content: bytes) -> str:
         try:
@@ -641,7 +706,6 @@ class FileProcessor:
         raw_text = '\n'.join(text_content)
         return self._sanitize_content(raw_text)
     
-    
     def _sanitize_content(self, content: str) -> str:
         if not content:
             return content
@@ -666,6 +730,8 @@ class FileProcessor:
             return 'python-docx'
         elif file_extension == '.txt':
             return 'text encoding detection'
+        elif file_extension == '.csv':
+            return 'csv parsing'
         else:
             return 'text encoding detection'
     

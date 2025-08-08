@@ -1,9 +1,12 @@
--- Migration: Add global knowledge base context to combined knowledge base context function
--- This migration updates the get_combined_knowledge_base_context function to include global knowledge base entries
+-- Fix for global knowledge base context issue
+-- This script updates the get_combined_knowledge_base_context function to properly handle account_id conversion
 
 BEGIN;
 
--- Function to get combined knowledge base context (agent + thread + global)
+-- Drop the existing function
+DROP FUNCTION IF EXISTS get_combined_knowledge_base_context(UUID, UUID, INTEGER);
+
+-- Create the updated function with better account_id handling
 CREATE OR REPLACE FUNCTION get_combined_knowledge_base_context(
     p_thread_id UUID,
     p_agent_id UUID DEFAULT NULL,
@@ -52,7 +55,6 @@ BEGIN
         SELECT account_id INTO thread_account_id FROM threads WHERE thread_id = p_thread_id;
         
         IF thread_account_id IS NOT NULL THEN
-            -- Convert thread_account_id to VARCHAR for comparison
             -- Try multiple approaches to handle the account_id conversion
             BEGIN
                 -- First, try to get the user's account_id from basejump.accounts table
@@ -72,7 +74,7 @@ BEGIN
                 user_account_id := thread_account_id::VARCHAR(255);
             END IF;
             
-            -- Try to find global knowledge base entries
+            -- Try to find global knowledge base entries with multiple account_id formats
             FOR entry_record IN
                 SELECT 
                     name,
@@ -80,7 +82,7 @@ BEGIN
                     content,
                     content_tokens
                 FROM global_knowledge_base_entries
-                WHERE account_id = user_account_id
+                WHERE (account_id = user_account_id OR account_id = thread_account_id::VARCHAR(255))
                 AND is_active = TRUE
                 AND usage_context IN ('always', 'contextual')
                 ORDER BY created_at DESC

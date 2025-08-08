@@ -1,9 +1,12 @@
--- Migration: Add global knowledge base context to combined knowledge base context function
--- This migration updates the get_combined_knowledge_base_context function to include global knowledge base entries
+-- Migration: Fix account ID normalization for global knowledge base
+-- This migration updates the get_combined_knowledge_base_context function to use normalized account IDs
 
 BEGIN;
 
--- Function to get combined knowledge base context (agent + thread + global)
+-- Drop the existing function if it exists
+DROP FUNCTION IF EXISTS get_combined_knowledge_base_context(UUID, UUID, INTEGER);
+
+-- Create the updated function with normalized account_id handling
 CREATE OR REPLACE FUNCTION get_combined_knowledge_base_context(
     p_thread_id UUID,
     p_agent_id UUID DEFAULT NULL,
@@ -26,7 +29,8 @@ DECLARE
     entry_record RECORD;
     estimated_tokens INTEGER;
     thread_account_id UUID;
-    user_account_id VARCHAR(255);
+    normalized_account_id VARCHAR(255);
+    account_id_variants TEXT[];
 BEGIN
     -- Get agent-specific context if agent_id is provided
     IF p_agent_id IS NOT NULL THEN
@@ -52,27 +56,17 @@ BEGIN
         SELECT account_id INTO thread_account_id FROM threads WHERE thread_id = p_thread_id;
         
         IF thread_account_id IS NOT NULL THEN
-            -- Convert thread_account_id to VARCHAR for comparison
-            -- Try multiple approaches to handle the account_id conversion
-            BEGIN
-                -- First, try to get the user's account_id from basejump.accounts table
-                SELECT id::VARCHAR(255) INTO user_account_id 
-                FROM basejump.accounts 
-                WHERE id = thread_account_id 
-                AND personal_account = TRUE 
-                LIMIT 1;
-            EXCEPTION
-                WHEN OTHERS THEN
-                    -- If that fails, use the thread_account_id as string
-                    user_account_id := thread_account_id::VARCHAR(255);
-            END;
+            -- Normalize the account_id for consistent handling
+            normalized_account_id := LOWER(TRIM(thread_account_id::TEXT));
             
-            -- If we still don't have a user_account_id, use the thread_account_id
-            IF user_account_id IS NULL THEN
-                user_account_id := thread_account_id::VARCHAR(255);
-            END IF;
+            -- Create account_id variants for flexible matching
+            account_id_variants := ARRAY[
+                normalized_account_id,
+                thread_account_id::TEXT,
+                TRIM(thread_account_id::TEXT)
+            ];
             
-            -- Try to find global knowledge base entries
+            -- Try to find global knowledge base entries with multiple account_id formats
             FOR entry_record IN
                 SELECT 
                     name,
@@ -80,7 +74,7 @@ BEGIN
                     content,
                     content_tokens
                 FROM global_knowledge_base_entries
-                WHERE account_id = user_account_id
+                WHERE account_id = ANY(account_id_variants)
                 AND is_active = TRUE
                 AND usage_context IN ('always', 'contextual')
                 ORDER BY created_at DESC
@@ -130,6 +124,6 @@ END;
 $$;
 
 -- Update the comment
-COMMENT ON FUNCTION get_combined_knowledge_base_context IS 'Generates combined agent, thread, and global knowledge base context';
+COMMENT ON FUNCTION get_combined_knowledge_base_context IS 'Generates combined agent, thread, and global knowledge base context with normalized account ID handling';
 
 COMMIT; 

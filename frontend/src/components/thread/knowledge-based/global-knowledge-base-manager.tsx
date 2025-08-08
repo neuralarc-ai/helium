@@ -239,9 +239,10 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
     try {
       setIsUploading(true);
       
-      // For PDF files, we need to use the backend upload endpoint to extract text properly
-      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-        // Use the backend file upload endpoint for PDFs
+      // For PDF and CSV files, we need to use the backend upload endpoint to extract text properly
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') ||
+          file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
+        // Use the backend file upload endpoint for PDFs and CSVs
         const response = await uploadFileMutation.mutateAsync(file);
         
         if (response && response.success) {
@@ -251,10 +252,10 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
           // Refresh the knowledge base list to show the new entry
           refetchGlobal();
         } else {
-          throw new Error('Failed to upload PDF file');
+          throw new Error('Failed to upload file');
         }
       } else {
-        // For non-PDF files, read as text
+        // For other files, read as text
         const content = await readFileContent(file);
         setUploadedFiles(prev => [...prev, { file, content }]);
       }
