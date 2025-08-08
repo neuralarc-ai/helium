@@ -83,7 +83,7 @@ export default function StrategicServiceSection() {
                 {/* Button over image */}
                 {cards[0].button === 'over-image' && (
                   <div className="absolute bottom-4 right-7 p-[1px] rounded-full bg-gradient-to-r from-pink-400 to-blue-500 hover:from-pink-500 hover:to-blue-600 transition-all duration-300 hover:shadow-lg hover:scale-105">
-                    <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200">
+                    <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 strategic-card-btn cursor-pointer">
                       {cards[0].buttonText}
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M8 6V18L18 12L8 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -104,7 +104,7 @@ export default function StrategicServiceSection() {
                 {cards[1].button === 'top-right' && (
                   <div className="hidden lg:block ml-4">
                     <div className="p-[1px] rounded-full bg-gradient-to-r from-pink-400 to-blue-500 hover:from-pink-500 hover:to-blue-600 transition-all duration-300 hover:shadow-lg hover:scale-105">
-                      <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200">
+                      <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 strategic-card-btn cursor-pointer">
                         {cards[1].buttonText}
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M8 6V18L18 12L8 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -120,7 +120,7 @@ export default function StrategicServiceSection() {
               {cards[1].button === 'top-right' && (
                 <div className="lg:hidden mt-4 w-fit">
                   <div className="p-[1px] rounded-full bg-gradient-to-r from-pink-400 to-blue-500 hover:from-pink-500 hover:to-blue-600 transition-all duration-300 hover:shadow-lg hover:scale-105">
-                    <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap">
+                    <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap strategic-card-btn cursor-pointer">
                       {cards[1].buttonText}
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M8 6V18L18 12L8 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -145,7 +145,7 @@ export default function StrategicServiceSection() {
             {cards[2].button === 'left' && (
               <div className="flex justify-start w-full mt-2">
                 <div className="p-[1px] rounded-full bg-gradient-to-r from-pink-400 to-blue-500 hover:from-pink-500 hover:to-blue-600 transition-all duration-300 hover:shadow-lg hover:scale-105">
-                  <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200">
+                  <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 strategic-card-btn cursor-pointer">
                     {cards[2].buttonText}
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M8 6V18L18 12L8 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -177,8 +177,13 @@ export default function StrategicServiceSection() {
                 {cards[3].button === 'left' && (
                   <div className="absolute bottom-4 right-10">
                     <div className="p-[1px] rounded-full bg-gradient-to-r from-pink-400 to-blue-500 hover:from-pink-500 hover:to-blue-600 transition-all duration-300 hover:shadow-lg hover:scale-105">
-                      <button className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap">
-                        {cards[3].buttonText}
+                    <button
+        className={`${
+          cards[3].title === 'Contract Intelligence for Legal Operations'
+            ? 'bg-[#EA79A5] text-black'
+            : 'bg-white hover:bg-gray-50 text-gray-900'
+        } text-sm px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap strategic-card-btn cursor-pointer`}
+      >                        {cards[3].buttonText}
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M8 6V18L18 12L8 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>

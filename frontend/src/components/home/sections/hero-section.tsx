@@ -178,7 +178,7 @@ export default function HeroSection() {
         style={{ margin: 0, padding: 0, borderRadius: 0, maxWidth: '100%' }}
       >
         <Image
-          src="/auth/bg-image.png"
+          src="/auth/bg-image1.png"
           alt="Helium background"
           fill
           priority
@@ -248,7 +248,7 @@ export default function HeroSection() {
         </motion.div>
       </section>
       {/* Hero Video Section (separate) */}
-      <section className="w-full flex justify-center mt-8 sm:mt-10 md:mt-12 mb-8 sm:mb-10 md:mb-12 px-4 sm:px-6 lg:px-8">
+      {/* <section className="w-full flex justify-center mt-8 sm:mt-10 md:mt-12 mb-8 sm:mb-10 md:mb-12 px-4 sm:px-6 lg:px-8">
         <motion.div
           className="w-full flex justify-center"
           initial="hidden"
@@ -267,7 +267,19 @@ export default function HeroSection() {
             Your browser does not support the video tag.
           </video>
         </motion.div>
-      </section>
+     
+      </section> */}
+    
+{/* Input Fields Image Below Hero Section */}
+<div className="w-full flex justify-center mt-16 mb-8">
+  <Image
+    src="/input fields.png"
+    alt="Input Fields Example"
+    width={700}
+    height={180}
+    style={{ maxWidth: '90vw', height: 'auto' }}
+  />
+</div>
     </>
   );
 }
