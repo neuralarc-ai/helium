@@ -486,7 +486,7 @@ export const AgentKnowledgeBaseManager = ({ agentId, agentName }: AgentKnowledge
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     
-    const supportedExtensions = ['.txt', '.pdf', '.docx'];
+    const supportedExtensions = ['.txt', '.pdf', '.docx', '.csv'];
     const newFiles: UploadedFile[] = [];
     const rejectedFiles: string[] = [];
     
@@ -515,7 +515,7 @@ export const AgentKnowledgeBaseManager = ({ agentId, agentName }: AgentKnowledge
     }
     
     if (rejectedFiles.length > 0) {
-      toast.error(`Unsupported file format(s): ${rejectedFiles.join(', ')}. Only .txt, .pdf, .docx, and .zip files are supported.`);
+      toast.error(`Unsupported file format(s): ${rejectedFiles.join(', ')}. Only .txt, .pdf, .docx, .csv, and .zip files are supported.`);
     }
     
     if (newFiles.length > 0) {
