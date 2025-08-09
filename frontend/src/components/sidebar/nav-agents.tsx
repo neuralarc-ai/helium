@@ -39,6 +39,7 @@ import { Button } from "@/components/ui/button"
 import { ThreadWithProject } from '@/hooks/react-query/sidebar/use-sidebar';
 import { processThreadsWithProjects, useDeleteMultipleThreads, useDeleteThread, useProjects, useThreads } from '@/hooks/react-query/sidebar/use-sidebar';
 import { projectKeys, threadKeys } from '@/hooks/react-query/sidebar/keys';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 export function NavAgents() {
   const { isMobile, state, openMobile } = useSidebar()
@@ -353,31 +354,52 @@ export function NavAgents() {
               <div className="flex items-center space-x-1">
                 {selectedThreads.size > 0 ? (
                   <>
+                   <Tooltip>
+                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={deselectAllThreads}
-                      className="h-7 w-7"
+                      className="h-5 w-7 cursor-pointer"
                     >
                       <X className="h-4 w-4" />
                     </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Clear selection</p>
+                    </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                    <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={selectAllThreads}
                       disabled={selectedThreads.size === combinedThreads.length}
-                      className="h-7 w-7"
+                      className="h-5 w-7 cursor-pointer"
                     >
                       <Check className="h-4 w-4" />
                     </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Select all</p>
+                    </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                    <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={handleMultiDelete}
-                      className="h-7 w-7 text-destructive"
+                      className="h-5 w-5 text-destructive cursor-pointer"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Delete</p>
+                    </TooltipContent>
+                    </Tooltip>
                   </>
                 ) : null}
               </div>

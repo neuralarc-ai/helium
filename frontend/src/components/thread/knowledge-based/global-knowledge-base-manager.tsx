@@ -363,7 +363,7 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4 border border-blue-500/20">
+      {/* <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4 border border-blue-500/20">
         <div className="flex items-start gap-3">
           <div className="p-2 bg-blue-500/20 rounded-lg">
             <Globe className="h-5 w-5 text-blue-400" />
@@ -390,7 +390,7 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Search and Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -405,16 +405,16 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
             />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowInactive(!showInactive)}
-            className={showInactive ? "bg-accent" : ""}
+            className={`${showInactive ? "bg-accent" : ""} rounded-md cursor-pointer`} 
           >
             {showInactive ? "Hide Inactive" : "Show Inactive"}
           </Button>
-          <Button onClick={handleOpenCreateDialog} size="sm">
+          <Button onClick={handleOpenCreateDialog} size="sm" className="rounded-md cursor-pointer bg-[#0ac5b2]">
             <Plus className="h-4 w-4 mr-2" />
             Add Knowledge
           </Button>
@@ -438,7 +438,7 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
             <p className="text-muted-foreground mb-4">
               Create your first global knowledge base entry with usage context to get started.
             </p>
-            <Button onClick={handleOpenCreateDialog}>
+            <Button onClick={handleOpenCreateDialog} className="rounded-md cursor-pointer bg-[#0ac5b2]">
               <Plus className="h-4 w-4 mr-2" />
               Add Knowledge
             </Button>

@@ -1,5 +1,19 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { ArrowDown, CircleDashed, } from 'lucide-react';
+import {
+  ArrowDown,
+  CircleDashed,
+  Copy,
+  ThumbsUp,
+  ThumbsDown,
+  RotateCcw,
+  Check,
+  Pencil,
+  X,
+} from 'lucide-react';
+import {
+  ThumbsUp as ThumbsUpFilled,
+  ThumbsDown as ThumbsDownFilled,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UnifiedMessage, ParsedContent, ParsedMetadata } from '@/components/thread/types';
 import { FileAttachmentGrid } from '@/components/thread/file-attachment';
@@ -17,6 +31,9 @@ import { AgentLoader } from './loader';
 import { parseXmlToolCalls, isNewXmlFormat } from '@/components/thread/tool-views/xml-parser';
 import { ShowToolStream } from './ShowToolStream';
 import { PipedreamUrlDetector } from './pipedream-url-detector';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const HIDE_STREAMING_XML_TAGS = new Set([
     'execute-command',
@@ -314,6 +331,12 @@ export interface ThreadContentProps {
     threadMetadata?: any; // Add thread metadata prop
     // Align content to the left edge of the content area (useful when side panel is open)
     isSidePanelOpen?: boolean;
+    onSubmit?: (
+    message: string,
+    options?: { model_name?: string; enable_thinking?: boolean },
+  ) => void; // Add onSubmit prop for retry functionality
+  setInputValue?: (value: string) => void;
+  isFloatingToolPreviewVisible?: boolean;
 }
 
 export const ThreadContent: React.FC<ThreadContentProps> = ({
@@ -338,6 +361,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     emptyStateComponent,
     threadMetadata,
     isSidePanelOpen = false,
+    onSubmit,
+    isFloatingToolPreviewVisible = false,
+    setInputValue,
 }) => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -345,6 +371,18 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     const [showScrollButton, setShowScrollButton] = useState(false);
     const [, setUserHasScrolled] = useState(false);
     const { session } = useAuth();
+     const [copied, setCopied] = useState(false);
+      const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
+      const groupContentRefs = useRef<{ [key: number]: HTMLElement | null }>({});
+      const [copiedPromptIdx, setCopiedPromptIdx] = useState<number | null>(null);
+      const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+      const [editValue, setEditValue] = useState<string>('');
+      const [originalDimensions, setOriginalDimensions] = useState<{
+        width: number;
+        height: number;
+      } | null>(null);
+      const [copiedStreamingIdx, setCopiedStreamingIdx] = useState<number | null>(null);
+      const [streamingFeedback, setStreamingFeedback] = useState<'up' | 'down' | null>(null);
 
     // React Query file preloader
     const { preloadFiles } = useFilePreloader();
@@ -427,6 +465,22 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
         messagesEndRef.current?.scrollIntoView({ behavior });
     }, []);
+
+    // Auto-scroll to bottom when new messages arrive or agent status changes
+    React.useEffect(() => {
+        if (agentStatus === 'running' || agentStatus === 'connecting') {
+            scrollToBottom('smooth');
+        }
+    }, [agentStatus, scrollToBottom]);
+
+    React.useEffect(() => {
+        if (messages.length > 0) {
+            const lastMessage = messages[messages.length - 1];
+            if (lastMessage.type === 'user') {
+                scrollToBottom('smooth');
+            }
+        }
+    }, [messages, scrollToBottom]);
 
     // Preload all message attachments when messages change or sandboxId is provided
     React.useEffect(() => {
@@ -670,16 +724,224 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                         const cleanContent = messageContent.replace(/\[Uploaded File: .*?\]/g, '').trim();
 
                                         return (
-                                            <div key={group.key} className="flex justify-end">
-                                                <div className="flex max-w-[85%] rounded-3xl rounded-br-lg bg-card border px-4 py-3 break-words overflow-hidden">
-                                                    <div className="space-y-3 min-w-0 flex-1">
-                                                                                                {cleanContent && (
-                                            <PipedreamUrlDetector content={cleanContent} className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere" />
-                                        )}
-
-                                                        {/* Use the helper function to render user attachments */}
-                                                        {renderAttachments(attachments as string[], handleOpenFileViewer, sandboxId, project)}
+                                            <div
+                                                key={group.key}
+                                                className="flex justify-end"
+                                                data-message-id={group.key}
+                                            >
+                                                <div className="flex flex-col gap-2">
+                                                    <div
+                                                        className={cn('flex max-w-[100%]')}
+                                                        style={{ gap: '4px', opacity: 1 }}
+                                                    >
+                                                        <div
+                                                            style={{
+                                                                background: '#FFFFFF',
+                                                                color: 'black',
+                                                                paddingTop: '16px',
+                                                                paddingRight: '24px',
+                                                                paddingBottom: '16px',
+                                                                paddingLeft: '24px',
+                                                                borderTopLeftRadius: '24px',
+                                                                borderTopRightRadius: '24px',
+                                                                borderBottomRightRadius: '8px',
+                                                                borderBottomLeftRadius: '24px',
+                                                            }}
+                                                            className="break-words overflow-hidden"
+                                                        >
+                                                            <div className="space-y-3 min-w-0 flex-1">
+                                                                {cleanContent && (
+                                                                    <div
+                                                                        className={cn(
+                                                                            'message-content',
+                                                                            editingMessageId === group.key &&
+                                                                                'outline-none ring-0 border-0 shadow-none',
+                                                                        )}
+                                                                        contentEditable={
+                                                                            editingMessageId === group.key
+                                                                                ? 'true'
+                                                                                : undefined
+                                                                        }
+                                                                        suppressContentEditableWarning
+                                                                        onInput={(e) => {
+                                                                            setEditValue(
+                                                                                (e.target as HTMLElement).textContent ||
+                                                                                    '',
+                                                                            );
+                                                                        }}
+                                                                        style={
+                                                                            editingMessageId === group.key &&
+                                                                            originalDimensions
+                                                                                ? {
+                                                                                      minWidth: `${originalDimensions.width}px`,
+                                                                                      minHeight: `${originalDimensions.height}px`,
+                                                                                      maxHeight: '300px',
+                                                                                      overflowY: 'auto',
+                                                                                  }
+                                                                                : undefined
+                                                                        }
+                                                                    >
+                                                                        <PipedreamUrlDetector
+                                                                            content={cleanContent}
+                                                                            className="text-sm prose prose-sm chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere text-black md:text-lg"
+                                                                        />
+                                                                    </div>
+                                                                )}
+                                                                {renderAttachments(
+                                                                    attachments as string[],
+                                                                    handleOpenFileViewer,
+                                                                    sandboxId,
+                                                                    project,
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
+                                                    {/* Copy and Edit buttons for user prompt - OUTSIDE the message box */}
+                                                    {!readOnly && (
+                                                        <div className="flex justify-end gap-2 mt-2">
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                                                        onClick={() => {
+                                                                            navigator.clipboard.writeText(
+                                                                                cleanContent,
+                                                                            );
+                                                                            setCopiedPromptIdx(groupIndex);
+                                                                            toast.success('Copied to clipboard');
+                                                                            setTimeout(
+                                                                                () => setCopiedPromptIdx(null),
+                                                                                1500,
+                                                                            );
+                                                                        }}
+                                                                    >
+                                                                        {copiedPromptIdx === groupIndex ? (
+                                                                            <Check className="h-4 w-4" />
+                                                                        ) : (
+                                                                            <Copy className="h-4 w-4" />
+                                                                        )}
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>Copy prompt</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                            {editingMessageId === group.key ? (
+                                                                // Send and Cancel buttons when editing
+                                                                <>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                className="h-8 w-8 p-0 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                                                                onClick={() => {
+                                                                                    const messageElement =
+                                                                                        document.querySelector(
+                                                                                            `[data-message-id="${group.key}"] .message-content`,
+                                                                                        ) as HTMLElement;
+
+                                                                                    if (messageElement && onSubmit) {
+                                                                                        const newContent =
+                                                                                            messageElement.textContent || '';
+                                                                                        messageElement.contentEditable =
+                                                                                            'false';
+                                                                                        setEditingMessageId(null);
+                                                                                        setOriginalDimensions(null);
+                                                                                        onSubmit(newContent);
+                                                                                        toast.success('Message sent');
+                                                                                    }
+                                                                                }}
+                                                                                disabled={editValue.trim() === ''}
+                                                                            >
+                                                                                <Check className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>Send edit</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                                                                onClick={() => {
+                                                                                    // Cancel editing and restore original content
+                                                                                    const messageElement =
+                                                                                        document.querySelector(
+                                                                                            `[data-message-id="${group.key}"] .message-content`,
+                                                                                        ) as HTMLElement;
+                                                                                    if (messageElement) {
+                                                                                        messageElement.textContent =
+                                                                                            cleanContent;
+                                                                                        messageElement.contentEditable =
+                                                                                            'false';
+                                                                                        setEditingMessageId(null);
+                                                                                        setOriginalDimensions(null);
+                                                                                        toast.info('Edit cancelled');
+                                                                                    }
+                                                                                }}
+                                                                            >
+                                                                                <X className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>Cancel edit</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </>
+                                                            ) : (
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="sm"
+                                                                            className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                                                            onClick={() => {
+                                                                                // Start editing mode
+                                                                                setEditingMessageId(group.key);
+                                                                                setEditValue(cleanContent);
+                                                                                const messageElement =
+                                                                                    document.querySelector(
+                                                                                        `[data-message-id="${group.key}"] .message-content`,
+                                                                                    ) as HTMLElement;
+                                                                                if (messageElement) {
+                                                                                    // Capture original dimensions before making editable
+                                                                                    const rect =
+                                                                                        messageElement.getBoundingClientRect();
+                                                                                    setOriginalDimensions({
+                                                                                        width: rect.width,
+                                                                                        height: rect.height,
+                                                                                    });
+
+                                                                                    messageElement.contentEditable = 'true';
+                                                                                    messageElement.focus();
+                                                                                    // Select all text
+                                                                                    const range = document.createRange();
+                                                                                    range.selectNodeContents(
+                                                                                        messageElement,
+                                                                                    );
+                                                                                    const selection = window.getSelection();
+                                                                                    selection?.removeAllRanges();
+                                                                                    selection?.addRange(range);
+                                                                                    toast.info('Edit mode enabled');
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <Pencil className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>Edit prompt</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -763,7 +1025,14 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
                                                                         elements.push(
                                                                             <div key={msgKey} className={assistantMessageCount > 0 ? "mt-1" : ""}>
-                                                                                <div className="text-sm lg:text-base xl:text-lg leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-hidden">
+                                                                                <div 
+                                                                                    ref={(el) => {
+                                                                                        if (el) {
+                                                                                            groupContentRefs.current[groupIndex] = el;
+                                                                                        }
+                                                                                    }}
+                                                                                    className="text-sm lg:text-base xl:text-lg leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-hidden"
+                                                                                >
                                                                                     {renderedContent}
                                                                                 </div>
                                                                             </div>
@@ -775,6 +1044,142 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
                                                                 return elements;
                                                             })()}
+                                                            {/* Action Icons */}
+                                                            {!readOnly &&
+                          !(
+                            groupIndex === finalGroupedMessages.length - 1 &&
+                            (streamHookStatus === 'streaming' ||
+                              streamHookStatus === 'connecting')
+                          ) &&
+                          group.messages.some(
+                            (msg) => msg.type === 'assistant',
+                          ) && (
+                                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/50 px-4 pb-0">
+                                    {/* Copy Button */}
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                          onClick={() => {
+                                            const el = groupContentRefs.current[groupIndex];
+                                            if (el) {
+                                              const text = el.textContent || '';
+                                              navigator.clipboard.writeText(text);
+                                              setCopied(true);
+                                              toast.success('Copied to clipboard');
+                                              setTimeout(() => setCopied(false), 1500);
+                                            }
+                                          }}
+                                        >
+                                          {copied ? (
+                                            <Check className="h-4 w-4" />
+                                          ) : (
+                                            <Copy className="h-4 w-4" />
+                                          )}
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Copy</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+
+                                    {/* Thumbs Up */}
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className={cn(
+                                            'h-8 w-8 p-0 cursor-pointer',
+                                            feedback === 'down' && 'opacity-50 pointer-events-none'
+                                          )}
+                                          onClick={() => {
+                                            setFeedback(feedback === 'up' ? null : 'up');
+                                            toast.success(feedback === 'up' ? 'Feedback removed' : 'Good response');
+                                          }}
+                                        >
+                                          {feedback === 'up' ? (
+                                            <ThumbsUpFilled fill="currentColor" className="h-4 w-4" />
+                                          ) : (
+                                            <ThumbsUp className="h-4 w-4" />
+                                          )}
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Good response</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+
+                                    {/* Thumbs Down */}
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className={cn(
+                                            'h-8 w-8 p-0 cursor-pointer',
+                                            feedback === 'up' && 'opacity-50 pointer-events-none'
+                                          )}
+                                          onClick={() => {
+                                            setFeedback(feedback === 'down' ? null : 'down');
+                                            toast.success(feedback === 'down' ? 'Feedback removed' : 'Bad response');
+                                          }}
+                                        >
+                                          {feedback === 'down' ? (
+                                            <ThumbsDownFilled fill="currentColor" className="h-4 w-4" />
+                                          ) : (
+                                            <ThumbsDown className="h-4 w-4" />
+                                          )}
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Bad response</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+
+                                    {/* Retry Button */}
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 px-2 hover:bg-accent cursor-pointer"
+                                          onClick={() => {
+                                            if (!onSubmit) return;
+                                            // Find the user group just before this assistant group
+                                            const userGroup = finalGroupedMessages
+                                              .slice(0, groupIndex)
+                                              .reverse()
+                                              .find((g) => g.type === 'user');
+                                            if (!userGroup) return;
+                                            const userMessage = userGroup.messages[0];
+                                            let prompt = typeof userMessage.content === 'string' ? userMessage.content : '';
+                                            try {
+                                              const parsed = JSON.parse(prompt);
+                                              if (parsed && typeof parsed.content === 'string') {
+                                                prompt = parsed.content;
+                                              }
+                                            } catch (e) {}
+                                            // Remove attachment info from prompt
+                                            prompt = prompt.replace(/\[Uploaded File: .*?\]/g, '').trim();
+                                            if (typeof setInputValue === 'function') setInputValue(prompt);
+                                            toast.success('Retrying previous prompt...');
+                                            onSubmit(prompt);
+                                            // Auto-scroll to bottom after retry
+                                            setTimeout(() => scrollToBottom('smooth'), 100);
+                                          }}
+                                        >
+                                          <RotateCcw className="h-4 w-4 mr-1" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Retry</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                )}
 
                                                             {groupIndex === finalGroupedMessages.length - 1 && !readOnly && (streamHookStatus === 'streaming' || streamHookStatus === 'connecting') && (
                                                                 <div className="mt-2">
