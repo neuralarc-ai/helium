@@ -298,7 +298,7 @@ class PromptManager:
                 kb_result = await kb_client.rpc('get_combined_knowledge_base_context', {
                     'p_thread_id': thread_id,
                     'p_agent_id': current_agent_id,
-                    'p_max_tokens': 4000
+                    'p_max_tokens': 16000
                 }).execute()
                 
                 if kb_result.data and kb_result.data.strip():

@@ -749,18 +749,13 @@ async def upload_file_to_thread_kb(
     try:
         client = await db.client
         
-        # Verify thread exists and user has access
-        thread_result = await client.table('threads').select('project_id').eq('thread_id', thread_id).execute()
+        # Verify thread exists and user has access; fetch account_id directly from thread
+        thread_result = await client.table('threads').select('account_id').eq('thread_id', thread_id).maybe_single().execute()
         if not thread_result.data:
             raise HTTPException(status_code=404, detail="Thread not found")
-        
-        # Get account_id from the thread's project
-        project_id = thread_result.data[0]['project_id']
-        project_result = await client.table('projects').select('account_id').eq('project_id', project_id).execute()
-        if not project_result.data:
-            raise HTTPException(status_code=404, detail="Project not found")
-        
-        account_id = project_result.data[0]['account_id']
+        account_id = thread_result.data.get('account_id')
+        if not account_id:
+            raise HTTPException(status_code=400, detail="Thread has no associated account")
         
         file_content = await file.read()
         
@@ -771,22 +766,35 @@ async def upload_file_to_thread_kb(
         )
         
         if result['success']:
+            # Final verification: ensure row exists (defensive)
+            verify = await client.table('knowledge_base_entries').select('entry_id') \
+                .eq('entry_id', result['entry_id']).maybe_single().execute()
+            if not verify.data:
+                logger.warning(f"KB upload reported success but row missing: {result['entry_id']}")
             return {
                 "success": True,
                 "entry_id": result['entry_id'],
                 "filename": file.filename,
-                "content_length": result['content_length'],
-                "extraction_method": result['extraction_method'],
+                "content_length": result.get('content_length'),
+                "extraction_method": result.get('extraction_method'),
                 "message": "File processed and added to thread knowledge base"
             }
         else:
-            raise HTTPException(status_code=400, detail=result.get('error', 'Failed to process file'))
+            # Thread processor returns raw error strings; convert any leftover source_metadata mentions
+            err_detail = result.get('error', 'Failed to process file')
+            if isinstance(err_detail, str) and 'source_metadata' in err_detail:
+                err_detail = "One or more unsupported fields were provided for thread KB entries"
+            raise HTTPException(status_code=400, detail=err_detail)
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error uploading file to thread KB: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to upload file")
+        logger.error(f"Error uploading file to thread KB: {str(e)}", exc_info=True)
+        detail = str(e)
+        # Normalize common DB validation errors for UI readability
+        if 'source_metadata' in detail:
+            detail = "One or more unsupported fields were provided for thread KB entries"
+        raise HTTPException(status_code=500, detail=detail)
 
 @router.post("/threads/{thread_id}", response_model=KnowledgeBaseEntryResponse)
 async def create_knowledge_base_entry(

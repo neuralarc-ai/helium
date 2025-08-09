@@ -26,13 +26,104 @@ class FileProcessor:
         '.pdf', '.docx'
     }
     
-    MAX_FILE_SIZE = 50 * 1024 * 1024
+    MAX_FILE_SIZE = 100 * 1024 * 1024
     MAX_ZIP_ENTRIES = 1000
     MAX_CONTENT_LENGTH = 100000
     
     def __init__(self):
         self.db = DBConnection()
     
+    async def process_thread_file_upload(
+        self,
+        thread_id: str,
+        account_id: str,
+        file_content: bytes,
+        filename: str,
+        mime_type: str,
+    ) -> Dict[str, Any]:
+        """Process file upload for thread knowledge base (creates entry in knowledge_base_entries)."""
+        try:
+            file_size = len(file_content)
+            if file_size > self.MAX_FILE_SIZE:
+                raise ValueError(
+                    f"File too large: {file_size} bytes (max: {self.MAX_FILE_SIZE})"
+                )
+
+            file_extension = Path(filename).suffix.lower()
+            extraction_method = self._get_extraction_method(file_extension, mime_type)
+
+            # Extract content or handle ZIP specially in future if needed
+            content = await self._extract_file_content(
+                file_content, filename, mime_type
+            )
+
+            if not content or not content.strip():
+                raise ValueError(f"No extractable content found in {filename}")
+
+            client = await self.db.client
+
+            # Sanitize and clamp content size
+            sanitized_content = self._sanitize_content(
+                content[: self.MAX_CONTENT_LENGTH]
+            )
+
+            # knowledge_base_entries has a slimmer schema than agent/global tables
+            entry_data = {
+                'thread_id': thread_id,
+                'account_id': account_id,
+                'name': f"📄 {filename}",
+                'description': f"Content extracted from uploaded file: {filename}",
+                'content': sanitized_content,
+                'usage_context': 'always',
+                'is_active': True,
+            }
+
+            # Deduplicate: if an entry with same thread, name, and identical content exists, reuse it
+            try:
+                existing = await client.table('knowledge_base_entries') \
+                    .select('entry_id, content') \
+                    .eq('thread_id', thread_id) \
+                    .eq('name', entry_data['name']) \
+                    .order('created_at', desc=True) \
+                    .limit(1) \
+                    .execute()
+                if existing.data:
+                    existing_row = existing.data[0]
+                    if existing_row.get('content') == entry_data['content']:
+                        logger.info("Duplicate knowledge base upload detected; returning existing entry_id")
+                        return {
+                            'success': True,
+                            'entry_id': existing_row['entry_id'],
+                            'filename': filename,
+                            'content_length': len(sanitized_content),
+                            'extraction_method': extraction_method,
+                        }
+            except Exception as dedup_err:
+                logger.warning(f"Dedup check failed: {dedup_err}")
+
+            result = (
+                await client.table('knowledge_base_entries').insert(entry_data).execute()
+            )
+
+            if not result.data:
+                raise Exception("Failed to create thread knowledge base entry")
+
+            return {
+                'success': True,
+                'entry_id': result.data[0]['entry_id'],
+                'filename': filename,
+                'content_length': len(sanitized_content),
+                'extraction_method': extraction_method,
+            }
+
+        except Exception as e:
+            logger.error(f"Error processing thread file {filename}: {str(e)}")
+            return {
+                'success': False,
+                'filename': filename,
+                'error': str(e),
+            }
+
     async def process_file_upload(
         self, 
         agent_id: str, 
@@ -665,36 +756,54 @@ class FileProcessor:
             return f"Error extracting CSV content: {str(e)}"
     
     def _extract_pdf_content(self, file_content: bytes) -> str:
+        """Extract text from a PDF using PyMuPDF first, then fall back to pdfminer if needed."""
+        # 1) Primary: PyMuPDF (fitz)
         try:
-            logger.info("Starting PDF content extraction")
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
-            logger.info(f"PDF reader created, pages: {len(pdf_reader.pages)}")
-            
-            text_content = []
-            for i, page in enumerate(pdf_reader.pages):
-                try:
-                    page_text = page.extract_text()
-                    if page_text:
-                        text_content.append(page_text)
-                        logger.info(f"Extracted text from page {i+1}, length: {len(page_text)}")
-                    else:
-                        logger.warning(f"No text extracted from page {i+1}")
-                except Exception as page_error:
-                    logger.error(f"Error extracting text from page {i+1}: {str(page_error)}")
-                    text_content.append(f"[Error extracting page {i+1}: {str(page_error)}]")
-            
-            raw_text = '\n\n'.join(text_content)
-            logger.info(f"PDF extraction completed, total text length: {len(raw_text)}")
-            
-            if not raw_text.strip():
-                logger.warning("No text content extracted from PDF")
-                return "No text content could be extracted from this PDF file."
-            
-            return self._sanitize_content(raw_text)
-            
-        except Exception as e:
-            logger.error(f"Error in PDF content extraction: {str(e)}", exc_info=True)
-            return f"Error extracting PDF content: {str(e)}"
+            import fitz  # PyMuPDF
+            logger.info("Starting PDF content extraction with PyMuPDF")
+            text_chunks = []
+            with fitz.open(stream=file_content, filetype="pdf") as doc:
+                logger.info(f"PyMuPDF opened PDF with {doc.page_count} pages")
+                for i, page in enumerate(doc):
+                    try:
+                        # 'text' gives layout-aware text; if empty try 'raw'
+                        txt = page.get_text("text") or ""
+                        if not txt.strip():
+                            txt = page.get_text("raw") or ""
+                        if txt.strip():
+                            text_chunks.append(txt)
+                            if i < 3:
+                                logger.info(f"PyMuPDF extracted text from page {i+1}, length: {len(txt)}")
+                        else:
+                            logger.debug(f"PyMuPDF empty text on page {i+1}")
+                    except Exception as p_err:
+                        logger.warning(f"PyMuPDF page {i+1} extraction error: {p_err}")
+            raw_text = "\n\n".join(text_chunks)
+            if raw_text.strip():
+                logger.info(f"PyMuPDF extraction completed, total text length: {len(raw_text)}")
+                return self._sanitize_content(raw_text)
+            else:
+                logger.warning("PyMuPDF produced no text; attempting pdfminer fallback")
+        except Exception as fitz_err:
+            logger.warning(f"PyMuPDF not available or failed: {fitz_err}")
+
+        # 2) Fallback: pdfminer.six
+        try:
+            from pdfminer.high_level import extract_text as pdfminer_extract_text
+            try:
+                text2 = pdfminer_extract_text(io.BytesIO(file_content))
+            except TypeError:
+                with tempfile.NamedTemporaryFile(suffix='.pdf', delete=True) as tmp:
+                    tmp.write(file_content)
+                    tmp.flush()
+                    text2 = pdfminer_extract_text(tmp.name)
+            if text2 and text2.strip():
+                logger.info("pdfminer fallback extracted text successfully")
+                return self._sanitize_content(text2)
+        except Exception as pm_err:
+            logger.warning(f"pdfminer fallback failed: {pm_err}")
+
+        return "No text content could be extracted from this PDF file."
     
     def _extract_docx_content(self, file_content: bytes) -> str:
         doc = docx.Document(io.BytesIO(file_content))

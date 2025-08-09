@@ -60,12 +60,14 @@ import {
   useUpdateKnowledgeBaseEntry,
   useDeleteKnowledgeBaseEntry,
   useUploadThreadFiles,
+  useKnowledgeBaseContext,
   CreateKnowledgeBaseEntryRequest,
   KnowledgeBaseEntry,
   UpdateKnowledgeBaseEntryRequest,
 } from '@/hooks/react-query/knowledge-base/use-knowledge-base-queries';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
 interface KnowledgeBaseManagerProps {
   threadId: string;
@@ -148,6 +150,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
   const [editDialog, setEditDialog] = useState<EditDialogData>({ isOpen: false });
   const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
   const [previewFile, setPreviewFile] = useState<DroppedFile | null>(null);
@@ -161,12 +164,241 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
     content: '',
     usage_context: 'always',
   });
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ file: File; content: string }>>([]);
 
-  const { data: knowledgeBase, isLoading, error } = useKnowledgeBaseEntries(threadId);
+  const { data: knowledgeBase, isLoading, error, refetch } = useKnowledgeBaseEntries(threadId, showInactive);
+  const { data: kbContext, refetch: refetchKbContext, isLoading: isLoadingContext } = useKnowledgeBaseContext(threadId, 16000);
   const createMutation = useCreateKnowledgeBaseEntry();
   const updateMutation = useUpdateKnowledgeBaseEntry();
   const deleteMutation = useDeleteKnowledgeBaseEntry();
   const uploadMutation = useUploadThreadFiles();
+
+  const entries = knowledgeBase?.entries ?? [];
+
+  const filteredEntries = entries.filter((entry) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      entry.name.toLowerCase().includes(q) ||
+      (entry.description && entry.description.toLowerCase().includes(q)) ||
+      entry.content.toLowerCase().includes(q)
+    );
+  });
+
+  const handleOpenCreateDialog = () => {
+    setFormData({ name: '', description: '', content: '', usage_context: 'always' });
+    setUploadedFiles([]);
+    uploadingSetRef.current.clear();
+    setEditDialog({ isOpen: true });
+  };
+
+  const handleOpenEditDialog = (entry: KnowledgeBaseEntry) => {
+    setFormData({
+      name: entry.name,
+      description: entry.description,
+      content: entry.content,
+      usage_context: entry.usage_context,
+    });
+    setUploadedFiles([]);
+    setEditDialog({ isOpen: true, entry });
+  };
+
+  const handleCloseDialog = () => {
+    setEditDialog({ isOpen: false });
+    setUploadedFiles([]);
+    setIsUploading(false);
+    uploadingSetRef.current.clear();
+  };
+
+  const readFileContent = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = (e.target?.result as string) || '';
+          const sanitized = content
+            .replace(/\u0000/g, '')
+            .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n');
+          resolve(sanitized);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  };
+
+  // Prevent duplicate concurrent uploads of same file name+size
+  const uploadingSetRef = useRef<Set<string>>(new Set());
+
+  const handleFileUpload = async (file: File) => {
+    try {
+      if (isUploading) {
+        // Prevent overlapping uploads; user can queue after current finishes
+        return;
+      }
+      setIsUploading(true);
+      const lower = file.name.toLowerCase();
+      const isPdf = file.type === 'application/pdf' || lower.endsWith('.pdf');
+      const isCsv = file.type === 'text/csv' || lower.endsWith('.csv');
+      const isDocx =
+        file.type ===
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        lower.endsWith('.docx');
+      const isTextLike = file.type.startsWith('text/') || /\.(txt|md|json|log|csv)$/i.test(lower);
+
+      const uploadKey = `${file.name}|${file.size}`;
+      if (uploadingSetRef.current.has(uploadKey)) {
+        // Debounce duplicate events from drag/drop and input change
+        return;
+      }
+      uploadingSetRef.current.add(uploadKey);
+
+      if (isPdf || isCsv || isDocx) {
+        // Send to backend for extraction and direct KB entry creation
+        const response = await uploadMutation.mutateAsync({ threadId, file });
+        if (response) {
+          toast.success(`Uploaded and processed ${file.name}`);
+          await refetch();
+          await refetchKbContext();
+        }
+      } else {
+        // Read content client-side and include in the form content
+        const content = await readFileContent(file);
+        setUploadedFiles((prev) => prev.concat({ file, content }));
+        toast.success(`Added ${file.name} as inline text content`);
+      }
+    } catch (err: any) {
+      // If backend cannot process the file, attempt a graceful fallback for text-like files
+      const msg = String(err?.message || 'Failed to process file');
+      if (/(unsupported file format|No extractable content|Failed to process file|Error extracting PDF)/i.test(msg)) {
+        try {
+          // Only fallback for text-like files to avoid binary junk
+          const lower = file.name.toLowerCase();
+          const isTextLike = file.type.startsWith('text/') || /\.(txt|md|json|log|csv)$/i.test(lower);
+          if (isTextLike) {
+            const content = await readFileContent(file);
+            setUploadedFiles((prev) => prev.concat({ file, content }));
+            toast.info(`Backend couldn't extract ${file.name}. Added as inline text content instead.`);
+          } else {
+            toast.error('Unsupported file format for auto-extraction. Please convert to PDF/TXT/CSV or paste content manually.');
+          }
+        } catch (readErr) {
+          toast.error('Could not read file content locally. Please convert to text and retry.');
+        }
+      } else if (msg.includes('source_metadata')) {
+        toast.error('Upload failed due to unsupported fields. Please try again.');
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFormDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleFormDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleFormDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (isUploading) return;
+    const files = Array.from(e.dataTransfer.files || []);
+    // Process sequentially to avoid overlapping network calls
+    for (const f of files) {
+      // Skip zero-byte files
+      if (f.size === 0) continue;
+      await handleFileUpload(f);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Merge any uploaded non-PDF/CSV file contents into the content body
+    const nonPdfText = uploadedFiles.map((f) => f.content).filter(Boolean).join('\n\n');
+    let combinedContent = formData.content || '';
+    if (nonPdfText) {
+      combinedContent = combinedContent
+        ? `${combinedContent}\n\n--- File Contents ---\n\n${nonPdfText}`
+        : nonPdfText;
+    }
+
+    if (!combinedContent.trim() && uploadedFiles.length === 0) {
+      toast.error('Please provide content or upload files');
+      return;
+    }
+
+    const payload: CreateKnowledgeBaseEntryRequest | UpdateKnowledgeBaseEntryRequest = {
+      name: formData.name,
+      description: formData.description,
+      content: combinedContent,
+      usage_context: formData.usage_context,
+    };
+
+    try {
+      if (editDialog.entry) {
+        await updateMutation.mutateAsync({ entryId: editDialog.entry.entry_id, data: payload as UpdateKnowledgeBaseEntryRequest });
+        toast.success('Knowledge entry updated');
+      } else {
+        await createMutation.mutateAsync({ threadId, data: payload as CreateKnowledgeBaseEntryRequest });
+        toast.success('Knowledge entry created');
+      }
+      handleCloseDialog();
+      refetch();
+      refetchKbContext();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save knowledge entry');
+    }
+  };
+
+  const handleDelete = async (entryId: string) => {
+    try {
+      await deleteMutation.mutateAsync(entryId);
+      toast.success('Knowledge entry deleted');
+      setDeleteEntryId(null);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete entry');
+    }
+  };
+
+  const handleToggleActive = async (entry: KnowledgeBaseEntry) => {
+    try {
+      await updateMutation.mutateAsync({ entryId: entry.entry_id, data: { is_active: !entry.is_active } });
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update entry');
+    }
+  };
+
+  const handleSetUsageContext = async (
+    entry: KnowledgeBaseEntry,
+    usage: 'always' | 'contextual' | 'on_request',
+  ) => {
+    try {
+      await updateMutation.mutateAsync({ entryId: entry.entry_id, data: { usage_context: usage } });
+      toast.success(`Set usage context to ${usage.replace('_', ' ')}`);
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to update usage context');
+    }
+  };
+
+  const getUsageContextConfig = (context: string) => {
+    return USAGE_CONTEXT_OPTIONS.find((o) => o.value === context) || USAGE_CONTEXT_OPTIONS[0];
+  };
 
   // Show global knowledge base view if no thread is selected
   if (!threadId) {
@@ -265,6 +497,19 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
         </div>
       </div>
 
+      {/* Context Preview */}
+      {(!isLoadingContext && kbContext?.context) && (
+        <div className="rounded-md border border-blue-500/30 bg-blue-500/10 p-3 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-blue-300">Context Preview (thread)</span>
+            <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => refetchKbContext()}>Refresh</Button>
+          </div>
+          <div className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap text-blue-200">
+            {kbContext.context.length > 500 ? kbContext.context.slice(0, 500) + '…' : kbContext.context}
+          </div>
+        </div>
+      )}
+
       {/* Search and Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex-1 max-w-md">
@@ -279,7 +524,15 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowInactive((v) => !v)}
+            className={showInactive ? 'bg-accent' : ''}
+          >
+            {showInactive ? 'Hide Inactive' : 'Show Inactive'}
+          </Button>
+          <Button size="sm" onClick={handleOpenCreateDialog}>
             <Plus className="h-4 w-4 mr-2" />
             Add Knowledge
           </Button>
@@ -295,7 +548,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
             <p className="text-sm text-red-600 dark:text-red-400">Failed to load knowledge base</p>
           </div>
         </div>
-      ) : (
+      ) : filteredEntries.length === 0 ? (
         <div className="text-center py-12">
           <div className="mx-auto w-24 h-24 bg-muted/50 rounded-full flex items-center justify-center mb-4">
             <FileText className="h-8 w-8 text-muted-foreground" />
@@ -304,12 +557,250 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
             Add knowledge entries to provide your agent with context, guidelines, and information it should always remember.
           </p>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={handleOpenCreateDialog}>
             <Plus className="h-4 w-4" />
             Create Your First Entry
           </Button>
         </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredEntries.map((entry) => {
+            const contextConfig = getUsageContextConfig(entry.usage_context);
+            const ContextIcon = contextConfig.icon;
+            return (
+              <div key={entry.entry_id} className={cn('group border rounded-lg p-4 transition-all', entry.is_active ? 'border-border bg-card hover:border-border/80' : 'border-border/50 bg-muted/30 opacity-70')}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <h3 className="font-medium truncate">{entry.name}</h3>
+                      <Badge variant="outline" className={`text-xs ${contextConfig.color}`}>
+                        <ContextIcon className="h-3 w-3 mr-1" />
+                        {contextConfig.label}
+                      </Badge>
+                      {!entry.is_active && (
+                        <Badge variant="secondary" className="text-xs">
+                          <EyeOff className="h-3 w-3 mr-1" />
+                          Disabled
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{entry.description || 'No usage context provided'}</p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>Created {new Date(entry.created_at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleOpenEditDialog(entry)}>
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleToggleActive(entry)}>
+                        {entry.is_active ? (
+                          <>
+                            <EyeOff className="h-4 w-4 mr-2" />
+                            Disable
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Enable
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleSetUsageContext(entry, 'always')}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Set Always Active
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleSetUsageContext(entry, 'contextual')}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Set Contextual
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleSetUsageContext(entry, 'on_request')}>
+                        <EyeOff className="h-4 w-4 mr-2" />
+                        Set On Request Only
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setDeleteEntryId(entry.entry_id)} className="text-red-600">
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={editDialog.isOpen} onOpenChange={handleCloseDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editDialog.entry ? 'Edit Thread Knowledge Entry' : 'Add Thread Knowledge Entry'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))}
+                placeholder="Enter a name for this knowledge entry"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="description">Helium will diffuse this knowledge effectively when...</Label>
+              <Input
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Describe when this knowledge should be used"
+                required
+              />
+            </div>
+
+            {/* File Upload Section */}
+            <div>
+              <Label>Attach Files (Optional)</Label>
+              <div
+                className={cn(
+                  'border-2 border-dashed rounded-lg p-4 text-center transition-colors mt-2',
+                  isDragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50',
+                )}
+                onDragOver={handleFormDragOver}
+                onDragLeave={handleFormDragLeave}
+                onDrop={handleFormDrop}
+                aria-disabled={isUploading}
+                style={isUploading ? { pointerEvents: 'none', opacity: 0.6 } : undefined}
+              >
+                <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mb-2">Drop files here or click to browse</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                  Choose Files
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.docx,.csv,.txt,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/csv"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    for (const f of files) {
+                      await handleFileUpload(f);
+                    }
+                    if (e.target) (e.target as HTMLInputElement).value = '';
+                  }}
+                  disabled={isUploading}
+                />
+              </div>
+
+              {/* Display uploaded (in-form) files */}
+              {uploadedFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <Label className="text-sm font-medium">Uploaded Files:</Label>
+                  <div className="space-y-2">
+                    {uploadedFiles.map((fileData, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                        <div className="flex items-center gap-2">
+                          <File className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">{fileData.file.name}</span>
+                          <span className="text-xs text-muted-foreground">({Math.round(fileData.content.length / 1024)}KB)</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setUploadedFiles((prev) => prev.filter((_, i) => i !== idx))}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="content">Content</Label>
+              <Textarea
+                id="content"
+                name="content"
+                value={formData.content}
+                onChange={(e) => setFormData((p) => ({ ...p, content: e.target.value }))}
+                placeholder="Enter the knowledge content (optional if files uploaded and processed)..."
+                rows={8}
+                required={uploadedFiles.length === 0}
+              />
+            </div>
+            <div>
+              <Label htmlFor="usage_context">Usage Context</Label>
+              <Select
+                value={formData.usage_context}
+                onValueChange={(v) => setFormData((p) => ({ ...p, usage_context: v as any }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="always">Always Active</SelectItem>
+                  <SelectItem value="contextual">Contextual</SelectItem>
+                  <SelectItem value="on_request">On Request Only</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                <strong>Always Active:</strong> Always included • <strong>Contextual:</strong> Included when relevant • <strong>On Request:</strong> Only when specifically requested
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={handleCloseDialog}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || isUploading}>
+                {createMutation.isPending || updateMutation.isPending || isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : editDialog.entry ? (
+                  'Update'
+                ) : (
+                  'Create'
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteEntryId} onOpenChange={(open) => !open && setDeleteEntryId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Knowledge Entry</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this entry? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteEntryId && handleDelete(deleteEntryId)}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
