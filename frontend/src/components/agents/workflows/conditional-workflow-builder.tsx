@@ -56,6 +56,7 @@ const normalizeToolName = (toolName: string, toolType: 'agentpress' | 'mcp') => 
       'web_search_tool': 'Web Search',
       'sb_vision_tool': 'Vision Tool',
       'data_providers_tool': 'Data Providers',
+      'sb_sheets_tool': 'Sheets Tool',
     };
     return agentPressMapping[toolName] || toolName;
   } else {

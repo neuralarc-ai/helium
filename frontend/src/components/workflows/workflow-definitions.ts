@@ -1,4 +1,4 @@
-import { FileText, Terminal, Rocket, Computer, Eye, Search, Globe, GitBranch, Settings, MonitorPlay, Cog, Key } from 'lucide-react';
+import { FileText, Terminal, Rocket, Computer, Eye, Search, Globe, GitBranch, Settings, MonitorPlay, Cog, Key, Table2 } from 'lucide-react';
 
 export interface StepDefinition {
     id: string;
@@ -26,6 +26,7 @@ export const TOOL_ICONS: Record<string, any> = {
     'sb_browser_tool': MonitorPlay,
     'web_search_tool': Search,
     'data_providers_tool': Globe,
+    'sb_sheets_tool': Table2,
 };
 
 // Tool color mapping
@@ -38,6 +39,7 @@ export const TOOL_COLORS: Record<string, string> = {
     'sb_browser_tool': 'from-purple-500/20 to-purple-600/10 border-purple-500/20 text-purple-500',
     'web_search_tool': 'from-blue-500/20 to-blue-600/10 border-blue-500/20 text-blue-500',
     'data_providers_tool': 'from-blue-500/20 to-blue-600/10 border-blue-500/20 text-blue-500',
+    'sb_sheets_tool': 'from-purple-500/20 to-purple-600/10 border-purple-500/20 text-purple-500',
 };
 
 // Action icon mapping
@@ -87,7 +89,7 @@ export const BASE_STEP_DEFINITIONS: StepDefinition[] = [
     },
     {
         id: 'credentials_profile',
-        name: 'Browse App Registry',
+        name: 'Browse Apps',
         description: 'Select and configure credential profiles for authentication',
         icon: Globe,
         category: 'configuration',
@@ -125,7 +127,6 @@ export const CATEGORY_DEFINITIONS: CategoryDefinition[] = [
     }
 ];
 
-// Helper function to get tool definition
 export function getToolDefinition(toolName: string): StepDefinition | null {
     if (!TOOL_ICONS[toolName]) return null;
     

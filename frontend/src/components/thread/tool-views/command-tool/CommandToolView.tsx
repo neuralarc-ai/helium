@@ -56,8 +56,47 @@ export function CommandToolView({
 
   const toolTitle = getToolTitle(name);
 
+  // Check if this is a non-blocking command with just a status message
+  const isNonBlockingCommand = React.useMemo(() => {
+    if (!output) return false;
+
+    // Check if output contains typical non-blocking command messages
+    const nonBlockingPatterns = [
+      'Command sent to tmux session',
+      'Use check_command_output to view results',
+      'Session still running',
+      'completed: false'
+    ];
+
+    return nonBlockingPatterns.some(pattern =>
+      output.toLowerCase().includes(pattern.toLowerCase())
+    );
+  }, [output]);
+
+  // Check if there's actual command output to display
+  const hasActualOutput = React.useMemo(() => {
+    if (!output) return false;
+
+    // If it's a non-blocking command, don't show output section
+    if (isNonBlockingCommand) return false;
+
+    // Check if output contains actual command results (not just status messages)
+    const actualOutputPatterns = [
+      'root@',
+      'COMMAND_DONE_',
+      'Count:',
+      'date:',
+      'ls:',
+      'pwd:'
+    ];
+
+    return actualOutputPatterns.some(pattern =>
+      output.includes(pattern)
+    ) || output.trim().length > 50; // Arbitrary threshold for "substantial" output
+  }, [output, isNonBlockingCommand]);
+
   const formattedOutput = React.useMemo(() => {
-    if (!output) return [];
+    if (!output || !hasActualOutput) return [];
     let processedOutput = output;
 
     // Handle case where output is already an object
@@ -100,7 +139,7 @@ export function CommandToolView({
       return String.fromCharCode(parseInt(group, 16));
     });
     return processedOutput.split('\n');
-  }, [output]);
+  }, [output, hasActualOutput]);
 
   const hasMoreLines = formattedOutput.length > 10;
   const previewLines = formattedOutput.slice(0, 10);
@@ -108,7 +147,7 @@ export function CommandToolView({
 
   return (
     <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-xl mx-2 mt-2">
+      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#8B5CF6_0%,_#7C3AED_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-xl mx-2 mt-2">
         <div className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             <Terminal className="w-5 h-5 text-white" />
@@ -155,8 +194,6 @@ export function CommandToolView({
         ) : displayText ? (
           <ScrollArea className="h-full w-full">
             <div className="p-4">
-
-
               <div className="mb-4">
                 <div className="bg-zinc-100 dark:bg-neutral-900 rounded-lg overflow-hidden border border-zinc-200/20">
                   <div className="bg-zinc-300 dark:bg-neutral-800 flex items-center justify-between dark:border-zinc-700/50">
@@ -181,6 +218,17 @@ export function CommandToolView({
                         </div>
                       )}
 
+                      {/* Show output only if there's actual command output */}
+                      {hasActualOutput && formattedOutput.length > 0 && (
+                        <>
+                          {formattedOutput.map((line, index) => (
+                            <div key={index} className="py-0.5 bg-transparent">
+                              <span className="text-zinc-600 dark:text-zinc-300">{line}</span>
+                            </div>
+                          ))}
+                        </>
+                      )}
+
                       {!showFullOutput && hasMoreLines && (
                         <div className="text-zinc-500 mt-2 border-t border-zinc-700/30 pt-2">
                           + {formattedOutput.length - 10} more lines
@@ -191,7 +239,18 @@ export function CommandToolView({
                 </div>
               </div>
 
-              {!output && !isStreaming && (
+              {/* Show status message for non-blocking commands */}
+              {isNonBlockingCommand && output && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CircleDashed className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Command Status</span>
+                  </div>
+                  <p className="text-sm text-blue-600 dark:text-blue-400">{output}</p>
+                </div>
+              )}
+
+              {!output && !isStreaming && !isNonBlockingCommand && (
                 <div className="bg-black rounded-lg overflow-hidden border border-zinc-700/20 shadow-md p-6 flex items-center justify-center">
                   <div className="text-center">
                     <CircleDashed className="h-8 w-8 text-zinc-500 mx-auto mb-2" />
