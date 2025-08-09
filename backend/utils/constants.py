@@ -108,6 +108,16 @@ MODELS = {
         },
         "tier_availability": ["free", "paid"]
     },
+    # Direct Moonshot (Kimi) model identifiers
+    "moonshot/kimi-k2": {
+        "aliases": ["moonshotai/kimi-k2", "kimi-k2", "moonshot-kimi-k2"],
+        "pricing": {
+            # Set to 0.0 by default; adjust if you want to reflect actual Moonshot pricing
+            "input_cost_per_million_tokens": 0.0,
+            "output_cost_per_million_tokens": 0.0
+        },
+        "tier_availability": ["free", "paid"]
+    },
     "openrouter/z-ai/glm-4.5-air:free": {
         "aliases": ["glm-4.5-air:free"],
         "pricing": {

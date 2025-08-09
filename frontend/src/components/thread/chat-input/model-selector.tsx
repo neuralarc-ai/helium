@@ -107,7 +107,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       return 'Powerful model optimized for coding and technical tasks';
     }
     if (modelId.includes('kimi')) {
-      return 'Advanced model with strong reasoning capabilities';
+      return 'Kimi K2 by Moonshot — strong reasoning and coding performance with balanced speed.';
     }
     if (modelId.includes('glm')) {
       return 'Efficient model with good performance across various tasks';
