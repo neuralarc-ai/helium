@@ -273,7 +273,7 @@ export default function HeroSection() {
 {/* Input Fields Image Below Hero Section */}
 <div className="w-full flex justify-center mt-16 mb-8">
   <Image
-    src="/input fields.png"
+    src="/input_fields.png"
     alt="Input Fields Example"
     width={700}
     height={180}
