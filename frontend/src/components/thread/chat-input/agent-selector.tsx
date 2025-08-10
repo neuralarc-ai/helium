@@ -114,30 +114,59 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
 
   const getAgentDisplay = () => {
     const selectedAgent = allAgents.find(agent => agent.id === selectedAgentId);
-    if (selectedAgent) {
-      console.log('Selected agent found:', selectedAgent.name, 'with ID:', selectedAgent.id);
-      const isSelectedAgentSuna = selectedAgent.metadata?.is_suna_default || false;
+    
+    // When no agent is selected (selectedAgentId is undefined), show "o1" as default
+    if (selectedAgentId === undefined) {
+      console.log('No agent selected, showing o1 as default');
       return {
-        name: selectedAgent.name,
-        icon: isSelectedAgentSuna ? <HeliumLogo size={16} /> : selectedAgent.icon
+        name: 'o1',
+        icon: <HeliumLogo size={16} />,
+        showName: true // Show o1 name when it's the default
       };
     }
     
-    if (selectedAgentId !== undefined) {
-      console.warn('Agent with ID', selectedAgentId, 'not found, falling back to Suna');
+    if (selectedAgent) {
+      console.log('Selected agent found:', selectedAgent.name, 'with ID:', selectedAgent.id);
+      const isSelectedAgentSuna = selectedAgent.metadata?.is_suna_default || false;
+      
+      // If it's the Suna default agent, treat it like o1
+      if (isSelectedAgentSuna) {
+        return {
+          name: 'o1',
+          icon: <HeliumLogo size={16} />,
+          showName: true // Show o1 name for Suna default agent
+        };
+      }
+      
+      // For custom agents, show their avatar and name
+      return {
+        name: selectedAgent.name,
+        icon: selectedAgent.icon,
+        showName: true // Show name for custom agents
+      };
     }
     
-    const defaultAgent = allAgents[0];
-    const isDefaultAgentSuna = defaultAgent?.metadata?.is_suna_default || false;
+    // Fallback for when selectedAgentId exists but agent not found
+    if (selectedAgentId !== undefined) {
+      console.warn('Agent with ID', selectedAgentId, 'not found, falling back to o1');
+    }
+    
     return {
-      name: defaultAgent?.name || 'o1',
-      icon: isDefaultAgentSuna ? <HeliumLogo size={16} /> : (defaultAgent?.icon || <HeliumLogo size={16} />)
+      name: 'o1',
+      icon: <HeliumLogo size={16} />,
+      showName: true // Show o1 name for fallback
     };
   };
 
   const handleAgentSelect = (agentId: string | undefined) => {
-    console.log('Agent selected:', agentId === undefined ? 'o1 - God Mode' : agentId);
-    onAgentSelect?.(agentId);
+    // If clicking on the already selected agent, deselect it
+    if (agentId === selectedAgentId) {
+      console.log('Deselecting agent:', agentId);
+      onAgentSelect?.(undefined);
+    } else {
+      console.log('Agent selected:', agentId === undefined ? 'o1 - God Mode' : agentId);
+      onAgentSelect?.(agentId);
+    }
     setIsOpen(false);
   };
 
@@ -274,9 +303,11 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
                     <div className="flex-shrink-0">
                       {agentDisplay.icon}
                     </div>
-                    <span className="hidden sm:inline-block truncate max-w-[80px] font-normal">
-                      {agentDisplay.name}
-                    </span>
+                    {agentDisplay.showName && (
+                      <span className="hidden sm:inline-block truncate max-w-[80px] font-normal">
+                        {agentDisplay.name}
+                      </span>
+                    )}
                     <ChevronDown 
                       size={12} 
                       className={cn(
@@ -289,7 +320,7 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
               </DropdownMenuTrigger>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Select Agent</p>
+              <p>{selectedAgentId ? 'Change or deselect agent' : 'Select Agent'}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -335,6 +366,27 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
               </div>
             ) : (
               <div className="space-y-0.5">
+                {/* Deselect option when an agent is selected */}
+                {selectedAgentId && (
+                  <DropdownMenuItem
+                    className="flex items-center rounded-xl gap-3 px-4 py-2.5 cursor-pointer hover:bg-accent/40 transition-colors duration-200 text-muted-foreground hover:text-foreground"
+                    onClick={() => handleAgentSelect(undefined)}
+                  >
+                    <div className="flex-shrink-0">
+                      <HeliumLogo size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm truncate">
+                          Use o1 (God Mode)
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground/80 truncate leading-relaxed">
+                        Default AI assistant
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                )}
                 {sortedFilteredAgents.map((agent, index) => renderAgentItem(agent, index))}
               </div>
             )}
