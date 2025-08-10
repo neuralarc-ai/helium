@@ -238,7 +238,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4 border border-blue-500/20">
+      {/* <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4 border border-blue-500/20">
         <div className="flex items-start gap-3">
           <div className="p-2 bg-blue-500/20 rounded-lg">
             <BookOpen className="h-5 w-5 text-blue-400" />
@@ -263,11 +263,11 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Search and Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex-1 max-w-md">
+        <div className="flex-1 max-w-lg">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -279,7 +279,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm">
+          <Button size="sm" className="cursor-pointer rounded-md bg-[#0ac5b2]">
             <Plus className="h-4 w-4 mr-2" />
             Add Knowledge
           </Button>
@@ -304,7 +304,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
             Add knowledge entries to provide your agent with context, guidelines, and information it should always remember.
           </p>
-          <Button className="gap-2">
+          <Button className="gap-2 cursor-pointer rounded-md bg-[#0ac5b2]">
             <Plus className="h-4 w-4" />
             Create Your First Entry
           </Button>

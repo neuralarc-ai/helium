@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Bot, Menu, Plus, Plug, ChevronRight, Lightbulb } from 'lucide-react';
+import { Bot, Menu, Plus, Plug, ChevronRight, Lightbulb, X } from 'lucide-react';
 import Image from 'next/image';
 
 import { NavAgents } from '@/components/sidebar/nav-agents';
@@ -170,7 +170,7 @@ export function SidebarLeft({
             </div>
           )}
           <div className="ml-auto flex items-center gap-2">
-            {state !== 'collapsed' && (
+            {!isMobile && state !== 'collapsed' && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <SidebarTrigger className="h-8 w-8" />
@@ -178,19 +178,21 @@ export function SidebarLeft({
                 <TooltipContent>Toggle sidebar (CMD+B)</TooltipContent>
               </Tooltip>
             )}
-            {isMobile && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setOpenMobile(true)}
-                    className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-accent"
-                  >
-                    <Menu className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Open menu</TooltipContent>
-              </Tooltip>
-            )}
+          
+   {isMobile && (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={() => setOpenMobile(false)}
+          className="h-6 cursor-pointer w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 flex items-center justify-center rounded-md hover:bg-accent transition-all duration-300 ease-in-out"
+        >
+          <X className="h-5 w-5 sm:h-5 sm:w-5 md:h-4 md:w-4 transition-all duration-300 ease-in-out" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>Close sidebar</TooltipContent>
+    </Tooltip>
+  )}
+
           </div>
         </div>
       </SidebarHeader>
@@ -206,7 +208,7 @@ export function SidebarLeft({
               </span>
             </SidebarMenuButton>
           </Link>
-          {state === 'collapsed' && (
+          {!isMobile && state === 'collapsed' && (
             <div className="mt-2 flex justify-center">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -216,6 +218,7 @@ export function SidebarLeft({
               </Tooltip>
             </div>
           )}
+          
           {!flagsLoading && customAgentsEnabled && (
             <SidebarMenu>
               <Collapsible
@@ -282,26 +285,26 @@ export function SidebarLeft({
         <NavAgents />
       </SidebarContent>
       <SidebarFooter>
-        <div className={state === 'collapsed' ? 'w-full flex flex-col items-center' : 'w-full flex flex-col items-start'}>
+        <div className={state === 'collapsed' && !isMobile ? 'w-full flex flex-col items-center' : 'w-full flex flex-col items-start'}>
           {/* Knowledge Base button: always show if feature is enabled */}
           {!flagsLoading && knowledgeBaseEnabled && (
             <Tooltip>
               <TooltipTrigger asChild className='w-full'>
                 <button
-                  className={`h-5 w-full cursor-pointer flex items-center${state === 'collapsed' ? ' justify-center my-3' : ' my-4 mx-3'} rounded-sm flex-shrink-0 transition-colors ${state === 'collapsed' ? 'hover:bg-card' : ''}`}
-                  type="button"
-                  tabIndex={0}
-                  aria-label="Knowledge Base"
-                  onClick={() => {
-                    setOpen(true);
-                    setTimeout(() => { setShowKnowledgeBase(true); }, 100); // Show knowledge base after expanding
-                  }}
-                >
-                  <Lightbulb className="w-5 h-5" />
-                  {state !== 'collapsed' && (
-                    <span className="ml-2 text-sm font-medium whitespace-nowrap">Knowledge Base</span>
-                  )}
-                </button>
+  className={`h-5 w-full cursor-pointer flex items-center my-1 mx-3 rounded-sm flex-shrink-0 transition-colors ${isMobile ? 'justify-start' : (state === 'collapsed' ? 'justify-center my-3' : '')} ${state === 'collapsed' && !isMobile ? 'hover:bg-card' : ''}`}
+  type="button"
+  tabIndex={0}
+  aria-label="Knowledge Base"
+  onClick={() => {
+    setOpen(true);
+    setTimeout(() => { setShowKnowledgeBase(true); }, 100); // Show knowledge base after expanding
+  }}
+>
+  <Lightbulb className="w-5 h-5" />
+  {(isMobile || state !== 'collapsed') && (
+    <span className="ml-2 text-sm font-medium whitespace-nowrap">Knowledge Base</span>
+  )}
+</button>
               </TooltipTrigger>
               <TooltipContent side="right">
                 {currentThreadId 
