@@ -525,6 +525,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
             <Plus className="h-4 w-4 mr-2" />
             Add Knowledge
           </Button>
+        </div>
       </div>
 
       {isLoading ? (
