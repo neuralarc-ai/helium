@@ -140,6 +140,23 @@ class VersionService:
         config = row.get('config', {})
         tools = config.get('tools', {})
         
+        # Safely handle datetime parsing with fallbacks
+        def parse_datetime_safe(dt_str: str) -> datetime:
+            if not dt_str:
+                return datetime.now(timezone.utc)
+            try:
+                # Handle different datetime formats
+                if dt_str.endswith('Z'):
+                    return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+                elif '+' in dt_str or dt_str.endswith('UTC'):
+                    return datetime.fromisoformat(dt_str)
+                else:
+                    # Assume UTC if no timezone info
+                    return datetime.fromisoformat(dt_str + '+00:00')
+            except (ValueError, TypeError):
+                logger.warning(f"Failed to parse datetime: {dt_str}, using current time")
+                return datetime.now(timezone.utc)
+        
         return AgentVersion(
             version_id=row['version_id'],
             agent_id=row['agent_id'],
@@ -150,9 +167,9 @@ class VersionService:
             custom_mcps=tools.get('custom_mcp', []),
             agentpress_tools=tools.get('agentpress', {}),
             is_active=row.get('is_active', False),
-            created_at=datetime.fromisoformat(row['created_at'].replace('Z', '+00:00')),
-            updated_at=datetime.fromisoformat(row['updated_at'].replace('Z', '+00:00')),
-            created_by=row['created_by'],
+            created_at=parse_datetime_safe(row.get('created_at')),
+            updated_at=parse_datetime_safe(row.get('updated_at')),
+            created_by=row.get('created_by', ''),  # Use get() with default value
             change_description=row.get('change_description'),
             previous_version_id=row.get('previous_version_id')
         )

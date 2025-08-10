@@ -21,8 +21,13 @@ export const KnowledgeBaseDialog = ({
   isOpen, 
   onOpenChange 
 }: KnowledgeBaseDialogProps) => {
+  // Prevent accidental double-open race causing double renders of child upload handlers
+  const handleOpenChange = (open: boolean) => {
+    onOpenChange(open);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl w-full h-[80vh] flex flex-col p-0">
         <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
           <DialogTitle className="flex items-center gap-2 text-lg">

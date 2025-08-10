@@ -391,7 +391,6 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
           </div>
         </div>
       </div> */}
-
       {/* Search and Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex-1 max-w-md">

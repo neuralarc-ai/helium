@@ -590,17 +590,27 @@ export function useAgentStream(
         if (!isMountedRef.current) return; // Check mount status after async call
 
         const errorMessage = err instanceof Error ? err.message : String(err);
+        const isNotFoundError =
+          errorMessage.includes('not found') ||
+          errorMessage.includes('404') ||
+          errorMessage.includes('does not exist');
+        const isNotRunningError =
+          errorMessage.includes('is not running');
+
+        if (isNotFoundError || isNotRunningError) {
+          console.warn(
+            `[useAgentStream] Run ${runId} is not active (${errorMessage}). Finalizing as agent_not_running.`,
+          );
+          finalizeStream('agent_not_running', runId);
+          return;
+        }
+
         console.error(
           `[useAgentStream] Error initiating stream for ${runId}: ${errorMessage}`,
         );
         setError(errorMessage);
 
-        const isNotFoundError =
-          errorMessage.includes('not found') ||
-          errorMessage.includes('404') ||
-          errorMessage.includes('does not exist');
-
-        finalizeStream(isNotFoundError ? 'agent_not_running' : 'error', runId);
+        finalizeStream('error', runId);
       }
     },
     [
