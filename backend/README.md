@@ -151,15 +151,90 @@ RABBITMQ_PORT=5672
 
 ## Feature Flags
 
-The backend includes a Redis-backed feature flag system that allows you to control feature availability without code deployments.
+The backend includes a Redis-backed feature flag system that allows you to control feature availability without code deployments. **NEW**: You can now also control flags using environment variables for easier Docker deployment.
 
 ### Setup
 
 The feature flag system uses the existing Redis service and is automatically available when Redis is running.
 
+### Environment Variable Support (Recommended for Production)
+
+You can enable feature flags using environment variables in your Docker deployment. This is the recommended approach for production environments.
+
+#### Available Environment Variables
+
+Set these environment variables in your Docker environment to enable features:
+
+```bash
+# Enable all available features
+FLAG_CUSTOM_AGENTS=true
+FLAG_MCP_MODULE=true
+FLAG_TEMPLATES_API=true
+FLAG_TRIGGERS_API=true
+FLAG_WORKFLOWS_API=true
+FLAG_KNOWLEDGE_BASE=true
+FLAG_PIPEDREAM=true
+FLAG_CREDENTIALS_API=true
+FLAG_SUNA_DEFAULT_AGENT=true
+```
+
+#### Docker Environment File Example
+
+Create a `.env` file for your Docker deployment:
+
+```bash
+# Feature Flags - Enable/disable features
+FLAG_CUSTOM_AGENTS=true
+FLAG_KNOWLEDGE_BASE=true
+FLAG_MCP_MODULE=true
+FLAG_TEMPLATES_API=true
+FLAG_TRIGGERS_API=true
+FLAG_WORKFLOWS_API=true
+FLAG_PIPEDREAM=true
+FLAG_CREDENTIALS_API=true
+FLAG_SUNA_DEFAULT_AGENT=true
+
+# Other environment variables...
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=
+```
+
+#### Docker Compose Example
+
+```yaml
+version: "3.8"
+services:
+  backend:
+    build: ./backend
+    environment:
+      # Feature Flags
+      - FLAG_CUSTOM_AGENTS=true
+      - FLAG_KNOWLEDGE_BASE=true
+      - FLAG_MCP_MODULE=true
+      - FLAG_TEMPLATES_API=true
+      - FLAG_TRIGGERS_API=true
+      - FLAG_WORKFLOWS_API=true
+      - FLAG_PIPEDREAM=true
+      - FLAG_CREDENTIALS_API=true
+      - FLAG_SUNA_DEFAULT_AGENT=true
+      
+      # Other environment variables...
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+```
+
+#### Environment Variable Priority
+
+1. **Environment variables take precedence** - If `FLAG_KNOWLEDGE_BASE=true` is set, it will override any Redis setting
+2. **Redis fallback** - If no environment variable is set, the system checks Redis
+3. **Default behavior** - If neither environment variable nor Redis setting exists, the feature is disabled
+
 ### CLI Management
 
-Use the CLI tool to manage feature flags:
+Use the CLI tool to manage feature flags (Redis-based):
 
 ```bash
 cd backend/flags
@@ -171,7 +246,7 @@ python setup.py <command> [arguments]
 **Enable a feature flag:**
 
 ```bash
-python setup.py enable test_flag "Test decsription"
+python setup.py enable test_flag "Test description"
 ```
 
 **Disable a feature flag:**
@@ -196,6 +271,12 @@ Feature flags are accessible via REST API:
 GET /feature-flags
 ```
 
+**Get available feature flags and their environment variables:**
+
+```bash
+GET /feature-flags/available
+```
+
 **Get specific feature flag:**
 
 ```bash
@@ -206,10 +287,16 @@ Example response:
 
 ```json
 {
-  "test_flag": {
-    "enabled": true,
-    "description": "Test flag",
+  "flag_name": "knowledge_base",
+  "enabled": true,
+  "details": {
+    "description": "Knowledge base feature",
     "updated_at": "2024-01-15T10:30:00Z"
+  },
+  "environment_info": {
+    "environment_variable": "FLAG_KNOWLEDGE_BASE",
+    "environment_value": true,
+    "source": "environment"
   }
 }
 ```
@@ -221,13 +308,10 @@ Use feature flags in your Python code:
 ```python
 from flags.flags import is_enabled
 
-# Check if a feature is enabled
-if await is_enabled('test_flag'):
+# Check if a feature is enabled (checks environment variables first, then Redis)
+if await is_enabled('knowledge_base'):
     # Feature-specific logic
     pass
-
-# With fallback value
-enabled = await is_enabled('new_feature', default=False)
 ```
 
 ### Current Feature Flags

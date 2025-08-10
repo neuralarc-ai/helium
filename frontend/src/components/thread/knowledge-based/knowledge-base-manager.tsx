@@ -469,13 +469,9 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
-      
-
       {/* Context Preview */}
       {(!isLoadingContext && kbContext?.context) && (
         <div className="rounded-md border border-blue-500/30 bg-blue-500/10 p-3 text-xs">
-          
           <div className="flex items-center justify-between">
             <span className="font-medium text-blue-300">Context Preview (thread)</span>
             <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => refetchKbContext()}>Refresh</Button>
@@ -486,9 +482,22 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
         </div>
       )}
 
+      {/* 
+      <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4 border border-blue-500/20">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-blue-500/20 rounded-lg">
+            <BookOpen className="h-5 w-5 text-blue-400" />
+          </div>
+          <div className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap text-blue-200">
+            {kbContext.context.length > 500 ? kbContext.context.slice(0, 500) + '…' : kbContext.context}
+          </div>
+        </div>
+      </div>
+      */}
+
       {/* Search and Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex-1 max-w-md">
+        <div className="flex-1 max-w-lg">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -508,11 +517,14 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
           >
             {showInactive ? 'Hide Inactive' : 'Show Inactive'}
           </Button>
-          <Button size="sm" onClick={handleOpenCreateDialog}>
+          <Button
+            size="sm"
+            onClick={handleOpenCreateDialog}
+            className="cursor-pointer rounded-md bg-[#0ac5b2]"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Knowledge
           </Button>
-        </div>
       </div>
 
       {isLoading ? (
@@ -533,7 +545,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
             Add knowledge entries to provide your agent with context, guidelines, and information it should always remember.
           </p>
-          <Button className="gap-2" onClick={handleOpenCreateDialog}>
+          <Button className="gap-2 cursor-pointer rounded-md bg-[#0ac5b2]" onClick={handleOpenCreateDialog}>
             <Plus className="h-4 w-4" />
             Create Your First Entry
           </Button>

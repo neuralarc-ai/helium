@@ -33,7 +33,7 @@ export const KnowledgeBaseDialog = ({
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Book className="h-5 w-5" />
             Thread Knowledge Base
-            <span className="text-xs bg-blue-500/10 text-blue-400 px-2 py-1 rounded-full ml-2">
+            <span className="text-xs bg-helium-pink/20 text-helium-pink/80 px-2 py-1 rounded-full ml-2">
               Thread-Specific
             </span>
           </DialogTitle>

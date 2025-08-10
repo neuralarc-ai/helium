@@ -924,3 +924,40 @@
     box-shadow: 0 0 90px 20px rgba(54,189,160,0.7), 0 0 180px 60px rgba(54,189,160,0.25);
   }
 }
+
+@media (max-width: 915px) and (min-width: 768px) {
+  .feature-title {
+    font-size: 0.95rem !important; /* Reduce font size for this range */
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 815px) and (min-width: 768px) {
+  .feature-title {
+    font-size: 0.85rem !important; /* Reduce font size for this range */
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 890px) and (min-width: 768px) {
+  .feature-image {
+    border-radius: 25.97px;
+  }
+}
+
+@media (max-width: 875px) and (min-width: 768px) {
+  /* First card and similar: center the button and keep it inside */
+  .strategic-card-btn {
+    font-size: 10px!important;
+  }
+}

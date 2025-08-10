@@ -40,7 +40,7 @@ import Image from 'next/image';
 
 const features = [
   {
-    image: '/strategic-service/voice-agent.png',
+    image: '/strategic-service/voice-agent1.png',
     title: 'VOICE AGENT',
   },
   {
@@ -64,21 +64,21 @@ export default function HeliumPoweredActions() {
         {features.map((feature, idx) => (
           <div
             key={feature.title}
-            className="w-full min-w-[140px] bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col items-center p-3 sm:p-5 transition-all duration-200 hover:shadow-md"
+            className="w-full min-w-[140px] bg-white rounded-[22.87px] border border-gray-200 shadow-sm flex flex-col items-center p-3 sm:p-3 transition-all duration-200 hover:shadow-md"
           >
-            <div className="w-full aspect-square rounded-[33px] overflow-hidden mb-4 flex items-center justify-center bg-gray-50">
+            {/* <div className="w-full aspect-square rounded-[33px] overflow-hidden mb-4 flex items-center justify-center bg-gray-50"> */}
               <Image
                 src={feature.image}
                 alt={feature.title}
                 width={180}
                 height={180}
-                className="object-contain w-full h-full rounded-[33px] p-2 sm:p-4"
+                className="object-contain feature-image w-full h-full rounded-[33.93px] p-1"
                 priority={idx === 0}
               />
-            </div>
-            <div className="text-center text-gray-800 text-sm sm:text-base md:text-lg font-medium tracking-wide mt-1 sm:mt-2">
-              {feature.title}
-            </div>
+            {/* </div> */}
+            <div className="feature-title text-center text-gray-800 text-sm sm:text-base md:text-lg font-medium tracking-wide mt-1 sm:mt-2 h-[23px] md:h-[38px]">
+  {feature.title}
+</div>
           </div>
         ))}
       </div>

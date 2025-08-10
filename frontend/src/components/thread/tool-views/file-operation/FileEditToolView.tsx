@@ -60,39 +60,87 @@ const UnifiedDiffView: React.FC<{ oldCode: string; newCode: string }> = ({ oldCo
   />
 );
 
-const SplitDiffView: React.FC<{ oldCode: string; newCode: string }> = ({ oldCode, newCode }) => (
-  <ReactDiffViewer
-    oldValue={oldCode}
-    newValue={newCode}
-    splitView={true}
-    useDarkTheme={document.documentElement.classList.contains('dark')}
-    styles={{
-      variables: {
-        dark: {
-          diffViewerColor: '#e2e8f0',
-          diffViewerBackground: '#09090b',
-          addedBackground: '#1f2937',
-          addedColor: '#e2e8f0',
-          removedBackground: '#5c1a2e',
-          removedColor: '#fca5a5',
-        },
-      },
-      diffContainer: {
-        backgroundColor: 'var(--card)',
-        border: 'none',
-      },
-      gutter: {
-        backgroundColor: 'var(--muted)',
-        '&:hover': {
-          backgroundColor: 'var(--accent)',
-        },
-      },
-      line: {
-        fontFamily: 'monospace',
-      },
-    }}
-  />
-);
+const FinalContentView: React.FC<{ content: string }> = ({ content }) => {
+  // Function to process content and apply styling
+  const processContent = (text: string) => {
+    // Split content into lines
+    const lines = text.split('\n');
+    
+    return lines.map((line, index) => {
+      // Check if line starts with ** (markdown bold)
+      if (line.trim().startsWith('**') && line.trim().endsWith('**')) {
+        // Extract the text between **
+        const headerText = line.trim().replace(/\*\*/g, '');
+        return (
+          <div key={index} className="mb-4 mt-4">
+            <span className="text-[#E36209]">*</span>
+            <span className="text-[#24292E] font-bold">{headerText}</span>
+            <span className="text-[#E36209]">*</span>
+          </div>
+        );
+      }
+      
+      // Check if line starts with # (markdown headers)
+      if (line.trim().startsWith('#')) {
+        const headerText = line.trim().replace(/^#+\s*/, '');
+        return (
+          <div key={index} className="mb-4">
+            <span className="text-[#E36209]">*</span>
+            <span className="text-[#24292E] font-bold">{headerText}</span>
+            <span className="text-[#E36209]">*</span>
+          </div>
+        );
+      }
+      
+      // Check if line starts with a number followed by a dot (numbered headers)
+      if (/^\d+\./.test(line.trim())) {
+        const headerText = line.trim();
+        return (
+          <div key={index} className="mb-4">
+            <span className="text-[#E36209]">*</span>
+            <span className="text-[#24292E] font-bold">{headerText}</span>
+            <span className="text-[#E36209]">*</span>
+          </div>
+        );
+      }
+      
+      // Regular text - check for inline ** bold text
+      const processedLine = line.replace(/\*\*(.*?)\*\*/g, (match, boldText) => {
+        return `<bold>${boldText}</bold>`;
+      });
+      
+      if (processedLine.includes('<bold>')) {
+        const parts = processedLine.split(/(<bold>.*?<\/bold>)/);
+        return (
+          <div key={index} className="mb-1">
+            {parts.map((part, partIndex) => {
+              if (part.startsWith('<bold>') && part.endsWith('</bold>')) {
+                const boldText = part.replace(/<\/?bold>/g, '');
+                return <span key={partIndex} className="font-bold">{boldText}</span>;
+              }
+              return <span key={partIndex}>{part}</span>;
+            })}
+          </div>
+        );
+      }
+      
+      // Regular text
+      return (
+        <div key={index} className="mb-1">
+          {line}
+        </div>
+      );
+    });
+  };
+
+  return (
+    <div className="bg-white dark:bg-zinc-950 font-mono text-sm overflow-x-auto p-4">
+      <div className="whitespace-pre-wrap break-words text-zinc-700 dark:text-zinc-300">
+        {processContent(content)}
+      </div>
+    </div>
+  );
+};
 
 const ErrorState: React.FC<{ message?: string }> = ({ message }) => (
   <div className="flex flex-col items-center justify-center h-full py-12 px-6 bg-gradient-to-b from-white to-zinc-50 dark:from-zinc-950 dark:to-zinc-900">
@@ -117,7 +165,7 @@ export function FileEditToolView({
   isSuccess = true,
   isStreaming = false,
 }: ToolViewProps): JSX.Element {
-  const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified');
+  const [viewMode, setViewMode] = useState<'unified' | 'final'>('final');
 
   const {
     filePath,
@@ -171,7 +219,7 @@ export function FileEditToolView({
       </CardHeader>
 
       <CardContent className="p-0 flex-1 flex flex-col min-h-0">
-        {isStreaming ? (
+        {isStreaming && !updatedContent ? (
           <LoadingState
             icon={FileDiff}
             iconColor="text-blue-500 dark:text-blue-400"
@@ -210,19 +258,25 @@ export function FileEditToolView({
                     </>
                   )}
                 </div>
-                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'unified' | 'split')} className="w-auto">
+                {isStreaming && (
+                  <Badge className="bg-blue-500/90 text-white border-none shadow-lg animate-pulse">
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    Streaming...
+                  </Badge>
+                )}
+                <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'unified' | 'final')} className="w-auto">
                   <TabsList className="h-7 p-0.5">
+                    <TabsTrigger value="final" className="text-xs h-6 px-2">Final</TabsTrigger>
                     <TabsTrigger value="unified" className="text-xs h-6 px-2">Unified</TabsTrigger>
-                    <TabsTrigger value="split" className="text-xs h-6 px-2">Split</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
             </div>
             <div className="flex-1 overflow-auto min-h-0">
-              {viewMode === 'unified' ? (
-                <UnifiedDiffView oldCode={originalContent!} newCode={updatedContent!} />
+              {viewMode === 'final' ? (
+                <FinalContentView content={updatedContent || originalContent || ''} />
               ) : (
-                <SplitDiffView oldCode={originalContent!} newCode={updatedContent!} />
+                <UnifiedDiffView oldCode={originalContent!} newCode={updatedContent!} />
               )}
             </div>
           </div>

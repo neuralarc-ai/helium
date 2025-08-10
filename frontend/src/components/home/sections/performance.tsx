@@ -115,15 +115,15 @@ export default function PerformanceSection() {
     {[
       {
         title: 'SALES SUPER-AGENT',
-        image: '/neuralarc/sales-super-agent.png'
+        image: '/neuralarc/image_1.png'
       },
       {
         title: 'HUMAN RESOURCE SUPER-AGENT',
-        image: '/neuralarc/hr-super-agent.png'
+        image: '/neuralarc/image_2.png'
       },
       {
         title: 'OPERATIONS SUPER-AGENT',
-        image: '/neuralarc/operations-super-agent.png'
+        image: '/neuralarc/image_3.png'
       }
     ].map(({ title, image }) => (
       <div
@@ -150,11 +150,11 @@ export default function PerformanceSection() {
     {[
       {
         title: 'LEGAL SUPER-AGENT',
-        image: '/neuralarc/legal-super-agent.png'
+        image: '/neuralarc/image_4.png'
       },
       {
         title: 'FINANCE SUPER-AGENT',
-        image: '/neuralarc/finance-super-agent.png'
+        image: '/neuralarc/image_5.png'
       }
     ].map(({ title, image }) => (
       <div
@@ -184,11 +184,11 @@ export default function PerformanceSection() {
     {[
       {
         title: 'SALES SUPER-AGENT',
-        image: '/neuralarc/sales-super-agent.png'
+        image: '/neuralarc/image_1.png'
       },
       {
         title: 'HUMAN RESOURCE SUPER-AGENT',
-        image: '/neuralarc/hr-super-agent.png'
+        image: '/neuralarc/image_2.png'
       }
     ].map(({ title, image }) => (
       <div
@@ -215,11 +215,11 @@ export default function PerformanceSection() {
     {[
       {
         title: 'OPERATIONS SUPER-AGENT',
-        image: '/neuralarc/operations-super-agent.png'
+        image: '/neuralarc/image_3.png'
       },
       {
         title: 'LEGAL SUPER-AGENT',
-        image: '/neuralarc/legal-super-agent.png'
+        image: '/neuralarc/image_4.png'
       }
     ].map(({ title, image }) => (
       <div
@@ -245,7 +245,7 @@ export default function PerformanceSection() {
   <div className="flex justify-center">
     <div className="w-full sm:w-1/2 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col items-center text-center p-4 sm:p-5 md:p-6 min-h-[220px]">
       <Image
-        src="/neuralarc/finance-super-agent.png"
+        src="/neuralarc/image_5.png"
         alt="FINANCE SUPER-AGENT"
         width={200}
         height={200}

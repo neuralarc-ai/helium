@@ -363,7 +363,34 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
   return (
     <div className="space-y-6">
       {/* Header Section */}
-     
+      {/* <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4 border border-blue-500/20">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-blue-500/20 rounded-lg">
+            <Globe className="h-5 w-5 text-blue-400" />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-black mb-2">Global Knowledge Base</h2>
+            <p className="text-sm text-black/60 mb-3">
+              Add knowledge entries that will be available across all your chat threads. Specify when each piece of knowledge should be used, 
+              and your AI will automatically include this information in relevant conversations.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                <span className="text-black/60">Available in all chats</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                <span className="text-black/60">Automatic context injection</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-purple-500"></div>
+                <span className="text-black/60">No need to re-add per thread</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div> */}
       {/* Search and Controls */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex-1 max-w-md">
@@ -377,16 +404,16 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
             />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowInactive(!showInactive)}
-            className={showInactive ? "bg-accent" : ""}
+            className={`${showInactive ? "bg-accent" : ""} rounded-md cursor-pointer`} 
           >
             {showInactive ? "Hide Inactive" : "Show Inactive"}
           </Button>
-          <Button onClick={handleOpenCreateDialog} size="sm">
+          <Button onClick={handleOpenCreateDialog} size="sm" className="rounded-md cursor-pointer bg-[#0ac5b2]">
             <Plus className="h-4 w-4 mr-2" />
             Add Knowledge
           </Button>
@@ -410,7 +437,7 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
             <p className="text-muted-foreground mb-4">
               Create your first global knowledge base entry with usage context to get started.
             </p>
-            <Button onClick={handleOpenCreateDialog}>
+            <Button onClick={handleOpenCreateDialog} className="rounded-md cursor-pointer bg-[#0ac5b2]">
               <Plus className="h-4 w-4 mr-2" />
               Add Knowledge
             </Button>
