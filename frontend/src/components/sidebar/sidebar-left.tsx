@@ -2,7 +2,15 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Bot, Menu, Plus, Plug, ChevronRight, Lightbulb, X } from 'lucide-react';
+import {
+  Bot,
+  Menu,
+  Plus,
+  Plug,
+  ChevronRight,
+  Lightbulb,
+  X,
+} from 'lucide-react';
 import Image from 'next/image';
 
 import { NavAgents } from '@/components/sidebar/nav-agents';
@@ -56,6 +64,12 @@ import { useRouter } from 'next/navigation';
 import { KnowledgeBaseDialog } from '@/components/thread/knowledge-based/knowledge-base-dialog';
 import { GlobalKnowledgeBaseDialog } from '@/components/thread/knowledge-based/global-knowledge-base-dialog';
 
+// Helper function to check if we're in production mode
+const isProductionMode = (): boolean => {
+  const envMode = process.env.NEXT_PUBLIC_ENV_MODE?.toLowerCase();
+  return envMode === 'production';
+};
+
 // Helper function to extract threadId from pathname
 const extractThreadIdFromPathname = (pathname: string): string | null => {
   // Match patterns like /projects/{projectId}/thread/{threadId}
@@ -63,13 +77,13 @@ const extractThreadIdFromPathname = (pathname: string): string | null => {
   if (threadMatch) {
     return threadMatch[1];
   }
-  
+
   // Match patterns like /share/{threadId}
   const shareMatch = pathname.match(/\/share\/([^\/]+)/);
   if (shareMatch) {
     return shareMatch[1];
   }
-  
+
   return null;
 };
 
@@ -93,7 +107,11 @@ export function SidebarLeft({
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { flags, loading: flagsLoading } = useFeatureFlags(['custom_agents', 'agent_marketplace', 'knowledge_base']);
+  const { flags, loading: flagsLoading } = useFeatureFlags([
+    'custom_agents',
+    'agent_marketplace',
+    'knowledge_base',
+  ]);
   const customAgentsEnabled = flags.custom_agents;
   const marketplaceEnabled = flags.agent_marketplace;
   const knowledgeBaseEnabled = flags.knowledge_base;
@@ -107,11 +125,14 @@ export function SidebarLeft({
     setShowKnowledgeBase(true);
   };
 
-  const handleUserUpdate = (updatedUser: { name: string; email: string; avatar: string }) => {
+  const handleUserUpdate = (updatedUser: {
+    name: string;
+    email: string;
+    avatar: string;
+  }) => {
     setUser(updatedUser);
   };
 
-  
   useEffect(() => {
     const fetchUserData = async () => {
       const supabase = createClient();
@@ -149,7 +170,6 @@ export function SidebarLeft({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [state, setOpen]);
 
-
   const handleCreateNewAgent = () => {
     createNewAgentMutation.mutate();
   };
@@ -163,11 +183,15 @@ export function SidebarLeft({
       <SidebarHeader className="px-2 py-2">
         <div className="flex h-[40px] items-center px-1 relative">
           <Link href="/dashboard">
-            <Image src="/helium-logo.png" alt="Helium Logo" width={30} height={30} />
+            <Image
+              src="/helium-logo.png"
+              alt="Helium Logo"
+              width={30}
+              height={30}
+            />
           </Link>
           {state !== 'collapsed' && (
-            <div className="ml-2 transition-all duration-200 ease-in-out whitespace-nowrap">
-            </div>
+            <div className="ml-2 transition-all duration-200 ease-in-out whitespace-nowrap"></div>
           )}
           <div className="ml-auto flex items-center gap-2">
             {!isMobile && state !== 'collapsed' && (
@@ -178,30 +202,32 @@ export function SidebarLeft({
                 <TooltipContent>Toggle sidebar (CMD+B)</TooltipContent>
               </Tooltip>
             )}
-          
-   {isMobile && (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          onClick={() => setOpenMobile(false)}
-          className="h-6 cursor-pointer w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 flex items-center justify-center rounded-md hover:bg-accent transition-all duration-300 ease-in-out"
-        >
-          <X className="h-5 w-5 sm:h-5 sm:w-5 md:h-4 md:w-4 transition-all duration-300 ease-in-out" />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>Close sidebar</TooltipContent>
-    </Tooltip>
-  )}
 
+            {isMobile && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setOpenMobile(false)}
+                    className="h-6 cursor-pointer w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 flex items-center justify-center rounded-md hover:bg-accent transition-all duration-300 ease-in-out"
+                  >
+                    <X className="h-5 w-5 sm:h-5 sm:w-5 md:h-4 md:w-4 transition-all duration-300 ease-in-out" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Close sidebar</TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
       </SidebarHeader>
       <SidebarContent className="[&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-        <SidebarGroup>
+        <SidebarGroup className="gap-1">
           <Link href="/dashboard">
-            <SidebarMenuButton className={cn({
-              'bg-accent text-accent-foreground font-medium': pathname === '/dashboard',
-            })}>
+            <SidebarMenuButton
+              className={cn({
+                'bg-accent text-accent-foreground font-medium':
+                  pathname === '/dashboard',
+              })}
+            >
               <Plus className="h-4 w-4 mr-1 cursor-pointer" />
               <span className="flex items-center justify-between w-full">
                 New Task
@@ -209,17 +235,19 @@ export function SidebarLeft({
             </SidebarMenuButton>
           </Link>
           {!isMobile && state === 'collapsed' && (
-            <div className="mt-2 flex justify-center">
+            <div className=" flex justify-center">
               <Tooltip>
-                <TooltipTrigger asChild>
+                <TooltipTrigger asChild className="rounded-md">
                   <SidebarTrigger className="h-8 w-8 hover:bg-accent hover:text-accent-foreground cursor-pointer" />
                 </TooltipTrigger>
-                <TooltipContent side="right">Expand sidebar (CMD+B)</TooltipContent>
+                <TooltipContent side="right">
+                  Expand sidebar (CMD+B)
+                </TooltipContent>
               </Tooltip>
             </div>
           )}
-          
-          {!flagsLoading && customAgentsEnabled && (
+
+          {!flagsLoading && customAgentsEnabled && !isProductionMode() && (
             <SidebarMenu>
               <Collapsible
                 defaultOpen={pathname?.includes('/agents')}
@@ -229,6 +257,7 @@ export function SidebarLeft({
                   <CollapsibleTrigger asChild>
                     <SidebarMenuButton
                       tooltip="Agents"
+                      className="cursor-pointer"
                     >
                       <Bot className="h-4 w-4 mr-1" />
                       <span>Agents</span>
@@ -238,25 +267,36 @@ export function SidebarLeft({
                   <CollapsibleContent>
                     <SidebarMenuSub>
                       <SidebarMenuSubItem>
-                        <SidebarMenuSubButton className={cn('pl-3', {
-                          'bg-accent text-accent-foreground font-medium': pathname === '/agents' && searchParams.get('tab') === 'marketplace',
-                        })} asChild>
+                        <SidebarMenuSubButton
+                          className={cn('pl-3', {
+                            'bg-accent text-accent-foreground font-medium':
+                              pathname === '/agents' &&
+                              searchParams.get('tab') === 'marketplace',
+                          })}
+                          asChild
+                        >
                           <Link href="/agents?tab=marketplace">
                             <span>Explore</span>
                           </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                       <SidebarMenuSubItem>
-                        <SidebarMenuSubButton className={cn('pl-3', {
-                          'bg-accent text-accent-foreground font-medium': pathname === '/agents' && (searchParams.get('tab') === 'my-agents' || searchParams.get('tab') === null),
-                        })} asChild>
+                        <SidebarMenuSubButton
+                          className={cn('pl-3', {
+                            'bg-accent text-accent-foreground font-medium':
+                              pathname === '/agents' &&
+                              (searchParams.get('tab') === 'my-agents' ||
+                                searchParams.get('tab') === null),
+                          })}
+                          asChild
+                        >
                           <Link href="/agents?tab=my-agents">
                             <span>My Agents</span>
                           </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                       <SidebarMenuSubItem>
-                        <SidebarMenuSubButton 
+                        <SidebarMenuSubButton
                           onClick={() => setShowNewAgentDialog(true)}
                           className="cursor-pointer pl-3"
                         >
@@ -270,57 +310,82 @@ export function SidebarLeft({
             </SidebarMenu>
           )}
           {!flagsLoading && customAgentsEnabled && (
-            <Link href="/settings/credentials">
-              <SidebarMenuButton className={cn({
-                'bg-accent text-accent-foreground font-medium': pathname === '/settings/credentials',
-              })}>
-                <Plug className="h-4 w-4 mr-1" />
-                <span className="flex items-center justify-between w-full">
-                  Integrations
-                </span>
-              </SidebarMenuButton>
-            </Link>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/settings/credentials">
+                  <SidebarMenuButton
+                    className={cn(
+                      'cursor-pointer', // always cursor-pointer
+                      {
+                        'bg-accent text-accent-foreground font-medium':
+                          pathname === '/settings/credentials',
+                      }
+                    )}
+                  >
+                    <Plug className="h-4 w-4 mr-1" />
+                    <span className="flex items-center justify-between w-full">
+                      Integrations
+                    </span>
+                  </SidebarMenuButton>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                Integrations
+              </TooltipContent>
+            </Tooltip>
           )}
         </SidebarGroup>
         <NavAgents />
       </SidebarContent>
       <SidebarFooter>
-        <div className={state === 'collapsed' && !isMobile ? 'w-full flex flex-col items-center' : 'w-full flex flex-col items-start'}>
+        <div
+          className={
+            state === 'collapsed' && !isMobile
+              ? 'w-full flex flex-col items-center'
+              : 'w-full flex flex-col items-start'
+          }
+        >
           {/* Knowledge Base button: always show if feature is enabled */}
           {!flagsLoading && knowledgeBaseEnabled && (
             <Tooltip>
-              <TooltipTrigger asChild className='w-full'>
+              <TooltipTrigger asChild className="w-full">
                 <button
-  className={`h-5 w-full cursor-pointer flex items-center my-1 mx-3 rounded-sm flex-shrink-0 transition-colors ${isMobile ? 'justify-start' : (state === 'collapsed' ? 'justify-center my-3' : '')} ${state === 'collapsed' && !isMobile ? 'hover:bg-card' : ''}`}
-  type="button"
-  tabIndex={0}
-  aria-label="Knowledge Base"
-  onClick={() => {
-    setOpen(true);
-    setTimeout(() => { setShowKnowledgeBase(true); }, 100); // Show knowledge base after expanding
-  }}
->
-  <Lightbulb className="w-5 h-5" />
-  {(isMobile || state !== 'collapsed') && (
-    <span className="ml-2 text-sm font-medium whitespace-nowrap">Knowledge Base</span>
-  )}
-</button>
+                  className={`h-fit w-full cursor-pointer flex items-center py-1 px-3 hover:bg-accent rounded-md flex-shrink-0 transition-colors ${isMobile ? 'justify-start' : state === 'collapsed' ? 'justify-center my-3' : ''} ${state === 'collapsed' && !isMobile ? 'hover:bg-card' : ''}`}
+                  type="button"
+                  tabIndex={0}
+                  aria-label="Knowledge Base"
+                  onClick={() => {
+                    setOpen(true);
+                    setTimeout(() => {
+                      setShowKnowledgeBase(true);
+                    }, 100); // Show knowledge base after expanding
+                  }}
+                >
+                  <Lightbulb className="w-4 h-4 mr-2" />
+                  {(isMobile || state !== 'collapsed') && (
+                    <span className="text-sm font-medium whitespace-nowrap">
+                      Knowledge Base
+                    </span>
+                  )}
+                </button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                {currentThreadId 
-                  ? "Knowledge Base" 
-                  : "Knowledge Base"
-                }
+                {currentThreadId ? 'Knowledge Base' : 'Knowledge Base'}
               </TooltipContent>
             </Tooltip>
           )}
           {/* Divider above NavUserWithTeams only when expanded */}
-          {state !== 'collapsed' && <div className="w-full h-px bg-border my-2" />}
+          {state !== 'collapsed' && (
+            <div className="w-full h-px bg-border my-2" />
+          )}
           <NavUserWithTeams user={user} />
         </div>
       </SidebarFooter>
       <SidebarRail />
-      <AlertDialog open={showNewAgentDialog} onOpenChange={setShowNewAgentDialog}>
+      <AlertDialog
+        open={showNewAgentDialog}
+        onOpenChange={setShowNewAgentDialog}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Create New Agent</AlertDialogTitle>
@@ -330,7 +395,9 @@ export function SidebarLeft({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCreateNewAgent}>Create</AlertDialogAction>
+            <AlertDialogAction onClick={handleCreateNewAgent}>
+              Create
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -48,8 +48,8 @@ export default function AppProfilesPage() {
   return (
     <div className="container mx-auto max-w-4xl px-6 py-6">
       <div className="space-y-6">
-        <PageHeader icon={Zap}>
-          <span className="text-primary">App Credentials</span>
+        <PageHeader icon={Zap} backgroundImage="/header-1.png">
+          <span className="text-white">App Credentials</span>
         </PageHeader>
         
         <PipedreamConnectionsSection onConnectNewApp={handleAppSelection} />

@@ -12,6 +12,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { ToolView } from './tool-views/wrapper';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 
 export interface ToolCallInput {
   assistantCall: {
@@ -468,22 +469,16 @@ export function ToolCallSidePanel({
             </div>
           </div>
           <div className="flex flex-col items-center justify-center flex-1 p-8">
-            <div className="flex flex-col items-center space-y-4 max-w-sm text-center">
-              <div className="relative">
-                <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center">
-                  <Computer className="h-8 w-8 text-zinc-400 dark:text-zinc-500" />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-zinc-400 dark:text-zinc-500 rounded-full"></div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
-                  No tool activity
-                </h3>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                  Tool calls and computer interactions will appear here when they're being executed.
-                </p>
+            <div className="flex flex-col items-center justify-center w-full h-full">
+              <div className="relative w-1/2 h-1/2 flex items-center justify-center">
+                <Image 
+                  src="/helium-brain/brain-inactive.png" 
+                  alt="Helium Brain Inactive" 
+                  width={200}
+                  height={200}
+                  className="w-full h-full object-contain"
+                  priority
+                />
               </div>
             </div>
           </div>
@@ -674,7 +669,7 @@ export function ToolCallSidePanel({
             }
           }}
           className={cn(
-            'fixed top-2 right-2 bottom-4 border rounded-3xl flex flex-col z-30 transition-[width] duration-200 ease-in-out will-change-[width]',
+            'fixed top-2 right-2 bottom-4 border rounded-3xl flex flex-col z-30 transition-[width] duration-200 ease-in-out will-change-[width] shadow-sm',
             widthClass,
           )}
           style={{

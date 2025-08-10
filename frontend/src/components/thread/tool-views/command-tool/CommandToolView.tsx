@@ -147,7 +147,7 @@ export function CommandToolView({
 
   return (
     <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#8B5CF6_0%,_#7C3AED_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-xl mx-2 mt-2">
+      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-md mx-4 mt-2">
         <div className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             <Terminal className="w-5 h-5 text-white" />
@@ -157,27 +157,6 @@ export function CommandToolView({
               </CardTitle>
             </div>
           </div>
-
-          {!isStreaming && (
-            <Badge
-              variant="secondary"
-              className={
-                actualIsSuccess
-                  ? "bg-gradient-to-b from-emerald-200 to-emerald-100 text-emerald-700 dark:from-emerald-800/50 dark:to-emerald-900/60 dark:text-emerald-300"
-                  : "bg-gradient-to-b from-rose-200 to-rose-100 text-rose-700 dark:from-rose-800/50 dark:to-rose-900/60 dark:text-rose-300"
-              }
-            >
-              {actualIsSuccess ? (
-                <CheckCircle className="h-3.5 w-3.5 mr-1" />
-              ) : (
-                <AlertTriangle className="h-3.5 w-3.5 mr-1" />
-              )}
-              {actualIsSuccess ?
-                (name === 'check-command-output' ? 'Output retrieved successfully' : 'Command executed successfully') :
-                (name === 'check-command-output' ? 'Failed to retrieve output' : 'Command failed')
-              }
-            </Badge>
-          )}
         </div>
       </CardHeader>
 
@@ -192,7 +171,7 @@ export function CommandToolView({
             showProgress={true}
           />
         ) : displayText ? (
-          <ScrollArea className="h-full w-full">
+          <ScrollArea className="w-full">
             <div className="p-4">
               <div className="mb-4">
                 <div className="bg-zinc-100 dark:bg-neutral-900 rounded-lg overflow-hidden border border-zinc-200/20">
@@ -208,7 +187,7 @@ export function CommandToolView({
                       </Badge>
                     )}
                   </div>
-                  <div className="p-4 max-h-96 overflow-auto scrollbar-hide">
+                  <div className="p-4 max-h-[calc(100vh-290px)] overflow-auto scrollbar-hide">
                     <pre className="text-xs text-zinc-600 dark:text-zinc-300 font-mono whitespace-pre-wrap break-all overflow-visible">
                       {/* Show command only */}
                       {command && (
