@@ -141,7 +141,7 @@ export function renderMarkdownContent(
                     // Render ask tool content with attachment UI
                     contentParts.push(
                         <div key={`ask-${match.index}-${index}`} className="space-y-3">
-                            <PipedreamUrlDetector content={askText} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
+                            <PipedreamUrlDetector content={askText} className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
                             {renderAttachments(attachmentArray, fileViewerHandler, sandboxId, project)}
                         </div>
                     );
@@ -157,7 +157,7 @@ export function renderMarkdownContent(
                     // Render complete tool content with attachment UI
                     contentParts.push(
                         <div key={`complete-${match.index}-${index}`} className="space-y-3">
-                            <PipedreamUrlDetector content={completeText} className="text-sm lg:text-base xl:text-lg leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
+                            <PipedreamUrlDetector content={completeText} className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
                             {renderAttachments(attachmentArray, fileViewerHandler, sandboxId, project)}
                         </div>
                     );
@@ -204,12 +204,12 @@ export function renderMarkdownContent(
             const remainingText = content.substring(lastIndex);
             if (remainingText.trim()) {
                 contentParts.push(
-                    <PipedreamUrlDetector key={`md-${lastIndex}`} content={remainingText} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />
+                    <PipedreamUrlDetector key={`md-${lastIndex}`} content={remainingText} className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />
                 );
             }
         }
 
-        return contentParts.length > 0 ? contentParts : <PipedreamUrlDetector content={content} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />;
+        return contentParts.length > 0 ? contentParts : <PipedreamUrlDetector content={content} className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />;
     }
 
     // Fall back to old XML format handling
@@ -220,7 +220,7 @@ export function renderMarkdownContent(
 
     // If no XML tags found, just return the full content as markdown
     if (!content.match(xmlRegex)) {
-        return <PipedreamUrlDetector content={content} className="text-sm lg:text-base xl:text-lg leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />;
+        return <PipedreamUrlDetector content={content} className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />;
     }
 
     while ((match = xmlRegex.exec(content)) !== null) {
@@ -250,7 +250,7 @@ export function renderMarkdownContent(
             // Render <ask> tag content with attachment UI (using the helper)
             contentParts.push(
                 <div key={`ask-${match.index}`} className="space-y-3">
-                    <PipedreamUrlDetector content={askContent} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
+                    <PipedreamUrlDetector content={askContent} className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
                     {renderAttachments(attachments, fileViewerHandler, sandboxId, project)}
                 </div>
             );
@@ -268,7 +268,7 @@ export function renderMarkdownContent(
             // Render <complete> tag content with attachment UI (using the helper)
             contentParts.push(
                 <div key={`complete-${match.index}`} className="space-y-3">
-                    <PipedreamUrlDetector content={completeContent} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
+                    <PipedreamUrlDetector content={completeContent} className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3" />
                     {renderAttachments(attachments, fileViewerHandler, sandboxId, project)}
                 </div>
             );
@@ -301,7 +301,7 @@ export function renderMarkdownContent(
     // Add text after the last tag
     if (lastIndex < content.length) {
         contentParts.push(
-            <PipedreamUrlDetector key={`md-${lastIndex}`} content={content.substring(lastIndex)} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />
+            <PipedreamUrlDetector key={`md-${lastIndex}`} content={content.substring(lastIndex)} className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words" />
         );
     }
 
@@ -1223,7 +1223,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                                         return (
                                                                             <>
                                                                                 {textBeforeTag && (
-                                                                                    <PipedreamUrlDetector content={textBeforeTag} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere" />
+                                                                                    <PipedreamUrlDetector content={textBeforeTag} className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere" />
                                                                                 )}
                                                                                 {showCursor && (
                                                                                     <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
@@ -1286,7 +1286,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                                                 ) : (
                                                                                     <>
                                                                                         {textBeforeTag && (
-                                                                                            <PipedreamUrlDetector content={textBeforeTag} className="text-sm lg:text-base xl:text-lg leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere" />
+                                                                                            <PipedreamUrlDetector content={textBeforeTag} className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere" />
                                                                                         )}
                                                                                         {showCursor && (
                                                                                             <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />

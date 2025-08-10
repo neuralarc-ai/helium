@@ -12,7 +12,7 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
   "python-dotenv==1.0.1",
-  "litellm==1.72.2",
+  "litellm==1.75.2",
   "click==8.1.7",
   "questionary==2.0.1",
   "requests==2.32.3",
@@ -74,3 +74,8 @@ repository = "https://github.com/neuralarc-ai/helium"
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "orjson>=3.11.1",
+]
