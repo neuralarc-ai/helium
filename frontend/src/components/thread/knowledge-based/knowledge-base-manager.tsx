@@ -470,36 +470,12 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4 border border-blue-500/20">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-blue-500/20 rounded-lg">
-            <BookOpen className="h-5 w-5 text-blue-400" />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-white mb-2">Thread Knowledge Base</h2>
-            <p className="text-sm text-white/70 mb-3">
-              Add knowledge entries specific to this chat thread. This information will only be available in this conversation.
-            </p>
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <Lightbulb className="h-4 w-4 text-yellow-400 mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-white/80">
-                  <p className="font-medium mb-1">💡 Pro Tip</p>
-                  <p>
-                    For information you want available in <strong>all chats</strong>, use the 
-                    <strong className="text-blue-400"> Global Knowledge Base</strong> instead. 
-                    You can access it from the sidebar or dashboard.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      
 
       {/* Context Preview */}
       {(!isLoadingContext && kbContext?.context) && (
         <div className="rounded-md border border-blue-500/30 bg-blue-500/10 p-3 text-xs">
+          
           <div className="flex items-center justify-between">
             <span className="font-medium text-blue-300">Context Preview (thread)</span>
             <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => refetchKbContext()}>Refresh</Button>
