@@ -206,6 +206,8 @@ class Configuration:
     XAI_API_KEY: Optional[str] = None
     MORPH_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
+    MOONSHOT_API_KEY: Optional[str] = None
+    MOONSHOT_API_BASE: Optional[str] = "https://api.moonshot.ai/v1"
     OPENROUTER_API_BASE: Optional[str] = "https://openrouter.ai/api/v1"
     OR_SITE_URL: Optional[str] = "https://he2.ai"
     OR_APP_NAME: Optional[str] = "Helium AI"    
@@ -216,7 +218,7 @@ class Configuration:
     AWS_REGION_NAME: Optional[str] = None
     
     # Model configuration
-    MODEL_TO_USE: Optional[str] = "openrouter/deepseek/deepseek-chat-v3-0324:free"
+    MODEL_TO_USE: Optional[str] = "moonshot/moonshot-v1-8k"
     
     # Supabase configuration
     SUPABASE_URL: str

@@ -92,16 +92,40 @@ MODELS = {
         },
         "tier_availability": ["free", "paid"]
     },
-    "openrouter/moonshotai/kimi-k2:free": {
-        "aliases": ["moonshotai/kimi-k2:free"],
+    "moonshot/moonshot-v1-8k": {
+        "aliases": ["moonshot-v1-8k", "kimi-k2", "moonshotai/kimi-k2:free", "moonshotai/kimi-k2"],
         "pricing": {
             "input_cost_per_million_tokens": 0.0,
             "output_cost_per_million_tokens": 0.0
         },
         "tier_availability": ["free", "paid"]
     },
-    "openrouter/moonshotai/kimi-k2": {
-        "aliases": ["moonshotai/kimi-k2"],
+    "moonshot/moonshot-v1-32k": {
+        "aliases": ["moonshot-v1-32k", "kimi-k2-32k"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.0,
+            "output_cost_per_million_tokens": 0.0
+        },
+        "tier_availability": ["free", "paid"]
+    },
+    "moonshot/moonshot-v1-128k": {
+        "aliases": ["moonshot-v1-128k", "kimi-k2-128k"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.0,
+            "output_cost_per_million_tokens": 0.0
+        },
+        "tier_availability": ["free", "paid"]
+    },
+    "moonshot/kimi-k2-0711-preview": {
+        "aliases": ["kimi-k2-0711-preview", "kimi-k2-0711"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.0,
+            "output_cost_per_million_tokens": 0.0
+        },
+        "tier_availability": ["free", "paid"]
+    },
+    "moonshot/kimi-k2-turbo-preview": {
+        "aliases": ["kimi-k2-turbo-preview", "kimi-k2-turbo"],
         "pricing": {
             "input_cost_per_million_tokens": 0.0,
             "output_cost_per_million_tokens": 0.0
