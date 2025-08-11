@@ -256,12 +256,15 @@ async def stop_agent_run(agent_run_id: str, error_message: Optional[str] = None)
     logger.info(f"Successfully initiated stop process for agent run: {agent_run_id}")
 
 async def get_agent_run_with_access_check(client, agent_run_id: str, user_id: str):
-    agent_run = await client.table('agent_runs').select('*').eq('id', agent_run_id).execute()
+    agent_run = await client.table('agent_runs').select('*, threads(account_id)').eq('id', agent_run_id).execute()
     if not agent_run.data:
         raise HTTPException(status_code=404, detail="Agent run not found")
 
     agent_run_data = agent_run.data[0]
     thread_id = agent_run_data['thread_id']
+    account_id = agent_run_data['threads']['account_id']
+    if account_id == user_id:
+        return agent_run_data
     await verify_thread_access(client, thread_id, user_id)
     return agent_run_data
 
@@ -298,7 +301,7 @@ async def start_agent(
     logger.info(f"Starting new agent for thread: {thread_id} with config: model={model_name}, thinking={body.enable_thinking}, effort={body.reasoning_effort}, stream={body.stream}, context_manager={body.enable_context_manager} (Instance: {instance_id})")
     client = await db.client
 
-    await verify_thread_access(client, thread_id, user_id)
+    # await verify_thread_access(client, thread_id, user_id)
     thread_result = await client.table('threads').select('project_id', 'account_id', 'metadata').eq('thread_id', thread_id).execute()
     if not thread_result.data:
         raise HTTPException(status_code=404, detail="Thread not found")
@@ -306,6 +309,9 @@ async def start_agent(
     project_id = thread_data.get('project_id')
     account_id = thread_data.get('account_id')
     thread_metadata = thread_data.get('metadata', {})
+
+    if account_id != user_id:
+        raise HTTPException(status_code=403, detail="Access denied: You can only access threads from your own account")
 
     structlog.contextvars.bind_contextvars(
         project_id=project_id,
@@ -1025,11 +1031,19 @@ async def initiate_agent_with_files(
     if agent_config:
         logger.info(f"[AGENT INITIATE] Agent config keys: {list(agent_config.keys())}")
 
-    can_use, model_message, allowed_models = await can_use_model(client, account_id, model_name)
+    # Run all checks concurrently
+    model_check_task = asyncio.create_task(can_use_model(client, account_id, model_name))
+    billing_check_task = asyncio.create_task(check_billing_status(client, account_id))
+
+    # Wait for all checks to complete
+    (can_use, model_message, allowed_models), (can_run, message, subscription) = await asyncio.gather(
+        model_check_task, billing_check_task
+    )
+
+    # Check results and raise appropriate errors
     if not can_use:
         raise HTTPException(status_code=403, detail={"message": model_message, "allowed_models": allowed_models})
 
-    can_run, message, subscription = await check_billing_status(client, account_id)
     if not can_run:
         raise HTTPException(status_code=402, detail={"message": message, "subscription": subscription})
 
@@ -1043,7 +1057,7 @@ async def initiate_agent_with_files(
         project_id = project.data[0]['project_id']
         logger.info(f"Created new project: {project_id}")
 
-        # 2. Create Sandbox
+        # 2. Create Sandbox (lazy): only create now if files were uploaded and need the sandbox immediately
         sandbox_id = None
         try:
           sandbox_pass = str(uuid.uuid4())
