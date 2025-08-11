@@ -363,7 +363,8 @@ class SandboxFilesTool(SandboxToolsBase):
             models = [
                 "openrouter/qwen/qwen3-coder:free",
                 "openrouter/z-ai/glm-4.5-air:free", 
-                "openrouter/moonshotai/kimi-k2:free"
+                "moonshot/kimi-k2-0711-preview",
+                "moonshot/moonshot-v1-8k"
             ]
             
             last_error = None

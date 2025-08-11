@@ -131,6 +131,7 @@ def load_existing_env_vars():
             "OPENROUTER_API_KEY": backend_env.get("OPENROUTER_API_KEY", ""),
             "MORPH_API_KEY": backend_env.get("MORPH_API_KEY", ""),
             "GEMINI_API_KEY": backend_env.get("GEMINI_API_KEY", ""),
+            "MOONSHOT_API_KEY": backend_env.get("MOONSHOT_API_KEY", ""),
             "MODEL_TO_USE": backend_env.get("MODEL_TO_USE", ""),
         },
         "search": {
@@ -739,6 +740,10 @@ class SetupWizard:
                 self.env_vars["llm"][
                     "MODEL_TO_USE"
                 ] = "anthropic/claude-sonnet-4-20250514-v1:0"
+            elif self.env_vars["llm"].get("MOONSHOT_API_KEY"):
+                self.env_vars["llm"][
+                    "MODEL_TO_USE"
+                ] = "moonshot/moonshot-v1-8k"
             elif self.env_vars["llm"].get("GEMINI_API_KEY"):
                 self.env_vars["llm"][
                     "MODEL_TO_USE"

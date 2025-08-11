@@ -51,9 +51,21 @@ export const MODELS = {
   // },
 
   // Premium/Paid tier models (require subscription) - except specific free models
-  'openrouter/moonshotai/kimi-k2:free': { 
+  'moonshot/moonshot-v1-8k': { 
     tier: 'free', 
     priority: 99,
+    recommended: false,
+    lowQuality: false
+  },
+  'moonshot/kimi-k2-0711-preview': { 
+    tier: 'free', 
+    priority: 98,
+    recommended: false,
+    lowQuality: false
+  },
+  'moonshot/kimi-k2-turbo-preview': { 
+    tier: 'free', 
+    priority: 97,
     recommended: false,
     lowQuality: false
   },
@@ -164,7 +176,7 @@ export const PRODUCTION_MODELS = {
     lowQuality: false
   },
   'helio-o1-lite': {
-    id: 'bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0',
+    id: 'moonshot/kimi-k2-0711-preview',
     label: 'Helio o1 Lite',
     description: 'Fast and efficient for everyday tasks',
     tier: 'free',

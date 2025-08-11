@@ -41,7 +41,7 @@ class LLMRetryError(LLMError):
 
 def setup_api_keys() -> None:
     """Set up API keys from environment variables."""
-    providers = ['OPENAI', 'ANTHROPIC', 'GROQ', 'OPENROUTER', 'XAI', 'MORPH', 'GEMINI']
+    providers = ['OPENAI', 'ANTHROPIC', 'GROQ', 'OPENROUTER', 'XAI', 'MORPH', 'GEMINI', 'MOONSHOT']
     for provider in providers:
         key = getattr(config, f'{provider}_API_KEY')
         if key:
@@ -56,12 +56,24 @@ def setup_api_keys() -> None:
         os.environ['OPENROUTER_API_BASE'] = config.OPENROUTER_API_BASE
         logger.info(f"Set OPENROUTER_API_BASE to {config.OPENROUTER_API_BASE}")
     
+    # Set up Moonshot AI API base if not already set
+    if config.MOONSHOT_API_KEY and config.MOONSHOT_API_BASE:
+        os.environ['MOONSHOT_API_BASE'] = config.MOONSHOT_API_BASE
+        logger.info(f"Set MOONSHOT_API_BASE to {config.MOONSHOT_API_BASE}")
+    
     # Debug: Check if OpenRouter API key is available in environment
     openrouter_key = os.environ.get('OPENROUTER_API_KEY')
     if openrouter_key:
         logger.info(f"OpenRouter API key found in environment (length: {len(openrouter_key)}, starts with: {openrouter_key[:10]}...)")
     else:
         logger.error("OpenRouter API key NOT found in environment variables!")
+        
+    # Debug: Check if Moonshot AI API key is available in environment
+    moonshot_key = os.environ.get('MOONSHOT_API_KEY')
+    if moonshot_key:
+        logger.info(f"Moonshot AI API key found in environment (length: {len(moonshot_key)}, starts with: {moonshot_key[:10]}...)")
+    else:
+        logger.warning("Moonshot AI API key NOT found in environment variables!")
 
     # Set up AWS Bedrock credentials
     aws_access_key = config.AWS_ACCESS_KEY_ID
