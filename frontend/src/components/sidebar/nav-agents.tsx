@@ -350,7 +350,7 @@ export function NavAgents() {
               <History className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">Chat History</span>
             </div>
-            {state !== 'collapsed' ? (
+            {(state !== 'collapsed' || (isMobile && openMobile)) ? (
               <div className="flex items-center space-x-1">
                 {selectedThreads.size > 0 ? (
                   <>
@@ -412,7 +412,7 @@ export function NavAgents() {
       <SidebarMenu className="overflow-y-auto max-h-[calc(100vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
 
 
-        {state !== 'collapsed' && (
+        {(state !== 'collapsed' || (isMobile && openMobile)) && (
           <>
             {isLoading ? (
               // Show skeleton loaders while loading

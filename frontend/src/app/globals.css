@@ -853,6 +853,24 @@
   mask-composite: exclude;
   padding: 0.8px;
 }
+
+.strategic-service-btn {
+  pointer-events: none;
+  z-index: 11;
+  -webkit-mask-composite: xor;
+  background: linear-gradient(150deg, #e93ba4b3 30%, #0000 45% 75%, #ffffffb3 100%);
+  padding: .8px;
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+  -webkit-mask-position: 0 0, 0 0;
+  -webkit-mask-size: auto, auto;
+  -webkit-mask-repeat: repeat, repeat;
+  -webkit-mask-clip: content-box, border-box;
+  -webkit-mask-origin: content-box, border-box;
+  mask-composite: exclude;
+  mask-mode: match-source, match-source;
+}
 .liquid-glass:before {
   content: '';
   position: absolute;

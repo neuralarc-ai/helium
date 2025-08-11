@@ -7,7 +7,7 @@ export default function NeuralArcSection() {
     <section className="w-full flex flex-col items-center py-6 px-2 md:px-8">
       {/* Top text block */}
       <div className="max-w-7xl w-full mx-auto mb-10">
-        <h2 className="text-black text-2xl md:text-3xl lg:text-4xl font-light mb-4">
+        <h2 className="text-center md:text-left text-black text-2xl md:text-3xl lg:text-4xl mb-4">
           We Built Helium with a brilliant Helio o1 model (God Mode)
         </h2>
         <p className="text-gray-500 text-base md:text-lg mb-4">

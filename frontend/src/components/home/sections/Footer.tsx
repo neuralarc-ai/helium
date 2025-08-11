@@ -452,8 +452,8 @@ export const Footer: React.FC = () => {
       className="w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] md:w-[calc(100%-4rem)] lg:w-[calc(100%-5rem)] xl:w-[calc(100%-6rem)] max-w-7xl mx-auto min-h-[200px] sm:min-h-[240px] md:min-h-[276px] rounded-2xl sm:rounded-3xl px-4 sm:px-6 md:px-8 lg:px-10 py-6 sm:py-8 my-4 sm:my-6 flex flex-col justify-between bg-cover bg-center relative"
       style={{ backgroundImage: "url('/neuralarc/footer.png')" }}
     >
-      {/* Top: Logo and name */}
-      <div className="flex items-center gap-4 mb-8 mt-2">
+      {/* Top: Logo and name - centered for mobile, left-aligned for larger screens */}
+      <div className="w-full flex items-center justify-center sm:justify-start gap-4 mb-8 mt-2 sm:mb-8 sm:mt-2">
         <Image
           src="/Helium_logo.png"
           alt="Helium Orb"
@@ -463,24 +463,49 @@ export const Footer: React.FC = () => {
         />
         {/* <span className="text-xl sm:text-2xl md:text-3xl font-light text-white/90 tracking-wide">Helium</span> */}
       </div>
-      {/* Bottom: Links and copyright */}
-      <div className="flex flex-col sm:flex-col md:flex-col lg:flex-col xl:flex-row items-center sm:items-center md:items-center lg:items-center xl:items-end justify-center sm:justify-center md:justify-center lg:justify-center xl:justify-between w-full flex-1 gap-6 sm:gap-4 md:gap-4 lg:gap-4 xl:gap-6 2xl:gap-8">
+      
+      {/* Mobile layout (below 640px) - Logo centered, links below, bottom row separate */}
+      <div className="block sm:hidden">
+        {/* Links below logo for mobile */}
+        <ul className="list-disc list-inside pl-4 text-[14px] text-white/90 space-y-3 mb-6">
+          <li><LinkButton topic="terms">Terms of use</LinkButton></li>
+          <li><LinkButton topic="privacy">Privacy Policy</LinkButton></li>
+          <li><LinkButton topic="disclaimer">Disclaimer</LinkButton></li>
+          <li><LinkButton topic="responsible-ai">Responsible &amp; Ethical AI</LinkButton></li>
+        </ul>
+        
+        {/* Bottom row for mobile only */}
+        <div className="sm:hidden absolute bottom-0 left-0 w-full bg-[#3E3E3ECC] px-3 py-2 flex items-center justify-center gap-2 text-[13px] text-white/90">
+  <span className="whitespace-nowrap">Copyright 2025. All rights reserved.</span>
+  <span className="whitespace-nowrap">A Thing By</span>
+  <Image
+    src="/neuralarc.svg"
+    alt="NeuralArc Logo"
+    width={100}
+    height={100}
+    className="object-contain h-4 w-16"
+  />
+</div>
+</div>
+      
+      {/* Desktop layout (640px and above) - Original layout unchanged */}
+      <div className="hidden sm:flex flex-col md:flex-col lg:flex-col xl:flex-row items-center md:items-center lg:items-center xl:items-end justify-center md:justify-center lg:justify-center xl:justify-between w-full flex-1 gap-6 md:gap-4 lg:gap-4 xl:gap-6 2xl:gap-8">
         {/* Legal links */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-1 md:gap-2 text-xs sm:text-xs md:text-sm lg:text-base text-white/80 text-center sm:text-center md:text-center lg:text-center xl:text-left whitespace-nowrap">
+        <div className="flex flex-row items-center gap-1 md:gap-2 text-xs md:text-sm lg:text-base text-white/80 text-center md:text-center lg:text-center xl:text-left whitespace-nowrap">
           <LinkButton topic="terms">Terms of use</LinkButton>
-          <span className="hidden sm:inline mx-1">•</span>
+          <span className="inline mx-1">•</span>
           <LinkButton topic="privacy">Privacy Policy</LinkButton>
-          <span className="hidden sm:inline mx-1">•</span>
+          <span className="inline mx-1">•</span>
           <LinkButton topic="disclaimer">Disclaimer</LinkButton>
-          <span className="hidden sm:inline mx-1">•</span>
+          <span className="inline mx-1">•</span>
           <LinkButton topic="responsible-ai">Responsible &amp; Ethical AI</LinkButton>
         </div>
         {/* Copyright and logo */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-2 md:gap-3 text-xs sm:text-xs md:text-sm lg:text-base text-white/80 text-center sm:text-center md:text-center lg:text-center xl:text-left flex-shrink-0">
+        <div className="flex flex-row items-center gap-2 md:gap-3 text-xs md:text-sm lg:text-base text-white/80 text-center md:text-center lg:text-center xl:text-left flex-shrink-0">
           <span className="whitespace-nowrap">Copyright 2025. All rights reserved.</span>
-          <div className="flex items-center gap-1 sm:gap-1 md:gap-2">
+          <div className="flex items-center gap-1 md:gap-2">
             <span className="whitespace-nowrap">A Thing By</span>
-            <Image src="/neuralarc.svg" alt="NeuralArc Logo" width={100} height={100} className="object-contain h-4 w-16 sm:h-4 sm:w-16 md:h-5 md:w-20 lg:h-6 lg:w-24 xl:h-7 xl:w-28 flex-shrink-0" />
+            <Image src="/neuralarc.svg" alt="NeuralArc Logo" width={100} height={100} className="object-contain h-4 w-16 md:h-5 md:w-20 lg:h-6 lg:w-24 xl:h-7 xl:w-28 flex-shrink-0" />
           </div>
         </div>
       </div>
