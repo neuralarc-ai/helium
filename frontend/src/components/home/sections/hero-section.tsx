@@ -196,7 +196,7 @@ export default function HeroSection() {
             className="relative flex flex-col items-center justify-center w-full max-w-6xl"
           >
             <motion.div 
-              className="relative w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 xl:w-20 xl:h-20 2xl:w-24 2xl:h-24 mb-1 sm:mb-2 md:mb-3 lg:mb-4 xl:mb-5 2xl:mb-6 z-2"
+              className="relative w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 xl:w-20 xl:h-20 2xl:w-24 2xl:h-24 mb-6 sm:mb-6 md:mb-3 lg:mb-4 xl:mb-5 2xl:mb-6 z-2"
               initial="hidden"
               animate={showHero ? 'visible' : 'hidden'}
               variants={contentVariants}
@@ -210,7 +210,7 @@ export default function HeroSection() {
               />
             </motion.div>
             <motion.h1
-              className="text-center text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl 2xl:text-[92px] font-extralight text-white leading-tight tracking-tight mb-6 sm:mb-8 z-2 px-4 sm:px-6"
+              className="text-center text-[2rem] w-[19rem] mb-8 sm:w-auto sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl 2xl:text-[92px] font-extralight text-white leading-tight tracking-tight mb-6 sm:mb-8 z-2 px-4 sm:px-6"
               initial="hidden"
               animate={showHero ? 'visible' : 'hidden'}
               variants={contentVariants}
@@ -219,7 +219,7 @@ export default function HeroSection() {
               Helium is abundant in <br className="hidden md:block" />the universe, yet <br className="hidden md:block" />strategic on Earth
             </motion.h1>
             <motion.div
-              className="flex flex-row gap-2 sm:gap-3 md:gap-4 mt-2 w-auto px-4 sm:px-0 z-2"
+              className="flex flex-col sm:flex-row gap-2 sm:gap-3 md:gap-4 mt-2 w-auto px-4 sm:px-0 z-2"
               initial="hidden"
               animate={showHero ? 'visible' : 'hidden'}
               variants={contentVariants}

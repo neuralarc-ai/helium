@@ -6,7 +6,7 @@ export default function PerformanceSection() {
     <section className="w-full flex flex-col items-center py-6 px-2 md:px-8">
       {/* Top text block */}
       <div className="max-w-7xl w-full mx-auto mb-12">
-        <h2 className="text-black text-2xl md:text-3xl lg:text-4xl font-light mb-4">
+        <h2 className="text-black text-2xl md:text-3xl lg:text-4xl mb-4 text-center md:text-left">
            Helium: Optimal Performance for Enterprise Deployment
         </h2>
         <p className="text-gray-500 text-base md:text-lg mb-4">
@@ -177,19 +177,16 @@ export default function PerformanceSection() {
   </div>
 </div>
 
-{/* Responsive 2-2-1 layout for below md */}
+{/* Responsive 2-1-2 layout for below md */}
+
+{/* Mobile layout matching the provided image - below 768px */}
 <div className="max-w-5xl w-full mx-auto mb-6 sm:mb-8 md:mb-12 px-3 sm:px-4 md:px-0 space-y-6 md:hidden">
-  {/* First row: 2 cards */}
-  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
+  
+  {/* Row 1: Sales Super-Agent + Operations Super-Agent */}
+  <div className="flex gap-4 sm:gap-6">
     {[
-      {
-        title: 'SALES SUPER-AGENT',
-        image: '/neuralarc/image_1.png'
-      },
-      {
-        title: 'HUMAN RESOURCE SUPER-AGENT',
-        image: '/neuralarc/image_2.png'
-      }
+      { title: 'SALESSUPER AGENT', image: '/neuralarc/image_1.png' },
+      { title: 'OPERATIONS SUPER-AGENT', image: '/neuralarc/image_3.png' }
     ].map(({ title, image }) => (
       <div
         key={title}
@@ -203,61 +200,59 @@ export default function PerformanceSection() {
           className="object-cover w-full h-auto rounded-[33px] mb-2"
           style={{ aspectRatio: '1/1' }}
         />
-        <h4 className="text-gray-700 text-xs sm:text-sm font-medium uppercase tracking-wider mt-2 mb-1">
+        <h4 className="text-gray-700 text-xs sm:text-xl font-medium uppercase tracking-wider mt-2 mb-1">
           {title}
         </h4>
       </div>
     ))}
   </div>
 
-  {/* Second row: 2 cards */}
-  <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-    {[
-      {
-        title: 'OPERATIONS SUPER-AGENT',
-        image: '/neuralarc/image_3.png'
-      },
-      {
-        title: 'LEGAL SUPER-AGENT',
-        image: '/neuralarc/image_4.png'
-      }
-    ].map(({ title, image }) => (
-      <div
-        key={title}
-        className="flex-1 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col items-center text-center p-4 sm:p-5 md:p-6 min-h-[220px]"
-      >
-        <Image
-          src={image}
-          alt={title}
-          width={200}
-          height={200}
-          className="object-cover w-full h-auto rounded-[33px] mb-2"
-          style={{ aspectRatio: '1/1' }}
-        />
-        <h4 className="text-gray-700 text-xs sm:text-sm font-medium uppercase tracking-wider mt-2 mb-1">
-          {title}
-        </h4>
-      </div>
-    ))}
-  </div>
-
-  {/* Third row: 1 card, centered */}
-  <div className="flex justify-center">
-    <div className="w-full sm:w-1/2 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col items-center text-center p-4 sm:p-5 md:p-6 min-h-[220px]">
+  {/* Row 2: Human Resource Super-Agent (full-width with image left, text right) */}
+  <div className="bg-white rounded-2xl shadow-md border border-gray-300 flex items-center p-4 sm:p-6">
+    <div className="flex-shrink-0 w-40 h-40 sm:w-65 sm:h-65 md:w-60 md:h-60 mr-4 sm:mr-6 gap-6">
       <Image
-        src="/neuralarc/image_5.png"
-        alt="FINANCE SUPER-AGENT"
+        src="/neuralarc/image_2.png"
+        alt="HUMAN RESOURCE SUPER-AGENT"
         width={200}
         height={200}
-        className="object-cover w-full h-auto rounded-[33px] mb-2"
-        style={{ aspectRatio: '1/1' }}
+        className="object-cover w-full h-full rounded-[33px]"
       />
-      <h4 className="text-gray-700 text-xs sm:text-sm font-medium uppercase tracking-wider mt-2 mb-1">
-        FINANCE SUPER-AGENT
+    </div>
+    <div className="flex-1">
+      <h4 className="text-gray-700 text-base sm:text-2xl md:text-xl font-medium uppercase tracking-wider leading-tight">
+        HUMAN<br />RESOURCE<br />SUPER-AGENT
       </h4>
     </div>
   </div>
+
+  {/* Row 3: Legal Super-Agent + Operations Super-Agent */}
+  <div className="flex gap-4 sm:gap-6">
+    {[
+      { title: 'LEGAL SUPER-AGENT', image: '/neuralarc/image_4.png' },
+      { title: 'OPERATIONS SUPER-AGENT', image: '/neuralarc/image_5.png' }
+    ].map(({ title, image }) => (
+      <div
+        key={title}
+        className="flex-1 bg-white rounded-2xl shadow-md border border-gray-300 flex flex-col items-center text-center p-4 sm:p-5 md:p-6 min-h-[220px]"
+      >
+        <Image
+          src={image}
+          alt={title}
+          width={200}
+          height={200}
+          className="object-cover w-full h-auto rounded-[33px] mb-2"
+          style={{ aspectRatio: '1/1' }}
+        />
+        <h4 className="text-gray-700 text-xs sm:text-xl font-medium uppercase tracking-wider mt-2 mb-1">
+          {title}
+        </h4>
+      </div>
+    ))}
+  </div>
+
 </div>
+
+
 
       {/* Bottom two-column feature block */}
       {/* <div className="max-w-7xl w-full mx-auto flex flex-col md:flex-row gap-0 rounded-3xl overflow-hidden bg-white dark:bg-[#232323] border border-[#e5e7eb] dark:border-[#FFFFFF12] shadow-md">

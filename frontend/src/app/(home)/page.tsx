@@ -19,8 +19,8 @@ export default function Home() {
           <HeroSection />
         </div>
         <div className="w-full max-w-[1440px] mx-auto">
+           <StrategicServiceSection />
             <HeliumPoweredActions />
-            <StrategicServiceSection />
             <NeuralArcSection />
             <PerformanceSection />
             <Integrations />
