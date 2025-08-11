@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Mic, MicOff, Volume2, VolumeX, AlertCircle, RotateCcw } from 'lucide-react';
+import { X, Mic, MicOff, Volume2, VolumeX, AlertCircle, RotateCcw, Play } from 'lucide-react';
 import { useDeepgramVoiceAgent } from '@/hooks/use-deepgram-voice-agent';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -17,16 +17,25 @@ interface VoiceModePopupProps {
 type VoiceState = 'idle' | 'initializing' | 'listening' | 'processing' | 'speaking' | 'error';
 
 const glassBtnStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.08)',
+  background: 'rgba(0,0,0,0.08)',
   backdropFilter: 'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
-  border: '1.5px solid rgba(255,255,255,0.18)',
-  boxShadow: '0 4px 24px 0 rgba(0,0,0,0.18)',
-  color: 'white',
+  border: '1.5px solid rgba(0,0,0,0.18)',
+  boxShadow: '0 4px 24px 0 rgba(0,0,0,0.1)',
+  color: '#374151',
   transition: 'all 0.2s',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
+  cursor: 'pointer',
+  fontSize: '14px',
+  fontWeight: 500,
+  borderRadius: '12px',
+  padding: '12px 20px',
+  minHeight: '44px',
+  minWidth: '44px',
+  position: 'relative',
+  overflow: 'hidden'
 };
 
 // Tooltip component
@@ -47,11 +56,11 @@ const Tooltip: React.FC<{ children: React.ReactNode; text: string; position?: 't
       {isVisible && (
         <div
           className={cn(
-            "absolute z-[300] px-3 py-2 text-sm text-white bg-black/80 backdrop-blur-sm rounded-lg border border-white/20 shadow-lg whitespace-nowrap",
+            "absolute z-[300] px-3 py-2 text-sm text-gray-900 bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200 shadow-lg whitespace-nowrap",
             position === 'top' ? 'bottom-full left-1/2 -translate-x-1/2 mb-2' : 'top-full left-1/2 -translate-x-1/2 mt-2'
           )}
           style={{
-            boxShadow: '0 4px 24px 0 rgba(0,0,0,0.25)',
+            boxShadow: '0 4px 24px 0 rgba(0,0,0,0.15)',
           }}
         >
           {text}
@@ -60,39 +69,13 @@ const Tooltip: React.FC<{ children: React.ReactNode; text: string; position?: 't
             className={cn(
               "absolute left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-transparent",
               position === 'top' 
-                ? 'top-full border-t-4 border-t-black/80' 
-                : 'bottom-full border-b-4 border-b-black/80'
+                ? 'top-full border-t-4 border-t-white/90' 
+                : 'bottom-full border-b-4 border-b-white/90'
             )}
           />
         </div>
       )}
     </div>
-  );
-};
-
-// Particle component for floating effects
-const Particle: React.FC<{ 
-  x: number; 
-  y: number; 
-  size: number; 
-  color: string; 
-  opacity: number;
-  velocity: { x: number; y: number };
-  life: number;
-}> = ({ x, y, size, color, opacity, velocity, life }) => {
-  return (
-    <circle
-      cx={x}
-      cy={y}
-      r={size}
-      fill={color}
-      opacity={opacity}
-      style={{
-        filter: `blur(${size * 0.5}px)`,
-        transform: `translate(${velocity.x}px, ${velocity.y}px)`,
-        transition: `all ${life}s ease-out`,
-      }}
-    />
   );
 };
 
@@ -102,17 +85,6 @@ const VoiceInteractionAnimation: React.FC<{
   voiceLevel?: number;
   audioLevel?: number;
 }> = ({ state, voiceLevel = 0, audioLevel = 0 }) => {
-  const [particles, setParticles] = useState<Array<{
-    id: number;
-    x: number;
-    y: number;
-    size: number;
-    color: string;
-    opacity: number;
-    velocity: { x: number; y: number };
-    life: number;
-  }>>([]);
-  const [particleId, setParticleId] = useState(0);
   const animationRef = useRef<number | null>(null);
 
   // Dynamic color schemes based on state and audio level
@@ -198,68 +170,11 @@ const VoiceInteractionAnimation: React.FC<{
     return path;
   }, []);
 
-  // Particle system
-  useEffect(() => {
-    let rafId: number | null = null;
-
-    const createParticle = () => {
-      const colors = getDynamicColors();
-      const color = colors[Math.floor(Math.random() * colors.length)];
-      
-      return {
-        id: particleId,
-        x: Math.random() * 1920,
-        y: Math.random() * 1080,
-        size: Math.random() * 3 + 1,
-        color,
-        opacity: Math.random() * 0.6 + 0.2,
-        velocity: {
-          x: (Math.random() - 0.5) * 2,
-          y: (Math.random() - 0.5) * 2
-        },
-        life: Math.random() * 3 + 2
-      };
-    };
-
-    const tick = () => {
-      setParticles(prev => {
-        const filtered = prev.filter(p => p.life > 0.05);
-        const particleRate = state === 'speaking' ? 0.3 : 
-                             state === 'listening' ? 0.2 : 
-                             state === 'processing' ? 0.1 : 0.05;
-        
-        if (Math.random() < particleRate) {
-          setParticleId(prevId => prevId + 1);
-          filtered.push(createParticle());
-        }
-        
-        return filtered.map(p => ({
-          ...p,
-          x: p.x + p.velocity.x,
-          y: p.y + p.velocity.y,
-          life: p.life - 0.016,
-          opacity: p.opacity * 0.99
-        }));
-      });
-
-      rafId = requestAnimationFrame(tick);
-    };
-
-    rafId = requestAnimationFrame(tick);
-    animationRef.current = rafId;
-    
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-      animationRef.current = null;
-    };
-  }, [state, getDynamicColors, particleId]);
-
   const colors = getDynamicColors();
   const amplitude = Math.max(0.3, audioLevel * 2);
 
   return (
-    <div className="voice-animation-container">
+    <div className="voice-animation-container bg-white/80 backdrop-blur-sm">
       <svg
         width="100vw"
         height="100vh"
@@ -304,15 +219,6 @@ const VoiceInteractionAnimation: React.FC<{
           <filter id="depth">
             <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor="rgba(0,0,0,0.3)"/>
           </filter>
-
-          {/* Particle glow */}
-          <filter id="particleGlow">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-            <feMerge> 
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
         </defs>
 
         {/* Background depth layer - faint multiple copies for parallax */}
@@ -320,36 +226,48 @@ const VoiceInteractionAnimation: React.FC<{
           <path
             d={generateWavePath(0, amplitude * 0.2)}
             fill="none"
-            stroke="rgba(255,255,255,0.04)"
+            stroke="rgba(0,0,0,0.08)"
             strokeWidth="1"
           />
           <path
             d={generateWavePath(0, amplitude * 0.25)}
             fill="none"
-            stroke="rgba(255,255,255,0.03)"
+            stroke="rgba(0,0,0,0.06)"
             strokeWidth="1"
             style={{ transform: 'translateY(10px)' }}
           />
           <path
             d={generateWavePath(0, amplitude * 0.3)}
             fill="none"
-            stroke="rgba(255,255,255,0.02)"
+            stroke="rgba(0,0,0,0.04)"
             strokeWidth="1"
             style={{ transform: 'translateY(-10px)' }}
+          />
+          <path
+            className={`wave wave-1 wave-${state}`}
+            d={generateWavePath(1, amplitude * 0.1)}
+            fill="none"
+            stroke="url(#gradient3)"
+            strokeWidth="1"
+            opacity="0.15"
+            style={{
+              transform: 'translateZ(-100px)',
+              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
           />
         </g>
 
         {/* Main wave layers with 3D depth */}
         <g style={{ transform: 'translateZ(0px)' }}>
           <path
-            className={`wave wave-1 wave-${state}`}
-            d={generateWavePath(1, amplitude)}
+            className={`wave wave-2 wave-${state}`}
+            d={generateWavePath(2, amplitude * 0.2)}
             fill="none"
             stroke="url(#gradient1)"
-            strokeWidth="8"
-            filter="url(#glow)"
+            strokeWidth="2"
+            opacity="0.3"
             style={{
-              transform: 'translateZ(20px)',
+              transform: 'translateZ(0px)',
               transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           />
@@ -357,29 +275,15 @@ const VoiceInteractionAnimation: React.FC<{
 
         <g style={{ transform: 'translateZ(40px)' }}>
           <path
-            className={`wave wave-2 wave-${state}`}
-            d={generateWavePath(2, amplitude * 0.8)}
+            className={`wave wave-3 wave-${state}`}
+            d={generateWavePath(3, amplitude * 0.4)}
             fill="none"
             stroke="url(#gradient2)"
-            strokeWidth="6"
+            strokeWidth="3"
+            opacity="0.5"
             filter="url(#glow)"
             style={{
               transform: 'translateZ(40px)',
-              transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          />
-        </g>
-
-        <g style={{ transform: 'translateZ(60px)' }}>
-          <path
-            className={`wave wave-3 wave-${state}`}
-            d={generateWavePath(3, amplitude * 0.6)}
-            fill="none"
-            stroke="url(#gradient3)"
-            strokeWidth="4"
-            filter="url(#glow)"
-            style={{
-              transform: 'translateZ(60px)',
               transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           />
@@ -394,28 +298,11 @@ const VoiceInteractionAnimation: React.FC<{
             stroke="url(#gradient1)"
             strokeWidth="3"
             opacity="0.7"
-            filter="url(#glow)"
             style={{
               transform: 'translateZ(80px)',
               transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           />
-        </g>
-
-        {/* Particle system */}
-        <g style={{ transform: 'translateZ(100px)' }}>
-          {particles.map(particle => (
-            <Particle
-              key={particle.id}
-              x={particle.x}
-              y={particle.y}
-              size={particle.size}
-              color={particle.color}
-              opacity={particle.opacity}
-              velocity={particle.velocity}
-              life={particle.life}
-            />
-          ))}
         </g>
 
         {/* Foreground accent waves */}
@@ -601,17 +488,17 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
   if (!isOpen) return null;
 
   const popupContent = (
-    <div className="fixed inset-0 z-50 bg-black">
+    <div className="fixed inset-0 z-50 bg-white/90 backdrop-blur-md">
       {/* Close button - top right, glassmorphic, circular */}
       <div className="absolute top-8 right-8 z-[200]">
         <Tooltip text="Close Voice Mode (Esc)" position="bottom">
           <button
             onClick={onClose}
-            style={{ ...glassBtnStyle, width: 56, height: 56, borderRadius: '50%', fontSize: 0, boxShadow: '0 4px 24px 0 rgba(0,0,0,0.25)' }}
+            style={{ ...glassBtnStyle, width: 56, height: 56, borderRadius: '50%', fontSize: 0, boxShadow: '0 4px 24px 0 rgba(0,0,0,0.15)' }}
             className="hover:scale-110 transition-transform"
             aria-label="Close"
           >
-            <X size={32} />
+            <X className="w-6 h-6" />
           </button>
         </Tooltip>
       </div>
@@ -619,12 +506,12 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
       {/* Error state - center screen */}
       {voiceState === 'error' && (
         <div className="absolute inset-0 z-[150] flex items-center justify-center">
-          <div className="bg-black/80 backdrop-blur-sm rounded-2xl p-8 border border-red-500/30 max-w-md mx-4">
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-8 border border-red-500/30 max-w-md mx-4 shadow-xl">
             <div className="flex items-center gap-3 mb-4">
-              <AlertCircle className="text-red-400" size={24} />
-              <h3 className="text-white text-lg font-semibold">Voice Mode Error</h3>
+              <AlertCircle className="text-red-500" size={24} />
+              <h3 className="text-gray-900 text-lg font-semibold">Voice Mode Error</h3>
             </div>
-            <p className="text-gray-300 mb-6">{error}</p>
+            <p className="text-gray-600 mb-6">{error}</p>
             <div className="flex gap-3">
               <button
                 onClick={handleRetry}
@@ -657,20 +544,20 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
               borderRadius: '50%',
               fontSize: 0,
               boxShadow: voiceState === 'listening'
-                ? '0 0 24px 4px rgba(255,0,80,0.25), 0 4px 24px 0 rgba(0,0,0,0.18)'
-                : '0 0 24px 4px rgba(168,85,247,0.18), 0 4px 24px 0 rgba(0,0,0,0.18)',
+                ? '0 0 16px 2px rgba(255,0,80,0.18), 0 4px 16px 0 rgba(0,0,0,0.1)'
+                : '0 4px 16px 0 rgba(0,0,0,0.1)',
               background: voiceState === 'listening'
-                ? 'rgba(255,0,80,0.18)' : 'rgba(168,85,247,0.12)',
+                ? 'rgba(255,0,80,0.1)' : 'rgba(255,255,255,0.9)',
               border: voiceState === 'listening'
-                ? '2px solid #ff006e' : '1.5px solid rgba(255,255,255,0.18)',
-              color: voiceState === 'listening' ? '#ff006e' : 'white',
+                ? '2px solid #ff006e' : '2px solid rgba(0,0,0,0.2)',
+              color: voiceState === 'listening' ? '#ff006e' : '#374151',
               transition: 'all 0.2s',
               opacity: (voiceState === 'initializing' || voiceState === 'processing') ? 0.5 : 1,
             }}
             className="hover:scale-110 transition-transform disabled:cursor-not-allowed disabled:hover:scale-100"
             aria-label={voiceState === 'listening' ? 'Stop Listening' : 'Start Listening'}
           >
-            {voiceState === 'listening' ? <MicOff size={36} /> : <Mic size={36} />}
+            {voiceState === 'listening' ? <MicOff size={36} /> : <Play size={36} />}
           </button>
         </Tooltip>
         
@@ -679,29 +566,29 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
             onClick={handleToggleMute}
             style={{
               ...glassBtnStyle,
-              width: 56,
-              height: 56,
+              width: 72,
+              height: 72,
               borderRadius: '50%',
               fontSize: 0,
-              color: isMuted ? '#ff006e' : 'white',
-              border: isMuted ? '2px solid #ff006e' : '1.5px solid rgba(255,255,255,0.18)',
+              color: isMuted ? '#ff006e' : '#374151',
+              border: isMuted ? '2px solid #ff006e' : '2px solid rgba(0,0,0,0.2)',
               boxShadow: isMuted
-                ? '0 0 16px 2px rgba(255,0,80,0.18), 0 4px 24px 0 rgba(0,0,0,0.18)'
-                : '0 4px 24px 0 rgba(0,0,0,0.18)',
-              background: isMuted ? 'rgba(255,0,80,0.10)' : 'rgba(255,255,255,0.08)',
+                ? '0 0 16px 2px rgba(255,0,80,0.18), 0 4px 16px 0 rgba(0,0,0,0.1)'
+                : '0 4px 16px 0 rgba(0,0,0,0.1)',
+              background: isMuted ? 'rgba(255,0,80,0.1)' : 'rgba(255,255,255,0.9)',
               transition: 'all 0.2s',
             }}
             className="hover:scale-110 transition-transform"
             aria-label={isMuted ? 'Unmute' : 'Mute'}
           >
-            {isMuted ? <VolumeX size={28} /> : <Volume2 size={28} />}
+            {isMuted ? <MicOff size={36} /> : <Mic size={36} />}
           </button>
         </Tooltip>
       </div>
 
       {/* Status indicator - top center */}
       <div className="absolute top-8 left-1/2 -translate-x-1/2 z-[200]">
-        <div className="bg-black/60 backdrop-blur-sm rounded-full px-4 py-2 border border-white/20">
+        <div className="bg-gray-800/80 backdrop-blur-sm rounded-full px-4 py-2 border border-gray-700/30">
           <span className="text-white text-sm font-medium">
             {voiceState === 'idle' && 'Ready to listen'}
             {voiceState === 'initializing' && 'Initializing...'}
