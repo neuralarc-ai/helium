@@ -172,17 +172,34 @@ async def run_agent_background(
         await redis.set(instance_active_key, "running", ex=redis.REDIS_KEY_TTL)
 
 
-        # Initialize agent generator
-        agent_gen = run_agent(
-            thread_id=thread_id, project_id=project_id, stream=stream,
-            model_name=model_name,
-            enable_thinking=enable_thinking, reasoning_effort=reasoning_effort,
-            enable_context_manager=enable_context_manager,
-            agent_config=agent_config,
-            trace=trace,
-            is_agent_builder=is_agent_builder,
-            target_agent_id=target_agent_id
-        )
+        # Initialize agent generator with error handling
+        try:
+            agent_gen = run_agent(
+                thread_id=thread_id, project_id=project_id, stream=stream,
+                model_name=model_name,
+                enable_thinking=enable_thinking, reasoning_effort=reasoning_effort,
+                enable_context_manager=enable_context_manager,
+                agent_config=agent_config,
+                trace=trace,
+                is_agent_builder=is_agent_builder,
+                target_agent_id=target_agent_id
+            )
+        except Exception as e:
+            if "OpenrouterException" in str(e) and model_name != "gpt-4":
+                # Fallback to GPT-4 if OpenRouter fails
+                logger.warning(f"OpenRouter error, falling back to GPT-4: {str(e)}")
+                agent_gen = run_agent(
+                    thread_id=thread_id, project_id=project_id, stream=stream,
+                    model_name="gpt-4",
+                    enable_thinking=enable_thinking, reasoning_effort=reasoning_effort,
+                    enable_context_manager=enable_context_manager,
+                    agent_config=agent_config,
+                    trace=trace,
+                    is_agent_builder=is_agent_builder,
+                    target_agent_id=target_agent_id
+                )
+            else:
+                raise
 
         final_status = "running"
         error_message = None
