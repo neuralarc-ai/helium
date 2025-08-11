@@ -539,7 +539,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     }
 
     if (recentAssistantWithAgent?.agents?.name) {
-      const isSunaAgent = recentAssistantWithAgent.agents.name === 'o1';
+      const isSunaAgent = recentAssistantWithAgent.agents.name === 'Helium';
       const avatar = recentAssistantWithAgent.agents.avatar ? (
         <>
           {isSunaAgent ? (
@@ -573,7 +573,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       };
     }
     return {
-      name: agentName || 'o1',
+      name: agentName || 'Helium',
       avatar: (
         <HeliumLogo
           size={16}
