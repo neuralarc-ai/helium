@@ -470,12 +470,12 @@ export function ToolCallSidePanel({
           </div>
           <div className="flex flex-col items-center justify-center flex-1 p-8">
             <div className="flex flex-col items-center justify-center w-full h-full">
-              <div className="relative w-1/2 h-1/2 flex items-center justify-center">
+              <div className="relative w-40 h-40 flex items-center justify-center">
                 <Image 
                   src="/helium-brain/brain-inactive.png" 
                   alt="Helium Brain Inactive" 
-                  width={100}
-                  height={100}
+                  width={160}
+                  height={160}
                   className="w-full h-full object-contain"
                   priority
                 />
