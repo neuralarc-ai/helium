@@ -293,7 +293,8 @@ export default function ThreadPage({
           threadId,
           options: {
             ...options,
-            agent_id: selectedAgentId
+            agent_id: selectedAgentId,
+            prompt: message
           }
         });
 
