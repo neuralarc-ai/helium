@@ -281,7 +281,10 @@ export const AgentPreview = ({ agent, agentMetadata }: AgentPreviewProps) => {
 
         const agentPromise = startAgentMutation.mutateAsync({
           threadId,
-          options
+          options: {
+            ...options,
+            prompt: message
+          }
         });
 
         const results = await Promise.allSettled([messagePromise, agentPromise]);

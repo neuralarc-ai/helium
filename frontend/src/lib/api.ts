@@ -635,6 +635,7 @@ export const startAgent = async (
     reasoning_effort?: string;
     stream?: boolean;
     agent_id?: string; // Optional again
+    prompt?: string; // Optional user prompt to help routing/telemetry
   },
 ): Promise<{ agent_run_id: string }> => {
   try {
@@ -677,6 +678,10 @@ export const startAgent = async (
     // Only include agent_id if it's provided
     if (finalOptions.agent_id) {
       body.agent_id = finalOptions.agent_id;
+    }
+
+    if (finalOptions.prompt) {
+      body.prompt = finalOptions.prompt;
     }
 
     const response = await fetch(`${API_URL}/thread/${threadId}/agent/start`, {
