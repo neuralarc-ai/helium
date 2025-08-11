@@ -176,7 +176,7 @@ export const PRODUCTION_MODELS = {
     lowQuality: false
   },
   'helio-o1-lite': {
-    id: 'moonshot/kimi-k2-turbo-preview',
+    id: 'bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0',
     label: 'Helio o1 Lite',
     description: 'Fast and efficient for everyday tasks',
     tier: 'free',
@@ -185,7 +185,7 @@ export const PRODUCTION_MODELS = {
     lowQuality: false
   },
   'helio-g1': {
-    id: 'bedrock/meta.llama3-3-70b-instruct-v1:0',
+    id: 'moonshot/kimi-k2-turbo-preview',
     label: 'Helio g1',
     description: 'Great for coding and analysis',
     tier: 'free',
