@@ -176,7 +176,7 @@ export const PRODUCTION_MODELS = {
     lowQuality: false
   },
   'helio-o1-lite': {
-    id: 'moonshot/kimi-k2-0711-preview',
+    id: 'moonshot/kimi-k2-turbo-preview',
     label: 'Helio o1 Lite',
     description: 'Fast and efficient for everyday tasks',
     tier: 'free',
