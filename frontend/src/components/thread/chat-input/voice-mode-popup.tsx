@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Mic, MicOff, Volume2, VolumeX, AlertCircle, RotateCcw, Play } from 'lucide-react';
+import { X, Mic, MicOff, Volume2, VolumeX, AlertCircle, RotateCcw, Play, Square } from 'lucide-react';
 import { useDeepgramVoiceAgent } from '@/hooks/use-deepgram-voice-agent';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -557,7 +557,7 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
             className="hover:scale-110 transition-transform disabled:cursor-not-allowed disabled:hover:scale-100"
             aria-label={voiceState === 'listening' ? 'Stop Listening' : 'Start Listening'}
           >
-            {voiceState === 'listening' ? <MicOff size={36} /> : <Play size={36} />}
+            {voiceState === 'listening' ? <Square size={36} /> : <Play size={36} />}
           </button>
         </Tooltip>
         
