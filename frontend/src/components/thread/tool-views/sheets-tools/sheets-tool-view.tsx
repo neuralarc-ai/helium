@@ -155,53 +155,49 @@ export function SheetsToolView({
 
   return (
     <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-14 bg-zinc-50/80 dark:bg-zinc-900/80 backdrop-blur-sm border-b p-2 px-4 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={cn("relative p-2 rounded-lg", sheetIconBgColor)}>
-              <Table2 className={cn("w-5 h-5", getSheetIconColor())} />
+      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 rounded-xl mx-2 mt-2 mb-1 flex flex-row items-center justify-between">
+        <div className="flex items-center gap-2 mt-4">
+          <Table2 className="w-5 h-5 text-white" />
+          <CardTitle className="text-base font-medium text-white">
+            {sheetTitle}
+          </CardTitle>
+        </div>
+        <div className="flex items-center gap-2 mt-4">
+          {primaryXlsx && (
+            <div className="flex items-center gap-2">
+              <Label>CSV</Label>
+              <Switch checked={showFormatted} onCheckedChange={setShowFormatted} />
+              <Label>XLSX</Label>
             </div>
-            <CardTitle className="text-base font-medium text-zinc-900 dark:text-zinc-100">
-              {sheetTitle}
-            </CardTitle>
-          </div>
-          <div className="flex items-center gap-2">
-            {primaryXlsx && (
-              <div className="flex items-center gap-2">
-                <Label>CSV</Label>
-                <Switch checked={showFormatted} onCheckedChange={setShowFormatted} />
-                <Label>XLSX</Label>
-              </div>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline">
-                  <Download className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem disabled={!primaryXlsx} onClick={() => handleDownload(primaryXlsx, 'sheet.xlsx')}>
-                  <FileSpreadsheet className="h-4 w-4" /> Download XLSX
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled={!primaryCsv} onClick={() => handleDownload(primaryCsv, 'sheet.csv')}>
-                  <Download className="h-4 w-4" /> Download CSV
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {!isStreaming && (
-              <Badge
-                variant="secondary"
-                className={cn(
-                  isSuccess
-                    ? 'bg-gradient-to-b from-emerald-200 to-emerald-100 text-emerald-700 dark:from-emerald-800/50 dark:to-emerald-900/60 dark:text-emerald-300'
-                    : 'bg-gradient-to-b from-rose-200 to-rose-100 text-rose-700 dark:from-rose-800/50 dark:to-rose-900/60 dark:text-rose-300'
-                )}
-              >
-                {isSuccess ? <CheckCircle className="h-3.5 w-3.5 mr-1" /> : <AlertTriangle className="h-3.5 w-3.5 mr-1" />}
-                {isSuccess ? 'Success' : 'Failed'}
-              </Badge>
-            )}
-          </div>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline">
+                <Download className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem disabled={!primaryXlsx} onClick={() => handleDownload(primaryXlsx, 'sheet.xlsx')}>
+                <FileSpreadsheet className="h-4 w-4" /> Download XLSX
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={!primaryCsv} onClick={() => handleDownload(primaryCsv, 'sheet.csv')}>
+                <Download className="h-4 w-4" /> Download CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {!isStreaming && (
+            <Badge
+              variant="secondary"
+              className={
+                isSuccess
+                  ? "bg-gradient-to-b from-emerald-200 to-emerald-100 text-emerald-700 dark:from-emerald-800/50 dark:to-emerald-900/60 dark:text-emerald-300"
+                  : "bg-gradient-to-b from-rose-200 to-rose-100 text-rose-700 dark:from-rose-800/50 dark:to-rose-900/60 dark:text-rose-300"
+              }
+            >
+              {isSuccess ? <CheckCircle className="h-3.5 w-3.5 mr-1" /> : <AlertTriangle className="h-3.5 w-3.5 mr-1" />}
+              {isSuccess ? 'Success' : 'Failed'}
+            </Badge>
+          )}
         </div>
       </CardHeader>
 
