@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const HIDE_STREAMING_XML_TAGS = new Set([
   'execute-command',
