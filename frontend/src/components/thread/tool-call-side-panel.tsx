@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { ToolView } from './tool-views/wrapper';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { useMediumScreen } from '@/hooks/react-query/se-medium-screen';
+import { useCustomBreakpoint } from '@/hooks/use-custom-breakpoint';
 
 export interface ToolCallInput {
   assistantCall: {
@@ -103,13 +105,35 @@ export function ToolCallSidePanel({
   const [generatedAgentRunId, setGeneratedAgentRunId] = React.useState<string | null>(null);
 
   const isMobile = useIsMobile();
+  const [isFullScreen, setIsFullScreen] = React.useState(false);
+  const isMediumScreen = useMediumScreen();
+  const isCustomBreakpoint = useCustomBreakpoint();
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const mediaQuery = window.matchMedia('(max-width: 1023px)');
+      const handleChange = (event: MediaQueryListEvent) => {
+        setIsFullScreen(event.matches);
+      };
+
+      // Initial check
+      setIsFullScreen(mediaQuery.matches);
+
+      mediaQuery.addEventListener('change', handleChange);
+
+      return () => {
+        mediaQuery.removeEventListener('change', handleChange);
+      };
+    }
+  }, []);
 
   // Compute responsive width class; shrink a bit when the left sidebar is expanded
   const widthClass = React.useMemo(() => {
-    if (isMobile) return 'left-2';
+    if (isFullScreen) return 'left-2';
+    if (isCustomBreakpoint && isLeftSidebarExpanded) return 'left-2';
+    if (isMediumScreen) return 'w-[calc(100vw-32px)]';
     const base = isLeftSidebarExpanded ? 'w-[45vw]' : 'w-[50vw]';
     return `${base} sm:${base} md:${base} lg:${base} xl:${base}`;
-  }, [isMobile, isLeftSidebarExpanded]);
+  }, [isFullScreen, isLeftSidebarExpanded, isMediumScreen, isCustomBreakpoint]);
 
   const handleClose = React.useCallback(() => {
     onClose();
@@ -637,7 +661,7 @@ export function ToolCallSidePanel({
         <div className="p-4 h-full flex items-stretch justify-end pointer-events-auto">
           <div
             className={cn(
-              'border rounded-2xl flex flex-col bg-white transition-[width] duration-200 ease-in-out will-change-[width]',
+              'border rounded-xl flex flex-col bg-white transition-[width] duration-200 ease-in-out will-change-[width]',
               isMobile ? 'w-full' : widthClass,
             )}
           >
@@ -646,7 +670,7 @@ export function ToolCallSidePanel({
                 <div className="pt-4 pl-4 pr-4">
                   <div className="flex items-center justify-between">
                     <div className="ml-2 flex items-center gap-2">
-                      <h2 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                      <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 prose prose-sm dark:prose-inver">
                         {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                         Helium's Core
                       </h2>
@@ -835,7 +859,7 @@ export function ToolCallSidePanel({
           <div className="pt-4 pl-4 pr-4">
             <div className="flex items-center justify-between">
               <div className="ml-2 flex items-center gap-2">
-                <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 prose prose-sm dark:prose-invert">
                   {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                   Helium's Core
                 </h2>
@@ -906,7 +930,7 @@ export function ToolCallSidePanel({
         >
           <div className="flex items-center justify-between">
             <motion.div layoutId="tool-icon" className="ml-2 flex items-center gap-2">
-              <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+              <h2 className="text-xl font-bold tracking-tight text-black dark:text-zinc-100 prose prose-sm dark:prose-invert">
                 {/* {agentName ? `${agentName}'s Computer` : 'Helium\'s Brain'} */}
                 Helium's Core
               </h2>
@@ -1003,7 +1027,7 @@ export function ToolCallSidePanel({
             }
           }}
           className={cn(
-            'fixed top-2 right-2 bottom-4 shadow-[0px_0px_8px_0px_rgba(0,0,0,0.02)] border border-black/8 dark:border-[var(--border-light)] rounded-3xl flex flex-col z-30 transition-[width] duration-200 ease-in-out will-change-[width]',
+            'fixed top-3 right-2 bottom-4 shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] border border-black/10 rounded-3xl flex flex-col z-30 transition-[width] duration-200 ease-in-out will-change-[width]',
             widthClass,
           )}
           style={{
@@ -1084,7 +1108,7 @@ export function ToolCallSidePanel({
                       step={1}
                       value={[displayIndex]}
                       onValueChange={handleSliderChange}
-                      className="w-full [&>span:first-child]:h-1.5 [&>span:first-child]:bg-zinc-200 dark:[&>span:first-child]:bg-zinc-800 [&>span:first-child>span]:bg-zinc-500 dark:[&>span:first-child>span]:bg-zinc-400 [&>span:first-child>span]:h-1.5"
+                      className="w-full [&>span:first-child]:h-1.2 [&>span:first-child]:bg-zinc-200 dark:[&>span:first-child]:bg-zinc-800 [&>span:first-child>span]:bg-[#4E97D5] [&>span:first-child>span]:h-1.5"
                     />
                   </div>
 
