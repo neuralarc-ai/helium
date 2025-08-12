@@ -131,6 +131,9 @@ def get_openrouter_fallback(model_name: str) -> Optional[str]:
         "z-ai/glm-4.5": "openrouter/z-ai/glm-4.5",
         "z-ai/glm-4.5-air": "openrouter/z-ai/glm-4.5-air",
         "z-ai/glm-4-32b": "openrouter/z-ai/glm-4-32b",
+        
+        # Add Mistral models
+        "mistralai/mistral-small-3.2-24b-instruct": "openrouter/mistralai/mistral-small-3.2-24b-instruct",
     }
     
     # Check for exact match first

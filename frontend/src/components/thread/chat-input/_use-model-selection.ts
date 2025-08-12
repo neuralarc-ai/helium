@@ -191,6 +191,15 @@ export const MODELS = {
     recommended: false,
     lowQuality: false,
     features: ['cost-effective', 'tool-use']
+  },
+  
+  // Mistral Models from OpenRouter
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': { 
+    tier: 'free', 
+    priority: 93,
+    recommended: true,
+    lowQuality: false,
+    features: ['instruction-following', 'function-calling', 'coding', 'stem', 'vision', 'structured-output', '131k-context']
   }
 };
 
@@ -200,6 +209,7 @@ export const MODEL_DESCRIPTIONS = {
   'openrouter/z-ai/glm-4.5': 'Flagship model optimized for agent applications with 128K context and advanced reasoning',
   'openrouter/z-ai/glm-4.5-air': 'Lightweight variant offering fast responses and cost-effective reasoning capabilities',
   'openrouter/z-ai/glm-4-32b': 'Cost-effective model with strong tool use and code generation abilities',
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': 'High-performance 24B model with strong coding, STEM, and vision capabilities, optimized for instruction following and function calling',
   // ... other models ...
 };
 
@@ -260,6 +270,17 @@ export const PRODUCTION_MODELS = {
     priority: 94,
     recommended: false,
     lowQuality: false
+  },
+  
+  // Add Mistral model as premium option
+  'helio-mistral': {
+    id: 'openrouter/mistralai/mistral-small-3.2-24b-instruct',
+    label: 'Helio Mistral',
+    description: 'High-performance model with strong coding, STEM, and vision capabilities',
+    tier: 'free',
+    priority: 93,
+    recommended: true,
+    lowQuality: false
   }
 };
 
@@ -269,6 +290,7 @@ export const MODEL_TAGS = {
   'openrouter/z-ai/glm-4.5': ['reasoning', 'code-generation', 'agent-alignment', '128k-context', 'z-ai'],
   'openrouter/z-ai/glm-4.5-air': ['lightweight', 'reasoning', 'real-time', 'cost-effective', 'z-ai'],
   'openrouter/z-ai/glm-4-32b': ['cost-effective', 'tool-use', 'online-search', 'code-tasks', 'z-ai'],
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': ['instruction-following', 'function-calling', 'coding', 'stem', 'vision', 'structured-output', '131k-context', 'mistral'],
   // ... other models ...
 };
 

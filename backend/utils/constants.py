@@ -225,6 +225,17 @@ MODELS = {
         },
         "tier_availability": ["free"],
         "features": ["cost-effective", "tool-use", "online-search", "code-tasks"]
+    },
+    
+    # Mistral Models from OpenRouter
+    "openrouter/mistralai/mistral-small-3.2-24b-instruct": {
+        "aliases": ["mistral-small-3.2", "mistral-small-3.2-24b", "mistral-small"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.02,
+            "output_cost_per_million_tokens": 0.08
+        },
+        "tier_availability": ["free"],
+        "features": ["instruction-following", "function-calling", "coding", "stem", "vision", "structured-output", "131k-context"]
     }
 }
 
