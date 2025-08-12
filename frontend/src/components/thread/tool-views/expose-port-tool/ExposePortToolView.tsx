@@ -96,7 +96,7 @@ export function ExposePortToolView({
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-md font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 mb-3"
+                          className="text-md font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 mb-3 break-all max-w-full"
                         >
                           {url}
                           <ExternalLink className="flex-shrink-0 h-3.5 w-3.5" />
