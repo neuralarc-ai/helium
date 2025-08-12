@@ -29,8 +29,8 @@ export function useSubscriptionUsage(): SubscriptionUsage {
         ]);
 
         // Calculate credits based on subscription and billing status
-        const totalCredits = subscription.minutes_limit || 0;
-        const usedCredits = subscription.current_usage || 0;
+        const totalCredits = Math.round(subscription.minutes_limit || 0);
+        const usedCredits = Math.round(subscription.current_usage || 0);
 
         setState({
           usedCredits,
@@ -48,6 +48,7 @@ export function useSubscriptionUsage(): SubscriptionUsage {
       }
     };
 
+    // Fetch usage data on mount
     fetchUsage();
   }, []);
 

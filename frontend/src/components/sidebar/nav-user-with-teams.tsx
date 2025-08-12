@@ -360,13 +360,33 @@ export function NavUserWithTeams({
                 {/* Token Usage Section */}
                 <DropdownMenuSeparator />
           
-                <div className="px-3 py-2 text-sm">
-            
-                  <div className="text-foreground font-medium">
-                    {isLoading ? 'Loading usage...' : error ? 'Error loading credits' : `You have used ${usagePercent}% of your credits`}
+                <div className="px-2 py-2 text-sm space-y-3">
+                  <div className="text-foreground font-medium text-left">
+                    {isLoading ? 'Loading usage...' : error ? 'Unable to load usage' : `Credit Usage (${usagePercent}%)`}
                   </div>
-                  <div className="text-muted-foreground text-xs">
-                    {isLoading ? '0 / 0' : error ? 'Error' : `${usedCredits} / ${totalCredits}`}
+                  
+                  {/* Progress Bar */}
+                  <div className="w-full">
+                    <div className="w-full bg-muted/30 rounded-full h-2 overflow-hidden border border-border/20 group hover:bg-muted/40 transition-colors duration-200">
+                      {isLoading ? (
+                        <div className="h-full bg-gradient-to-r from-muted to-muted/60 animate-pulse" />
+                      ) : error ? (
+                        <div className="h-full bg-destructive/20 animate-pulse" />
+                      ) : (
+                        <div 
+                          className="h-full transition-all duration-500 ease-out shadow-sm group-hover:shadow-md"
+                          style={{
+                            width: `${Math.max(usagePercent, 2)}%`,
+                            background: 'linear-gradient(90deg, var(--color-helium-pink) 0%, var(--color-helium-teal) 100%)',
+                            boxShadow: '0 0 8px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="text-muted-foreground text-xs text-left">
+                    {isLoading ? '0 / 0' : error ? '— / —' : `${usedCredits} / ${totalCredits}`}
                   </div>
                 </div>
                 
@@ -396,17 +416,17 @@ export function NavUserWithTeams({
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem
+                  {/* <DropdownMenuItem
                     onClick={() =>
                       setTheme(theme === 'light' ? 'dark' : 'light')
                     }
                   >
-                    {/* <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                       <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                       <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                       <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
-                    </div> */}
-                  </DropdownMenuItem>
+                    </div>
+                  </DropdownMenuItem> */}
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

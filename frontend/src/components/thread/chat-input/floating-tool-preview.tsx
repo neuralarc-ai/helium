@@ -108,7 +108,7 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
               damping: 30
             }
           }}
-          className="-mb-4 w-full"
+          className="-mb-2 w-full"
           style={{ pointerEvents: 'auto' }}
         >
           <motion.div
