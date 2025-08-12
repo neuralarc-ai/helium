@@ -560,9 +560,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
           )}
         </>
       ) : (
-        <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
+        <div className="h-5 w-5 flex items-center justify-center">
           <HeliumLogo
-            size={16}
+            size={20}
             animated={agentStatus === 'running' || agentStatus === 'connecting'}
           />
         </div>
@@ -576,7 +576,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       name: agentName || 'Helium',
       avatar: (
         <HeliumLogo
-          size={16}
+          size={20}
           animated={agentStatus === 'running' || agentStatus === 'connecting'}
         />
       ),
@@ -897,19 +897,19 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                     return (
                       <div
                         key={group.key}
-                        className="flex justify-end"
+                        className="flex justify-end group transition-all duration-300 ease-in-out"
                         data-message-id={group.key}
                       >
                         <div className="flex flex-col gap-1">
                           <div
-                            className={cn('flex max-w-[100%]')}
+                            className={cn('flex ml-auto max-w-[85%]')}
                           >
                             <div
                               style={{
                                 background: '#FFFFFF',
                                 color: 'black',
                               }}
-                              className="break-words overflow-hidden border border-black/5 rounded-l-2xl rounded-tr-2xl rounded-br-sm px-4 py-2"
+                              className="break-words overflow-hidden border border-black/10 rounded-l-2xl rounded-tr-2xl rounded-br-sm px-4 py-2"
                             >
                               <div className="space-y-4 min-w-0 flex-1">
                                 {cleanContent && (
@@ -960,13 +960,13 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                           </div>
                           {/* Copy and Edit buttons for user prompt - OUTSIDE the message box */}
                           {!readOnly && (
-                            <div className="flex justify-end gap-2">
+                            <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                    className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
                                     onClick={() => {
                                       navigator.clipboard.writeText(
                                         cleanContent,
@@ -998,7 +998,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                        className="h-8 w-8 p-0 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-foreground/80"
                                         onClick={() => {
                                           const messageElement =
                                             document.querySelector(
@@ -1030,7 +1030,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                        className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
                                         onClick={() => {
                                           // Cancel editing and restore original content
                                           const messageElement =
@@ -1062,7 +1062,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                      className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
                                       onClick={() => {
                                         // Start editing mode
                                         setEditingMessageId(group.key);
@@ -1119,13 +1119,13 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                             : null
                         }
                       >
-                        <div className="flex flex-col gap-6">
+                        <div className="flex flex-col gap-4 -mt-8">
                           <div className="flex items-center gap-2">
-                            <div className="h-fit w-fit rounded-xl flex items-center justify-center">
+                            <div className="h-fit w-fit flex items-center justify-center">
                               {getAgentInfo().avatar}
                             </div>
                             <div className="flex flex-col">
-                              <p className="text-base font-semibold text-foreground/80">
+                              <p className="text-sm md:text-base xl:text-xl font-semibold text-foreground">
                                 {getAgentInfo().name}
                               </p>
                             </div>
@@ -1263,7 +1263,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 group.messages.some(
                                   (msg) => msg.type === 'assistant',
                                 ) && (
-                                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/50 px-4 pb-0">
+                                  <div className="flex items-center justify-end pt-3 gap-1 border-t border-border/50 px-4 pb-0">
                                     {/* Copy Button */}
                                     <Tooltip>
                                       <TooltipTrigger asChild>

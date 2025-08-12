@@ -196,7 +196,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
             onPaste={handlePaste}
             placeholder={placeholder}
             className={cn(
-              'w-full bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 px-0.5 pb-6 pt-4 !text-[15px] min-h-[96px] max-h-[200px] overflow-y-auto resize-none text-lg placeholder:text-lg',
+              'w-full bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 px-1 pb-6 pt-4 min-h-[96px] max-h-[200px] overflow-y-auto resize-none md:text-base md:placeholder:text-base',
               isDraggingOver ? 'opacity-40' : '',
             )}
             disabled={loading || (disabled && !isAgentRunning)}
@@ -205,7 +205,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
         </div>
 
 
-        <div className="flex items-center justify-between mt-0 mb-1 px-2">
+        <div className="flex items-center justify-between mt-0 mb-2 px-2">
           <div className="flex items-center gap-3">
             {!hideAttachments && (
               <FileUploadHandler
@@ -256,7 +256,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
               size="sm"
               className={cn(
-                'w-8 h-8 flex-shrink-0 self-end rounded-lg bg-helium-teal',
+                'w-8 h-8 flex-shrink-0 self-end rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
                 (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
                   loading ||
                   (disabled && !isAgentRunning)
@@ -272,7 +272,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : isAgentRunning ? (
-                <div className="min-h-[14px] min-w-[14px] w-[14px] h-[14px] rounded-sm bg-current" />
+                <div className="w-3 h-3 aspect-square rounded-xs bg-current" />
               ) : (
                 <ArrowUp className="h-5 w-5" />
               )}

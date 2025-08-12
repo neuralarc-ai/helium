@@ -18,9 +18,6 @@ import { useFileDelete } from '@/hooks/react-query/files';
 import { useQueryClient } from '@tanstack/react-query';
 import { ToolCallInput } from './floating-tool-preview';
 import { ChatSnack } from './chat-snack';
-import { Brain, Zap, Workflow, Database } from 'lucide-react';
-import { FaGoogle, FaDiscord } from 'react-icons/fa';
-import { SiNotion } from 'react-icons/si';
 import { AgentConfigModal } from '@/components/agents/agent-config-modal';
 import { PipedreamRegistry } from '@/components/agents/pipedream/pipedream-registry';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -380,7 +377,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             isVisible={showToolPreview || !!showSnackbar}
           />
           <Card
-            className={`-mb-2 p-0 mt-4 shadow-[0px_0px_8px_0px_rgba(0,0,0,0.05)] w-full max-w-4xl mx-auto bg-transparent border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? '' : 'rounded-3xl'} relative`}
+            className={`-mb-2 p-0 mt-4 shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] w-full max-w-4xl mx-auto bg-transparent border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-4xl' : 'rounded-4xl'} relative`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={(e) => {
@@ -402,7 +399,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             }}
           >
             <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
-              <CardContent className={`w-full border border-black p-1.5 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${bgColor} border-0 ${enableAdvancedConfig && selectedAgentId ? 'rounded-2xl' : 'rounded-2xl'} overflow-hidden relative`}>
+              <CardContent className={`w-full border border-black/10 p-2 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${bgColor} border-0 ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl' : 'rounded-3xl'} overflow-hidden relative`}>
               <div className="absolute inset-0 rounded-[inherit] border border-black/10 overflow-hidden">
                 <BorderBeam duration={3} borderWidth={1.5} size={200} className="from-transparent via-helium-teal to-transparent"/>
                 <BorderBeam duration={3} borderWidth={1.5} delay={1.5} size={200} className="from-transparent via-helium-pink to-transparent"/>
