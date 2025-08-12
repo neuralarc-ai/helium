@@ -1383,7 +1383,7 @@ export function extractStreamingFileContent(
           // Find where the tag ends
           const tagEndIndex = content.content.indexOf(openTagMatch[0]) + openTagMatch[0].length;
           // Extract everything after the opening tag
-          const afterTag = content.content.substring(tagEndIndex);
+          const afterTag = typeof content.content === 'string' ? content.content.substring(tagEndIndex) : String(content.content || '').substring(tagEndIndex);
           
           // Check if there's a closing tag
           const closeTagMatch = afterTag.match(new RegExp(`<\\/${tagName}>`, 'i'));

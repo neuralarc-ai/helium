@@ -79,7 +79,7 @@ export function useThreadData(threadId: string, projectId: string): UseThreadDat
               thread_id: msg.thread_id || threadId,
               type: (msg.type || 'system') as UnifiedMessage['type'],
               is_llm_message: Boolean(msg.is_llm_message),
-              content: msg.content || '',
+              content: typeof msg.content === 'string' ? msg.content : String(msg.content || ''),
               metadata: msg.metadata || '{}',
               created_at: msg.created_at || new Date().toISOString(),
               updated_at: msg.updated_at || new Date().toISOString(),
@@ -87,6 +87,11 @@ export function useThreadData(threadId: string, projectId: string): UseThreadDat
 
           setMessages(unifiedMessages);
           console.log('[PAGE] Loaded Messages (excluding status, keeping browser_state):', unifiedMessages.length);
+          console.log('[PAGE] Message details:', unifiedMessages.map(m => ({ 
+            id: m.message_id, 
+            type: m.type, 
+            content: typeof m.content === 'string' ? m.content.substring(0, 100) : String(m.content || '').substring(0, 100) 
+          })));
           messagesLoadedRef.current = true;
 
           if (!hasInitiallyScrolled.current) {
@@ -152,7 +157,7 @@ export function useThreadData(threadId: string, projectId: string): UseThreadDat
             thread_id: msg.thread_id || threadId,
             type: (msg.type || 'system') as UnifiedMessage['type'],
             is_llm_message: Boolean(msg.is_llm_message),
-            content: msg.content || '',
+            content: typeof msg.content === 'string' ? msg.content : String(msg.content || ''),
             metadata: msg.metadata || '{}',
             created_at: msg.created_at || new Date().toISOString(),
             updated_at: msg.updated_at || new Date().toISOString(),
@@ -161,6 +166,12 @@ export function useThreadData(threadId: string, projectId: string): UseThreadDat
           }));
 
         setMessages(unifiedMessages);
+        console.log('[PAGE] Updated messages from query:', unifiedMessages.length, 'messages');
+        console.log('[PAGE] Updated message details:', unifiedMessages.map(m => ({ 
+          id: m.message_id, 
+          type: m.type, 
+          content: typeof m.content === 'string' ? m.content.substring(0, 100) : String(m.content || '').substring(0, 100) 
+        })));
       }
     }
   }, [messagesQuery.data, messagesQuery.status, isLoading, agentStatus, threadId]);

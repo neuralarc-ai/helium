@@ -215,6 +215,16 @@ export default function ThreadPage({
           ].includes(hookStatus)
         ) {
           scrollToBottom('smooth');
+          
+          // Trigger immediate message refresh for completion statuses
+          if (hookStatus === 'completed' && messagesQuery.refetch) {
+            console.log('[PAGE] Agent completed, triggering immediate message refresh');
+            messagesQuery.refetch().then(() => {
+              console.log('[PAGE] Message refresh completed after agent completion');
+            }).catch((err) => {
+              console.error('[PAGE] Message refresh failed after agent completion:', err);
+            });
+          }
         }
         break;
       case 'connecting':
@@ -224,7 +234,7 @@ export default function ThreadPage({
         setAgentStatus('running');
         break;
     }
-  }, [setAgentStatus, setAgentRunId, setAutoOpenedPanel]);
+  }, [setAgentStatus, setAgentRunId, setAutoOpenedPanel, messagesQuery]);
 
   const handleStreamError = useCallback((errorMessage: string) => {
     console.error(`[PAGE] Stream hook error: ${errorMessage}`);
@@ -238,7 +248,46 @@ export default function ThreadPage({
 
   const handleStreamClose = useCallback(() => {
     console.log(`[PAGE] Stream hook closed with final status: ${agentStatus}`);
-  }, [agentStatus]);
+    
+    // If the agent completed successfully, ensure messages are refreshed
+    if (agentStatus === 'running' || agentStatus === 'connecting') {
+      console.log('[PAGE] Agent stream closed, ensuring messages are refreshed...');
+      
+      // Immediate refresh attempt
+      if (messagesQuery.refetch) {
+        messagesQuery.refetch().then(() => {
+          console.log('[PAGE] Immediate message refresh completed after stream close');
+        }).catch((err) => {
+          console.error('[PAGE] Immediate message refresh failed:', err);
+        });
+      }
+      
+      // Add a small delay and then manually refresh messages again
+      setTimeout(() => {
+        if (messagesQuery.refetch) {
+          messagesQuery.refetch().then(() => {
+            console.log('[PAGE] Delayed message refresh completed after stream close');
+          }).catch((err) => {
+            console.error('[PAGE] Delayed message refresh failed:', err);
+          });
+        }
+      }, 1500); // 1.5 second delay to ensure backend processing
+    }
+  }, [agentStatus, messagesQuery]);
+
+  // Manual refresh function for debugging
+  const handleManualRefresh = useCallback(() => {
+    console.log('[PAGE] Manual refresh requested');
+    if (messagesQuery.refetch) {
+      messagesQuery.refetch().then(() => {
+        console.log('[PAGE] Manual refresh completed');
+        toast.success('Messages refreshed');
+      }).catch((err) => {
+        console.error('[PAGE] Manual refresh failed:', err);
+        toast.error('Refresh failed');
+      });
+    }
+  }, [messagesQuery]);
 
   // Agent stream hook
   const {
@@ -328,10 +377,50 @@ export default function ThreadPage({
         }
 
         const agentResult = results[1].value;
-        setAgentRunId(agentResult.agent_run_id);
+        console.log('[PAGE] Agent start successful, result:', agentResult);
+        
+        // Check if we have a valid agent run ID
+        if (!agentResult.agent_run_id) {
+          console.error('[PAGE] Agent start returned no run ID');
+          toast.error('Agent started but no run ID received');
+          return;
+        }
 
-        messagesQuery.refetch();
-        agentRunsQuery.refetch();
+        console.log('[PAGE] Setting agent run ID and refetching data');
+        setAgentRunId(agentResult.agent_run_id);
+        
+        // Wait a moment for the state to update, then refetch
+        setTimeout(() => {
+          console.log('[PAGE] Refetching data after agent start');
+          messagesQuery.refetch();
+          agentRunsQuery.refetch();
+          
+          // Check if the agent run was actually created
+          setTimeout(() => {
+            console.log('[PAGE] Checking if agent run was created...');
+            agentRunsQuery.refetch().then(() => {
+              if (agentRunsQuery.data) {
+                const createdRun = agentRunsQuery.data.find(run => run.id === agentResult.agent_run_id);
+                if (createdRun) {
+                  console.log('[PAGE] Agent run found in database:', createdRun);
+                  console.log('[PAGE] Agent run status:', createdRun.status);
+                  
+                  if (createdRun.status === 'failed' || createdRun.status === 'error') {
+                    console.error('[PAGE] Agent run failed to start:', createdRun);
+                    toast.error(`Agent failed to start: ${createdRun.status}`);
+                  } else if (createdRun.status === 'running' || createdRun.status === 'connecting') {
+                    console.log('[PAGE] Agent run is active, should start streaming');
+                  } else {
+                    console.log('[PAGE] Agent run status is:', createdRun.status);
+                  }
+                } else {
+                  console.error('[PAGE] Agent run not found in database after creation');
+                  toast.error('Agent run not found after creation');
+                }
+              }
+            });
+          }, 500);
+        }, 100);
 
       } catch (err) {
         console.error('Error sending message or starting agent:', err);
@@ -561,6 +650,33 @@ export default function ThreadPage({
     return () => clearTimeout(timer);
   }, [isSidePanelOpen]);
 
+  // Effect to start streaming when agentRunId changes
+  useEffect(() => {
+    if (agentRunId && agentStatus === 'idle') {
+      console.log(`[PAGE] Target agentRunId set to ${agentRunId}, initiating stream...`);
+      setAgentStatus('connecting');
+    }
+  }, [agentRunId, agentStatus]);
+
+  // Log agent runs data for debugging
+  useEffect(() => {
+    if (agentRunsQuery.data) {
+      console.log('[PAGE] Agent runs query data:', agentRunsQuery.data);
+      console.log('[PAGE] Active agent runs found:', agentRunsQuery.data.length);
+      
+      // Check for any running agents
+      const runningAgents = agentRunsQuery.data.filter(run => 
+        run.status === 'running' || run.status === 'connecting'
+      );
+      console.log('[PAGE] Running agents:', runningAgents);
+      
+      if (runningAgents.length > 0 && !agentRunId) {
+        console.log('[PAGE] Found running agent, setting agent run ID');
+        setAgentRunId(runningAgents[0].id);
+      }
+    }
+  }, [agentRunsQuery.data, agentRunId]);
+
   if (!initialLoadCompleted || isLoading) {
     return <ThreadSkeleton isSidePanelOpen={isSidePanelOpen} />;
   }
@@ -651,6 +767,43 @@ export default function ThreadPage({
             <WorkflowInfo workflowId={workflowId} />
           </div>
         )} */}
+        
+        {/* Debug Panel - Only show in development */}
+        {debugMode && (
+          <div className="px-4 pt-4 pb-2 bg-muted/50 border-b">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                <strong>Debug Info:</strong> Messages: {messages.length} | 
+                Agent Status: {agentStatus} | 
+                Stream Status: {streamHookStatus} | 
+                Agent Run ID: {agentRunId || 'none'}
+              </div>
+              <button
+                onClick={handleManualRefresh}
+                className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Refresh Messages
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Completion Status Indicator */}
+        {agentStatus === 'idle' && agentRunId === null && messages.length <= 1 && (
+          <div className="px-4 pt-4 pb-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-blue-700 dark:text-blue-300">
+                <strong>Agent Completed:</strong> Messages are being processed. If you don't see results, try refreshing.
+              </div>
+              <button
+                onClick={handleManualRefresh}
+                className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Refresh Now
+              </button>
+            </div>
+          </div>
+        )}
 
         <ThreadContent
           messages={messages}

@@ -896,7 +896,7 @@ async def create_checkout_session(
                         except Exception as invoice_error:
                             logger.error(f"Error processing invoice for immediate payment: {str(invoice_error)}")
                             # Don't fail the entire operation if invoice processing fails
-                    
+                        
                     return {
                         "subscription_id": updated_subscription.id,
                         "status": "updated",
@@ -1767,3 +1767,18 @@ async def reactivate_subscription(
     except Exception as e:
         logger.error(f"Error reactivating subscription: {str(e)}")
         raise HTTPException(status_code=500, detail="Error processing reactivation request")
+
+@router.get("/test-bedrock-connectivity")
+async def test_bedrock_connectivity_endpoint(
+    current_user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    """Test AWS Bedrock connectivity and return diagnostic information."""
+    try:
+        from services.llm import test_bedrock_connectivity
+        
+        result = await test_bedrock_connectivity()
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error testing Bedrock connectivity: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error testing Bedrock connectivity: {str(e)}")

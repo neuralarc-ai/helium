@@ -217,6 +217,10 @@ class Configuration:
     AWS_SECRET_ACCESS_KEY: Optional[str] = None
     AWS_REGION_NAME: Optional[str] = None
     
+    # AWS Bedrock configuration
+    BEDROCK_DISABLE_STREAMING: bool = False  # Disable streaming for Bedrock to avoid checksum errors
+    BEDROCK_FALLBACK_TO_NON_STREAMING: bool = True  # Enable fallback to non-streaming mode
+    
     # Model configuration
     MODEL_TO_USE: Optional[str] = "moonshot/moonshot-v1-8k"
     

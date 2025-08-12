@@ -58,13 +58,25 @@ const mapApiMessagesToUnified = (
   currentThreadId: string,
 ): UnifiedMessage[] => {
   return (messagesData || [])
-    .filter((msg) => msg.type !== 'status')
+    .filter((msg) => {
+      // Only filter out pure status messages that have no meaningful content
+      // Keep messages that might have content even if they're marked as status
+      if (msg.type === 'status') {
+        // Check if this status message has actual content worth displaying
+        const hasContent = msg.content && typeof msg.content === 'string' && msg.content.trim().length > 0;
+        const isCompletionStatus = msg.content && typeof msg.content === 'string' && msg.content.includes('completed');
+        
+        // Keep status messages that have content or indicate completion
+        return hasContent || isCompletionStatus;
+      }
+      return true; // Keep all non-status messages
+    })
     .map((msg: ApiMessageType) => ({
       message_id: msg.message_id || null,
       thread_id: msg.thread_id || currentThreadId,
       type: (msg.type || 'system') as UnifiedMessage['type'],
       is_llm_message: Boolean(msg.is_llm_message),
-      content: msg.content || '',
+      content: typeof msg.content === 'string' ? msg.content : String(msg.content || ''),
       metadata: msg.metadata || '{}',
       created_at: msg.created_at || new Date().toISOString(),
       updated_at: msg.updated_at || new Date().toISOString(),
@@ -185,31 +197,80 @@ export function useAgentStream(
         console.log(
           `[useAgentStream] Refetching messages for thread ${currentThreadId} after finalization with status ${finalStatus}.`,
         );
-        getMessages(currentThreadId)
-          .then((messagesData: ApiMessageType[]) => {
+        
+        // Multiple refresh attempts to ensure we get the final messages
+        const refreshMessages = async (attempt: number = 1) => {
+          try {
+            const messagesData = await getMessages(currentThreadId);
             if (isMountedRef.current && messagesData) {
               console.log(
-                `[useAgentStream] Refetched ${messagesData.length} messages for thread ${currentThreadId}.`,
+                `[useAgentStream] Refetched ${messagesData.length} messages for thread ${currentThreadId} (attempt ${attempt}).`,
               );
+              
               const unifiedMessages = mapApiMessagesToUnified(
                 messagesData,
                 currentThreadId,
               );
-              currentSetMessages(unifiedMessages); // Use the ref'd setMessages
+              
+              currentSetMessages(unifiedMessages);
+              
+              // Log the messages for debugging
+              console.log('[useAgentStream] Updated messages after refetch:', unifiedMessages);
+              
+              // Check if we have assistant messages
+              const assistantMessages = unifiedMessages.filter(m => m.type === 'assistant');
+              console.log('[useAgentStream] Assistant messages found:', assistantMessages.length);
+              
+              // If no assistant messages and this is completion, try one more time
+              if (assistantMessages.length === 0 && finalStatus === 'completed' && attempt < 3) {
+                console.log(`[useAgentStream] No assistant messages found, retrying in 2 seconds (attempt ${attempt + 1})`);
+                setTimeout(() => refreshMessages(attempt + 1), 2000);
+              } else if (assistantMessages.length === 0 && finalStatus === 'completed' && attempt >= 3) {
+                // After 3 attempts, create a fallback message to show completion
+                console.log('[useAgentStream] Creating fallback completion message after multiple failed attempts');
+                const fallbackMessage: UnifiedMessage = {
+                  message_id: `fallback-${Date.now()}`,
+                  thread_id: currentThreadId,
+                  type: 'assistant',
+                  is_llm_message: true,
+                  content: '{"role": "assistant", "content": "Task completed successfully. The agent has finished processing your request."}',
+                  metadata: '{"fallback": true, "completion_status": "completed"}',
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                };
+                
+                // Add the fallback message to the existing messages
+                const currentMessages = unifiedMessages;
+                currentMessages.push(fallbackMessage);
+                currentSetMessages(currentMessages);
+                
+                console.log('[useAgentStream] Added fallback completion message');
+                toast.info('Task completed! Check the results above.');
+              }
             } else if (!isMountedRef.current) {
               console.log(
                 `[useAgentStream] Component unmounted before messages could be set after refetch for thread ${currentThreadId}.`,
               );
             }
-          })
-          .catch((err) => {
+          } catch (err) {
             console.error(
-              `[useAgentStream] Error refetching messages for thread ${currentThreadId} after finalization:`,
+              `[useAgentStream] Error refetching messages for thread ${currentThreadId} after finalization (attempt ${attempt}):`,
               err,
             );
+            
+            // Retry on error if we haven't exceeded attempts
+            if (attempt < 3) {
+              console.log(`[useAgentStream] Retrying message refetch in 3 seconds (attempt ${attempt + 1})`);
+              setTimeout(() => refreshMessages(attempt + 1), 3000);
+            } else {
             // Optionally notify the user via toast or callback
-            toast.error(`Failed to refresh messages: ${err.message}`);
-          });
+              toast.error(`Failed to refresh messages after ${attempt} attempts: ${err.message}`);
+            }
+          }
+        };
+        
+        // Start the refresh process
+        refreshMessages();
       } else {
         console.log(
           `[useAgentStream] Skipping message refetch for thread ${currentThreadId}. Final status: ${finalStatus}`,

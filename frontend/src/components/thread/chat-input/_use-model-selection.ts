@@ -71,13 +71,39 @@ export const MODELS = {
   },
   'openrouter/z-ai/glm-4.5-air:free': { 
     tier: 'free', 
-    priority: 97,
+    priority: 93,
     recommended: false,
     lowQuality: false
   },
   'openrouter/agentica-org/deepcoder-14b-preview:free': { 
     tier: 'free', 
     priority: 96,
+    recommended: false,
+    lowQuality: false
+  },
+  
+  // New Z.AI Models from OpenRouter
+  'openrouter/z-ai/glm-4.5v': { 
+    tier: 'free', 
+    priority: 95,
+    recommended: true,
+    lowQuality: false
+  },
+  'openrouter/z-ai/glm-4.5': { 
+    tier: 'free', 
+    priority: 94,
+    recommended: true,
+    lowQuality: false
+  },
+  'openrouter/z-ai/glm-4.5-air': { 
+    tier: 'free', 
+    priority: 93,
+    recommended: false,
+    lowQuality: false
+  },
+  'openrouter/z-ai/glm-4-32b': { 
+    tier: 'free', 
+    priority: 92,
     recommended: false,
     lowQuality: false
   },
@@ -110,6 +136,32 @@ export const MODELS = {
   'bedrock/deepseek.r1-v1:0': { 
     tier: 'free', 
     priority: 88,
+    recommended: false,
+    lowQuality: false
+  },
+  
+  // Mistral Models from AWS Bedrock
+  'bedrock/mistral.mistral-7b-instruct-v0:2': { 
+    tier: 'free', 
+    priority: 87,
+    recommended: false,
+    lowQuality: false
+  },
+  'bedrock/mistral.mixtral-8x7b-instruct-v0:1': { 
+    tier: 'free', 
+    priority: 86,
+    recommended: false,
+    lowQuality: false
+  },
+  'bedrock/mistral.mistral-large-2402-v1:0': { 
+    tier: 'free', 
+    priority: 85,
+    recommended: true,
+    lowQuality: false
+  },
+  'bedrock/mistral.mistral-small-2402-v1:0': { 
+    tier: 'free', 
+    priority: 84,
     recommended: false,
     lowQuality: false
   },

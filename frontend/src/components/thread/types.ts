@@ -15,7 +15,7 @@ export interface UnifiedMessage {
   thread_id: string;
   type: 'user' | 'assistant' | 'tool' | 'system' | 'status' | 'browser_state'; // Add 'system' if used
   is_llm_message: boolean;
-  content: string; // ALWAYS a JSON string from the backend
+  content: string; // String representation of content (converted from JSONB)
   metadata: string; // ALWAYS a JSON string from the backend
   created_at: string; // ISO timestamp string
   updated_at: string; // ISO timestamp string
@@ -50,6 +50,7 @@ export interface ParsedMetadata {
 }
 
 // Extend the base Message type with the expected database fields
+// Note: content and metadata come from database as JSONB, so they can be any JSON type
 export interface ApiMessageType extends Omit<BaseApiMessageType, 'type'> {
   message_id?: string;
   thread_id?: string;

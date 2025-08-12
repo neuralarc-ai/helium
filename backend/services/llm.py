@@ -31,13 +31,81 @@ RETRY_DELAY = 0.1
 BEDROCK_TIMEOUT = 300  # 5 minutes for Bedrock calls
 DEFAULT_TIMEOUT = 120  # 2 minutes for other providers
 
+# Enhanced retry configuration for Bedrock
+BEDROCK_MAX_RETRIES = 3
+BEDROCK_RETRY_DELAY = 1.0
+
 class LLMError(Exception):
     """Base exception for LLM-related errors."""
     pass
 
-class LLMRetryError(LLMError):
-    """Exception raised when retries are exhausted."""
+class LLMRetryError(Exception):
+    """Exception raised when LLM API calls fail after retries."""
     pass
+
+def is_bedrock_checksum_error(error: Exception) -> bool:
+    """Check if the error is a Bedrock checksum mismatch error."""
+    error_str = str(error).lower()
+    return (
+        "checksum mismatch" in error_str or
+        "checksummismatch" in error_str or
+        "eventstream" in error_str or
+        "botocore.eventstream" in error_str
+    )
+
+def is_bedrock_streaming_error(error: Exception) -> bool:
+    """Check if the error is related to Bedrock streaming issues."""
+    error_str = str(error).lower()
+    return (
+        is_bedrock_checksum_error(error) or
+        "stream" in error_str or
+        "eventstream" in error_str
+    )
+
+async def handle_bedrock_streaming_fallback(
+    messages: List[Dict[str, Any]],
+    model_name: str,
+    temperature: float = 0,
+    max_tokens: Optional[int] = None,
+    response_format: Optional[Any] = None,
+    tools: Optional[List[Dict[str, Any]]] = None,
+    tool_choice: str = "auto",
+    api_key: Optional[str] = None,
+    api_base: Optional[str] = None,
+    top_p: Optional[float] = None,
+    model_id: Optional[str] = None,
+    enable_thinking: Optional[str] = None,
+    reasoning_effort: Optional[str] = 'low'
+) -> Dict[str, Any]:
+    """Handle Bedrock streaming fallback by switching to non-streaming mode."""
+    logger.warning(f"Bedrock streaming failed for {model_name}, falling back to non-streaming mode")
+    
+    # Prepare parameters for non-streaming call
+    params = prepare_params(
+        messages=messages,
+        model_name=model_name,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        response_format=response_format,
+        tools=tools,
+        tool_choice=tool_choice,
+        api_key=api_key,
+        api_base=api_base,
+        stream=False,  # Force non-streaming
+        top_p=top_p,
+        model_id=model_id,
+        enable_thinking=enable_thinking,
+        reasoning_effort=reasoning_effort
+    )
+    
+    try:
+        # Make non-streaming call
+        response = await asyncio.wait_for(litellm.acompletion(**params), timeout=BEDROCK_TIMEOUT)
+        logger.info(f"Successfully completed Bedrock fallback call for {model_name}")
+        return response
+    except Exception as e:
+        logger.error(f"Bedrock fallback call also failed for {model_name}: {str(e)}")
+        raise LLMError(f"Both streaming and fallback calls failed for {model_name}: {str(e)}")
 
 def setup_api_keys() -> None:
     """Set up API keys from environment variables."""
@@ -247,6 +315,12 @@ def prepare_params(
     if model_name.startswith("bedrock/"):
         logger.debug(f"Preparing AWS Bedrock parameters for model: {model_name}")
 
+        # Check if streaming should be disabled for Bedrock
+        if config.BEDROCK_DISABLE_STREAMING and stream:
+            logger.warning(f"Streaming disabled for Bedrock model {model_name} due to configuration")
+            params["stream"] = False
+            stream = False
+
         # Auto-set model_id for specific models if not provided
         if not model_id:
             bedrock_model_mapping = {
@@ -258,6 +332,11 @@ def prepare_params(
                 "bedrock/meta.llama4-scout-17b-instruct-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.meta.llama4-scout-17b-instruct-v1:0",
                 "bedrock/meta.llama4-maverick-17b-instruct-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.meta.llama4-maverick-17b-instruct-v1:0",
                 "bedrock/deepseek.r1-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.deepseek.r1-v1:0",
+                # New Mistral Models
+                "bedrock/mistral.mistral-7b-instruct-v0:2": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.mistral.mistral-7b-instruct-v0:2",
+                "bedrock/mistral.mixtral-8x7b-instruct-v0:1": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.mistral.mixtral-8x7b-instruct-v0:1",
+                "bedrock/mistral.mistral-large-2402-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.mistral.mistral-large-2402-v1:0",
+                "bedrock/mistral.mistral-small-2402-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.mistral.mistral-small-2402-v1:0",
             }
             
             # Check if the model name is in our mapping
@@ -483,18 +562,52 @@ async def make_llm_api_call(
             await handle_error(e, attempt, MAX_RETRIES)
 
         except Exception as e:
-            logger.error(f"Unexpected error during API call: {str(e)}", exc_info=True)
-            
-            # Add additional debugging for AWS Bedrock errors
-            if "bedrock" in model_name.lower() and "credential" in str(e).lower():
-                logger.error("AWS Bedrock credential error detected. Checking environment variables:")
-                logger.error(f"AWS_ACCESS_KEY_ID: {'SET' if os.environ.get('AWS_ACCESS_KEY_ID') else 'NOT_SET'}")
-                logger.error(f"AWS_SECRET_ACCESS_KEY: {'SET' if os.environ.get('AWS_SECRET_ACCESS_KEY') else 'NOT_SET'}")
-                logger.error(f"AWS_REGION: {os.environ.get('AWS_REGION', 'NOT_SET')}")
-                logger.error(f"AWS_DEFAULT_REGION: {os.environ.get('AWS_DEFAULT_REGION', 'NOT_SET')}")
-                logger.error(f"Config AWS_REGION_NAME: {config.AWS_REGION_NAME}")
-            
-            raise LLMError(f"API call failed: {str(e)}")
+            # Special handling for Bedrock checksum errors
+            if model_name.startswith("bedrock/") and is_bedrock_streaming_error(e):
+                logger.warning(f"Bedrock streaming error detected for {model_name}: {str(e)}")
+                
+                # If this is a streaming call, try fallback to non-streaming
+                if stream:
+                    try:
+                        logger.info(f"Attempting Bedrock streaming fallback for {model_name}")
+                        return await handle_bedrock_streaming_fallback(
+                            messages=messages,
+                            model_name=model_name,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            response_format=response_format,
+                            tools=tools,
+                            tool_choice=tool_choice,
+                            api_key=api_key,
+                            api_base=api_base,
+                            top_p=top_p,
+                            model_id=model_id,
+                            enable_thinking=enable_thinking,
+                            reasoning_effort=reasoning_effort
+                        )
+                    except Exception as fallback_error:
+                        logger.error(f"Bedrock fallback also failed for {model_name}: {str(fallback_error)}")
+                        last_error = fallback_error
+                        await handle_error(fallback_error, attempt, MAX_RETRIES)
+                else:
+                    # Non-streaming call failed, treat as regular error
+                    last_error = e
+                    await handle_error(e, attempt, MAX_RETRIES)
+            else:
+                # Regular error handling
+                logger.error(f"Unexpected error during API call: {str(e)}", exc_info=True)
+                
+                # Add additional debugging for AWS Bedrock errors
+                if "bedrock" in model_name.lower() and "credential" in str(e).lower():
+                    logger.error("AWS Bedrock credential error detected. Checking environment variables:")
+                    logger.error(f"AWS_ACCESS_KEY_ID: {'SET' if os.environ.get('AWS_ACCESS_KEY_ID') else 'NOT_SET'}")
+                    logger.error(f"AWS_SECRET_ACCESS_KEY: {'SET' if os.environ.get('AWS_SECRET_ACCESS_KEY') else 'NOT_SET'}")
+                    logger.error(f"AWS_REGION: {os.environ.get('AWS_REGION', 'NOT_SET')}")
+                    logger.error(f"AWS_DEFAULT_REGION: {os.environ.get('AWS_DEFAULT_REGION', 'NOT_SET')}")
+                    logger.error(f"Config AWS_REGION_NAME: {config.AWS_REGION_NAME}")
+                
+                last_error = e
+                await handle_error(e, attempt, MAX_RETRIES)
 
     error_msg = f"Failed to make API call after {MAX_RETRIES} attempts"
     if last_error:
@@ -504,3 +617,56 @@ async def make_llm_api_call(
 
 # Initialize API keys on module import
 setup_api_keys()
+
+async def test_bedrock_connectivity(region: str = None) -> Dict[str, Any]:
+    """Test Bedrock connectivity and return diagnostic information."""
+    if not region:
+        region = config.AWS_REGION_NAME or "us-east-1"
+    
+    result = {
+        "region": region,
+        "credentials_configured": False,
+        "region_supported": False,
+        "connectivity_test": False,
+        "error": None
+    }
+    
+    try:
+        # Check credentials
+        aws_access_key = config.AWS_ACCESS_KEY_ID
+        aws_secret_key = config.AWS_SECRET_ACCESS_KEY
+        
+        if not aws_access_key or not aws_secret_key:
+            result["error"] = "AWS credentials not configured"
+            return result
+        
+        result["credentials_configured"] = True
+        
+        # Check region support
+        supported_regions = [
+            "us-east-1", "us-east-2", "us-west-2", "eu-west-1", "ap-southeast-1"
+        ]
+        result["region_supported"] = region in supported_regions
+        
+        # Test basic connectivity (optional - requires boto3)
+        try:
+            import boto3
+            from botocore.exceptions import ClientError
+            
+            bedrock = boto3.client('bedrock', region_name=region)
+            response = bedrock.list_foundation_models()
+            result["connectivity_test"] = True
+            result["available_models"] = len(response.get('modelSummaries', []))
+            
+        except ImportError:
+            result["error"] = "boto3 not available for connectivity test"
+        except ClientError as e:
+            result["error"] = f"Bedrock API error: {str(e)}"
+        except Exception as e:
+            result["error"] = f"Connectivity test failed: {str(e)}"
+            
+    except Exception as e:
+        result["error"] = f"Test failed: {str(e)}"
+    
+    return result
+

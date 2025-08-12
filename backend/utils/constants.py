@@ -68,6 +68,40 @@ MODELS = {
         "tier_availability": ["free"]
     },
     
+    # Mistral Models from AWS Bedrock
+    "bedrock/mistral.mistral-7b-instruct-v0:2": {
+        "aliases": ["bedrock-mistral-7b-instruct", "mistral-7b-instruct"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.15,
+            "output_cost_per_million_tokens": 0.60
+        },
+        "tier_availability": ["free"]
+    },
+    "bedrock/mistral.mixtral-8x7b-instruct-v0:1": {
+        "aliases": ["bedrock-mixtral-8x7b-instruct", "mixtral-8x7b-instruct"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.14,
+            "output_cost_per_million_tokens": 0.42
+        },
+        "tier_availability": ["free"]
+    },
+    "bedrock/mistral.mistral-large-2402-v1:0": {
+        "aliases": ["bedrock-mistral-large", "mistral-large-2402"],
+        "pricing": {
+            "input_cost_per_million_tokens": 6.00,
+            "output_cost_per_million_tokens": 24.00
+        },
+        "tier_availability": ["free"]
+    },
+    "bedrock/mistral.mistral-small-2402-v1:0": {
+        "aliases": ["bedrock-mistral-small", "mistral-small-2402"],
+        "pricing": {
+            "input_cost_per_million_tokens": 2.00,
+            "output_cost_per_million_tokens": 6.00
+        },
+        "tier_availability": ["free"]
+    },
+    
     # "openrouter/qwen/qwen3-235b-a22b": {
     #     "aliases": ["qwen3"],
     #     "pricing": {
@@ -82,7 +116,40 @@ MODELS = {
             "input_cost_per_million_tokens": 0.0,
             "output_cost_per_million_tokens": 0.0
         },
-            "tier_availability": ["free", "paid"]
+        "tier_availability": ["free", "paid"]
+    },
+    # New Z.AI Models from OpenRouter
+    "openrouter/z-ai/glm-4.5v": {
+        "aliases": ["z-ai/glm-4.5v", "glm-4.5v"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.60,
+            "output_cost_per_million_tokens": 1.80
+        },
+        "tier_availability": ["free", "paid"]
+    },
+    "openrouter/z-ai/glm-4.5": {
+        "aliases": ["z-ai/glm-4.5", "glm-4.5"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.60,
+            "output_cost_per_million_tokens": 2.20
+        },
+        "tier_availability": ["free", "paid"]
+    },
+    "openrouter/z-ai/glm-4.5-air": {
+        "aliases": ["z-ai/glm-4.5-air", "glm-4.5-air"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.20,
+            "output_cost_per_million_tokens": 1.10
+        },
+        "tier_availability": ["free", "paid"]
+    },
+    "openrouter/z-ai/glm-4-32b": {
+        "aliases": ["z-ai/glm-4-32b", "glm-4-32b"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.10,
+            "output_cost_per_million_tokens": 0.10
+        },
+        "tier_availability": ["free", "paid"]
     },
     "openrouter/deepseek/deepseek-chat-v3-0324:free": {
         "aliases": ["deepseek/deepseek-chat-v3-0324:free"],
@@ -133,10 +200,10 @@ MODELS = {
         "tier_availability": ["free", "paid"]
     },
     "openrouter/z-ai/glm-4.5-air:free": {
-        "aliases": ["glm-4.5-air:free"],
+        "aliases": ["glm-4.5-air:free", "glm-4.5-air"],
         "pricing": {
-            "input_cost_per_million_tokens": 0.0,
-            "output_cost_per_million_tokens": 0.0
+            "input_cost_per_million_tokens": 0.20,
+            "output_cost_per_million_tokens": 1.10
         },
         "tier_availability": ["free", "paid"]
     },
@@ -251,3 +318,4 @@ MODEL_ACCESS_TIERS = {
     "tier_125_800": PAID_TIER_MODELS,
     "tier_200_1000": PAID_TIER_MODELS,
 }
+

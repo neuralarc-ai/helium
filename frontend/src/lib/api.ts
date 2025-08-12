@@ -2031,6 +2031,47 @@ export const getAvailableModels = async (): Promise<AvailableModelsResponse> => 
   }
 };
 
+export const testBedrockConnectivity = async (): Promise<any> => {
+  try {
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new NoAccessTokenAvailableError();
+    }
+
+    const response = await fetch(`${API_URL}/billing/test-bedrock-connectivity`, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response
+        .text()
+        .catch(() => 'No error details available');
+      console.error(
+        `Error testing Bedrock connectivity: ${response.status} ${response.statusText}`,
+        errorText,
+      );
+      throw new Error(
+        `Error testing Bedrock connectivity: ${response.statusText} (${response.status})`,
+      );
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof NoAccessTokenAvailableError) {
+      throw error;
+    }
+
+    console.error('Failed to test Bedrock connectivity:', error);
+    handleApiError(error, { operation: 'test Bedrock connectivity', resource: 'AWS Bedrock' });
+    throw error;
+  }
+};
 
 export const checkBillingStatus = async (): Promise<BillingStatusResponse> => {
   try {
