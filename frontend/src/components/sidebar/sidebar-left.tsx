@@ -348,9 +348,19 @@ export function SidebarLeft({
           {/* Knowledge Base button: always show if feature is enabled */}
           {!flagsLoading && knowledgeBaseEnabled && (
             <Tooltip>
-              <TooltipTrigger asChild className="w-full">
+              <TooltipTrigger asChild className={state === 'collapsed' && !isMobile ? '' : 'w-full'}>
                 <button
-                  className={`h-fit w-full cursor-pointer flex items-center py-1 px-3 hover:bg-accent rounded-md flex-shrink-0 transition-colors ${isMobile ? 'justify-start' : state === 'collapsed' ? 'justify-center my-3' : ''} ${state === 'collapsed' && !isMobile ? 'hover:bg-card' : ''}`}
+                  className={cn(
+                    'h-fit cursor-pointer flex items-center rounded-md flex-shrink-0 transition-colors',
+                    {
+                      // Collapsed state styling
+                      'w-8 h-8 justify-center hover:bg-accent hover:text-accent-foreground my-1': 
+                        state === 'collapsed' && !isMobile,
+                      // Expanded state styling
+                      'w-full py-1 px-3 hover:bg-accent justify-start': 
+                        state !== 'collapsed' || isMobile,
+                    }
+                  )}
                   type="button"
                   tabIndex={0}
                   aria-label="Knowledge Base"
@@ -361,7 +371,13 @@ export function SidebarLeft({
                     }, 100); // Show knowledge base after expanding
                   }}
                 >
-                  <Lightbulb className="w-4 h-4 mr-2" />
+                  <Lightbulb className={cn(
+                    'w-4 h-4',
+                    {
+                      'mr-0': state === 'collapsed' && !isMobile,
+                      'mr-2': state !== 'collapsed' || isMobile,
+                    }
+                  )} />
                   {(isMobile || state !== 'collapsed') && (
                     <span className="text-sm font-medium whitespace-nowrap">
                       Knowledge Base
@@ -370,7 +386,7 @@ export function SidebarLeft({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                {currentThreadId ? 'Knowledge Base' : 'Knowledge Base'}
+                Knowledge Base
               </TooltipContent>
             </Tooltip>
           )}
