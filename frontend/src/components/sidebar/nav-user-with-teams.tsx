@@ -56,6 +56,7 @@ import { useFeatureFlag } from '@/lib/feature-flags';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/AuthProvider';
+import { useSubscriptionUsage } from '@/hooks/useSubscriptionUsage';
 
 export function NavUserWithTeams({
   user,
@@ -66,7 +67,11 @@ export function NavUserWithTeams({
     email: string;
     avatar: string;
   };
-  onUserUpdate?: (updatedUser: { name: string; email: string; avatar: string }) => void;
+  onUserUpdate?: (updatedUser: {
+    name: string;
+    email: string;
+    avatar: string;
+  }) => void;
 }) {
   const router = useRouter();
   const { isMobile } = useSidebar();
@@ -76,8 +81,10 @@ export function NavUserWithTeams({
   const [editName, setEditName] = React.useState(user.name);
   const [isUpdating, setIsUpdating] = React.useState(false);
   const { theme, setTheme } = useTheme();
-  const { enabled: customAgentsEnabled, loading: flagLoading } = useFeatureFlag("custom_agents");
+  const { enabled: customAgentsEnabled, loading: flagLoading } =
+    useFeatureFlag('custom_agents');
   const { refreshUser } = useAuth();
+  const { usedCredits, totalCredits, usagePercent, isLoading, error } = useSubscriptionUsage();
 
   // Prepare personal account and team accounts
   const personalAccount = React.useMemo(
@@ -175,23 +182,23 @@ export function NavUserWithTeams({
 
   const handleSaveName = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!editName.trim() || editName.trim() === user.name) {
       setShowEditNameDialog(false);
       return;
     }
 
     setIsUpdating(true);
-    
+
     try {
       const supabase = createClient();
-      
+
       // Update user metadata in Supabase
       const { error } = await supabase.auth.updateUser({
-        data: { 
+        data: {
           name: editName.trim(),
-          first_name: editName.trim().split(' ')[0] // Also update first_name for consistency
-        }
+          first_name: editName.trim().split(' ')[0], // Also update first_name for consistency
+        },
       });
 
       if (error) {
@@ -207,13 +214,12 @@ export function NavUserWithTeams({
       if (onUserUpdate) {
         onUserUpdate({
           ...user,
-          name: editName.trim()
+          name: editName.trim(),
         });
       }
 
       setShowEditNameDialog(false);
       // You could add toast notification here for success
-      
     } catch (error) {
       console.error('Error updating user name:', error);
       // You could add toast notification here for error
@@ -265,7 +271,7 @@ export function NavUserWithTeams({
                         {user.name}
                         <Pencil
                           className="w-3 h-3 cursor-pointer text-muted-foreground/80 hover:text-foreground"
-                          onClick={e => {
+                          onClick={(e) => {
                             e.stopPropagation();
                             setEditName(user.name);
                             setShowEditNameDialog(true);
@@ -332,7 +338,9 @@ export function NavUserWithTeams({
                           <AudioWaveform className="size-4 shrink-0" />
                         </div>
                         {team.name}
-                        <DropdownMenuShortcut>⌘{index + 2}</DropdownMenuShortcut>
+                        <DropdownMenuShortcut>
+                          ⌘{index + 2}
+                        </DropdownMenuShortcut>
                       </DropdownMenuItem>
                     ))}
                   </>
@@ -349,11 +357,24 @@ export function NavUserWithTeams({
                   Create Team
                 </DropdownMenuItem>
 
+                {/* Token Usage Section */}
+                <DropdownMenuSeparator />
+          
+                <div className="px-3 py-2 text-sm">
+            
+                  <div className="text-foreground font-medium">
+                    {isLoading ? 'Loading usage...' : error ? 'Error loading credits' : `You have used ${usagePercent}% of your credits`}
+                  </div>
+                  <div className="text-muted-foreground text-xs">
+                    {isLoading ? '0 / 0' : error ? 'Error' : `${usedCredits} / ${totalCredits}`}
+                  </div>
+                </div>
+                
                 <DropdownMenuSeparator />
 
                 {/* User Settings Section */}
                 <DropdownMenuGroup>
-                  <DropdownMenuItem asChild>
+                  {/* <DropdownMenuItem asChild>
                     <Link href="/settings/billing">
                       <CreditCard className="h-4 w-4" />
                       Billing
@@ -366,25 +387,32 @@ export function NavUserWithTeams({
                         API Keys
                       </Link>
                     </DropdownMenuItem>
+                  )} */}
+                  {isLocalMode() && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings/env-manager">
+                        <KeyRound className="h-4 w-4" />
+                        Local .Env Manager
+                      </Link>
+                    </DropdownMenuItem>
                   )}
-                  {isLocalMode() && <DropdownMenuItem asChild>
-                    <Link href="/settings/env-manager">
-                      <KeyRound className="h-4 w-4" />
-                      Local .Env Manager
-                    </Link>
-                  </DropdownMenuItem>}
                   <DropdownMenuItem
-                    onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                    onClick={() =>
+                      setTheme(theme === 'light' ? 'dark' : 'light')
+                    }
                   >
-                    <div className="flex items-center gap-2">
+                    {/* <div className="flex items-center gap-2">
                       <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                       <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                       <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
-                    </div>
+                    </div> */}
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className='text-destructive focus:text-destructive focus:bg-destructive/10' onClick={handleLogout}>
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  onClick={handleLogout}
+                >
                   <LogOut className="h-4 w-4 text-destructive" />
                   Log out
                 </DropdownMenuItem>
@@ -411,29 +439,28 @@ export function NavUserWithTeams({
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle>Edit your name</DialogTitle>
-            <DialogDescription>Update your display name as it appears across the app.</DialogDescription>
+            <DialogDescription>
+              Update your display name as it appears across the app.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveName} className="space-y-4">
             <Input
               value={editName}
-              onChange={e => setEditName(e.target.value)}
+              onChange={(e) => setEditName(e.target.value)}
               placeholder="Your name"
               autoFocus
               required
             />
             <div className="flex justify-end gap-2">
-              <Button 
-                type="button" 
-                variant="ghost" 
+              <Button
+                type="button"
+                variant="ghost"
                 onClick={() => setShowEditNameDialog(false)}
                 disabled={isUpdating}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                disabled={!editName.trim() || isUpdating}
-              >
+              <Button type="submit" disabled={!editName.trim() || isUpdating}>
                 {isUpdating ? 'Saving...' : 'Save'}
               </Button>
             </div>

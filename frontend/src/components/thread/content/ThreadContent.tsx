@@ -676,7 +676,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
           <div
             className={
               isSidePanelOpen
-                ? 'mr-auto ml-0 max-w-3xl md:px-8 min-w-0'
+                ? 'mx-auto max-w-2xl md:px-8 min-w-0'
                 : 'mx-auto max-w-3xl md:px-8 min-w-0'
             }
           >
