@@ -260,7 +260,7 @@
     transform: rotate(-5deg) scale(0.9);}}}
 
 :root {
-  --background: oklch(0.9581 0 0);
+  --background: oklch(0.9789 0.0013 106.42);
   --foreground: oklch(0.2277 0.0034 67.65);
   --card: oklch(98.46% 0.002 247.84);
   --card-foreground: oklch(0.145 0 0);
