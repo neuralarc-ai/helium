@@ -137,11 +137,13 @@ export default function ThreadPage({
   const { data: threadAgentData } = useThreadAgent(threadId);
   const agent = threadAgentData?.agent;
   const workflowId = threadQuery.data?.metadata?.workflow_id;
+  const initialAgentAppliedRef = useRef(false);
 
-  // Set initial selected agent from thread data
+  // Set initial selected agent from thread data (only once on first load)
   useEffect(() => {
-    if (threadAgentData?.agent && !selectedAgentId) {
+    if (!initialAgentAppliedRef.current && threadAgentData?.agent && !selectedAgentId) {
       setSelectedAgentId(threadAgentData.agent.agent_id);
+      initialAgentAppliedRef.current = true;
     }
   }, [threadAgentData, selectedAgentId]);
 
@@ -204,6 +206,8 @@ export default function ThreadPage({
         setAgentStatus('idle');
         setAgentRunId(null);
         setAutoOpenedPanel(false);
+        // Reset selection after each run to allow keyword-based re-selection on next message
+        setSelectedAgentId(undefined);
 
         if (
           [

@@ -45,92 +45,70 @@ REDIS_RESPONSE_LIST_TTL = 3600 * 24
 
 
 
-# --- Heuristic agent auto-selection -----------------------------------------------------------
-# Simple keyword-based rules to automatically pick an agent when the user didn't select one.
-# If these rules do not match, we fall back to any `is_default` agent, otherwise to core (o1).
-KEYWORD_RULES: Dict[str, List[str]] = {
-    # Shopiee: shopping, ecommerce, price checks
-    "shopiee": [
-        "shop", "shopping", "buy", "buying", "purchase", "order", "product", "price", "deal", "discount",
-        "cart", "checkout", "retailer", "store", "ecommerce", "amazon", "flipkart",
-        "shoe", "shoes", "sneaker", "sneakers"
-    ],
-    # Email Summarizer Pro: summarization or drafting of email content
-    "email_summarizer_pro": [
-        "email", "inbox", "gmail", "outlook", "mail", "compose", "draft", "send",
-        "subject", "summary", "summarize", "reply"
-    ],
-    # AI Hiring Agent: hiring, recruiting, candidates, resumes
-    "ai_hiring_agent": [
-        "hire", "hiring", "recruit", "recruitment", "candidate", "resume", "cv",
-        "job", "interview", "jd", "talent"
-    ],
-}
-
-# Map rule keys to canonical display names used in the database `agents.name` column
-RULE_KEY_TO_AGENT_NAME: Dict[str, str] = {
-    "shopiee": "Shopiee",
-    "email_summarizer_pro": "Email Summarizer Pro",
-    "ai_hiring_agent": "AI Hiring Agent",
-}
-
-
+# --- Dynamic agent auto-selection (template tag based) -----------------------------------------
+# Pick an agent by matching the user's prompt against the tags of templates the user installed.
+# We resolve the user's agents, find their source template via `agents.metadata.created_from_template`,
+# load the templates' `tags`, and rank agents by the number of tag matches in the prompt.
 async def auto_select_agent_id_by_prompt(db_client, account_id: str, prompt_text: str) -> Optional[str]:
-    """Return an agent_id based on a simple keyword heuristic over the prompt.
-
-    - Inspect `prompt_text` and compute a score per rule based on keyword appearances
-    - Find the highest scoring rule and try to locate an agent with a matching name for the account
-    - If none found or score is zero, return None
-    """
     try:
         if not prompt_text:
             return None
 
         normalized_prompt = prompt_text.lower()
 
-        best_rule_key: Optional[str] = None
+        # Fetch all agents for this account (names/descriptions used only for possible future heuristics)
+        agents_resp = await db_client.table('agents').select(
+            'agent_id, name, description, account_id, metadata'
+        ).eq('account_id', account_id).execute()
+
+        agents = agents_resp.data or []
+        if not agents:
+            return None
+
+        # Collect template_ids from agent metadata
+        template_ids: List[str] = []
+        for agent in agents:
+            metadata = agent.get('metadata') or {}
+            template_id = metadata.get('created_from_template') if isinstance(metadata, dict) else None
+            if template_id and template_id not in template_ids:
+                template_ids.append(template_id)
+
+        template_tags_map: Dict[str, List[str]] = {}
+        if template_ids:
+            try:
+                templates_resp = await db_client.table('agent_templates').select('template_id, tags').in_('template_id', template_ids).execute()
+                for t in (templates_resp.data or []):
+                    t_id = t.get('template_id')
+                    tags = t.get('tags') or []
+                    # Normalize tags to lowercase strings
+                    norm_tags = [str(tag).lower() for tag in tags if isinstance(tag, (str, int, float))]
+                    if t_id:
+                        template_tags_map[t_id] = norm_tags
+            except Exception as e:
+                logger.warning(f"[AUTO SELECT] Failed to load template tags: {e}")
+
+        # Score agents by tag matches
+        best_agent_id: Optional[str] = None
         best_score: int = 0
 
-        for rule_key, keywords in KEYWORD_RULES.items():
+        for agent in agents:
+            metadata = agent.get('metadata') or {}
+            template_id = metadata.get('created_from_template') if isinstance(metadata, dict) else None
+            tags = template_tags_map.get(template_id, []) if template_id else []
+
             score = 0
-            for keyword in keywords:
-                # Use simple substring match; robust and fast. Consider word boundaries if needed later.
-                if keyword in normalized_prompt:
+            for tag in tags:
+                if tag and tag in normalized_prompt:
                     score += 1
+
             if score > best_score:
                 best_score = score
-                best_rule_key = rule_key
+                best_agent_id = agent.get('agent_id')
 
-        if not best_rule_key or best_score == 0:
-            return None
+        if best_agent_id and best_score > 0:
+            return best_agent_id
 
-        target_agent_name = RULE_KEY_TO_AGENT_NAME.get(best_rule_key)
-        if not target_agent_name:
-            return None
-
-        # Look up the agent by name for this account
-        agent_query = await db_client.table('agents').select('agent_id, name, account_id').eq('account_id', account_id).eq('name', target_agent_name).execute()
-        if agent_query.data and len(agent_query.data) > 0:
-            return agent_query.data[0]['agent_id']
-
-        # Fallback: try a case-insensitive contains search if exact match isn't found
-        agent_query_fuzzy = await db_client.table('agents').select('agent_id, name, account_id').eq('account_id', account_id).ilike('name', f"%{target_agent_name}%").execute()
-        if agent_query_fuzzy.data and len(agent_query_fuzzy.data) > 0:
-            return agent_query_fuzzy.data[0]['agent_id']
-
-        # Heuristic fallback: search for agents whose name or description contains relevant keywords
-        keyword_set = KEYWORD_RULES.get(best_rule_key, [])
-        if keyword_set:
-            # Build an OR filter via multiple ilike queries (Supabase-js RPC style not available; run a broad fetch and filter here)
-            all_agents = await db_client.table('agents').select('agent_id, name, description').eq('account_id', account_id).execute()
-            for agent in (all_agents.data or []):
-                name_l = (agent.get('name') or '').lower()
-                desc_l = (agent.get('description') or '').lower()
-                for kw in keyword_set:
-                    if kw in name_l or kw in desc_l:
-                        return agent['agent_id']
-
-        logger.info(f"[AUTO SELECT] No direct agent match found for rule '{best_rule_key}' (score={best_score})")
+        # No tag-based match found
         return None
     except Exception as e:
         logger.warning(f"[AUTO SELECT] Failed during auto-selection: {e}")
@@ -418,6 +396,7 @@ async def start_agent(
     effective_agent_id = body.agent_id  # Optional agent ID from request
 
     # Auto-select agent based on latest user message if not explicitly provided
+    # or if the currently selected agent is the Suna default (o1) placeholder
     if not effective_agent_id:
         try:
             # Prefer prompt from request body if present; else get the latest user message content from this thread
@@ -435,10 +414,51 @@ async def start_agent(
 
             auto_agent_id = await auto_select_agent_id_by_prompt(client, account_id, prompt_text or "")
             if auto_agent_id:
-                logger.info(f"[AUTO SELECT] Selected agent {auto_agent_id} based on latest message keywords")
+                logger.info(f"[AUTO SELECT] Selected agent {auto_agent_id} based on latest message tags")
                 effective_agent_id = auto_agent_id
+            else:
+                # No keyword route -> stick to the last agent used in this thread (follow-up continuity)
+                try:
+                    recent_agent_result = await client.table('agent_runs').select('agent_id').eq('thread_id', thread_id).not_.is_('agent_id', 'null').order('created_at', desc=True).limit(1).execute()
+                    if recent_agent_result.data and recent_agent_result.data[0].get('agent_id'):
+                        effective_agent_id = recent_agent_result.data[0]['agent_id']
+                        logger.info(f"[FOLLOW-UP] No keywords detected; reusing last agent {effective_agent_id} for thread {thread_id}")
+                except Exception as e:
+                    logger.warning(f"[FOLLOW-UP] Failed to fetch last agent for thread {thread_id}: {e}")
         except Exception as e:
             logger.warning(f"[AUTO SELECT] Failed to auto-select agent for thread {thread_id}: {e}")
+
+    # If an agent was provided but it's the Suna default placeholder, attempt keyword routing override
+    else:
+        try:
+            provided_agent = await client.table('agents').select('agent_id, metadata').eq('agent_id', effective_agent_id).eq('account_id', account_id).execute()
+            is_suna_default = bool(provided_agent.data and provided_agent.data[0].get('metadata', {}).get('is_suna_default'))
+            if is_suna_default:
+                prompt_text: Optional[str] = body.prompt
+                if not prompt_text:
+                    last_user_msg = await client.table('messages').select('content, type').eq('thread_id', thread_id).eq('type', 'user').order('created_at', desc=True).limit(1).execute()
+                    if last_user_msg.data:
+                        raw_content = last_user_msg.data[0].get('content')
+                        try:
+                            parsed = json.loads(raw_content) if isinstance(raw_content, str) else raw_content
+                            prompt_text = parsed.get('content') if isinstance(parsed, dict) else None
+                        except Exception:
+                            prompt_text = raw_content if isinstance(raw_content, str) else None
+                auto_agent_id = await auto_select_agent_id_by_prompt(client, account_id, prompt_text or "")
+                if auto_agent_id:
+                    logger.info("[AUTO SELECT] Overriding Suna default with keyword-selected agent %s", auto_agent_id)
+                    effective_agent_id = auto_agent_id
+                else:
+                    # No keyword route -> reuse last agent if exists for continuity
+                    try:
+                        recent_agent_result = await client.table('agent_runs').select('agent_id').eq('thread_id', thread_id).not_.is_('agent_id', 'null').order('created_at', desc=True).limit(1).execute()
+                        if recent_agent_result.data and recent_agent_result.data[0].get('agent_id'):
+                            effective_agent_id = recent_agent_result.data[0]['agent_id']
+                            logger.info(f"[FOLLOW-UP] No keywords while on default; reusing last agent {effective_agent_id}")
+                    except Exception as e:
+                        logger.warning(f"[FOLLOW-UP] Failed to fetch last agent for continuity: {e}")
+        except Exception as e:
+            logger.warning(f"[AUTO SELECT] Override check failed: {e}")
     
     logger.info(f"[AGENT LOAD] Agent loading flow:")
     logger.info(f"  - body.agent_id: {body.agent_id}")
@@ -1076,10 +1096,22 @@ async def initiate_agent_with_files(
         try:
             auto_agent_id = await auto_select_agent_id_by_prompt(client, account_id, prompt)
             if auto_agent_id:
-                logger.info(f"[AUTO SELECT] Selected agent {auto_agent_id} based on initiate prompt keywords")
+                logger.info(f"[AUTO SELECT] Selected agent {auto_agent_id} based on initiate prompt tags")
                 agent_id = auto_agent_id
         except Exception as e:
             logger.warning(f"[AUTO SELECT] Failed to auto-select agent in initiate: {e}")
+    else:
+        # If provided agent is Suna default, attempt keyword override
+        try:
+            provided_agent = await client.table('agents').select('agent_id, metadata').eq('agent_id', agent_id).eq('account_id', account_id).execute()
+            is_suna_default = bool(provided_agent.data and provided_agent.data[0].get('metadata', {}).get('is_suna_default'))
+            if is_suna_default:
+                auto_agent_id = await auto_select_agent_id_by_prompt(client, account_id, prompt)
+                if auto_agent_id:
+                    logger.info("[AUTO SELECT] Overriding Suna default with keyword-selected agent %s", auto_agent_id)
+                    agent_id = auto_agent_id
+        except Exception as e:
+            logger.warning(f"[AUTO SELECT] Override check failed in initiate: {e}")
 
     if agent_id:
         logger.info(f"[AGENT INITIATE] Querying for specific agent: {agent_id}")
