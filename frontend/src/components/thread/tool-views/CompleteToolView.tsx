@@ -157,8 +157,8 @@ export function CompleteToolView({
   };
 
   return (
-    <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-xl mx-2 mt-2">
+    <Card className="gap-0 flex border shadow-none border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
+      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-xl mx-4 mt-2">
         <div className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-white" />
@@ -169,7 +169,7 @@ export function CompleteToolView({
             </div>
           </div>
 
-          {!isStreaming && (
+          {/* {!isStreaming && (
             <Badge
               variant="secondary"
               className={
@@ -185,7 +185,7 @@ export function CompleteToolView({
               )}
               {actualIsSuccess ? 'Completed' : 'Failed'}
             </Badge>
-          )}
+          )} */}
 
           {isStreaming && (
             <Badge className="bg-gradient-to-b from-blue-200 to-blue-100 text-blue-700 dark:from-blue-800/50 dark:to-blue-900/60 dark:text-blue-300">
