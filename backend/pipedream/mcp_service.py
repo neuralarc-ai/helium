@@ -346,6 +346,67 @@ class MCPService:
             logger.error(f"Failed to create MCP connection for {app_slug.value}: {str(e)}")
             raise MCPConnectionError(str(e))
 
+    async def execute_tool(self, external_user_id: ExternalUserId, app_slug: AppSlug, tool_name: str, arguments: Dict[str, Any], oauth_app_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Execute a specific MCP tool over the Pipedream remote MCP HTTP endpoint using JSON-RPC.
+        Returns a dict with { success: bool, result?: any, error?: str }.
+        """
+        project_id = os.getenv("PIPEDREAM_PROJECT_ID")
+        environment = os.getenv("PIPEDREAM_X_PD_ENVIRONMENT", "development")
+
+        if not project_id:
+            raise MCPConnectionError("Missing PIPEDREAM_PROJECT_ID")
+
+        # Acquire access token and prepare headers
+        try:
+            access_token = await self._ensure_access_token()
+        except Exception as e:
+            raise MCPConnectionError(f"Authentication failed: {str(e)}")
+
+        url = f"https://remote.mcp.pipedream.net/?app={app_slug.value}&externalUserId={external_user_id.value}"
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": tool_name,
+                "arguments": arguments or {}
+            },
+            "id": 1,
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+            "Authorization": f"Bearer {access_token}",
+            "x-pd-project-id": project_id,
+            "x-pd-environment": environment,
+            "x-pd-external-user-id": external_user_id.value,
+            "x-pd-app-slug": app_slug.value,
+        }
+
+        # Stream the response and capture the first result
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                async with client.stream("POST", url, json=payload, headers=headers) as resp:
+                    resp.raise_for_status()
+                    async for line in resp.aiter_lines():
+                        if not line or not line.startswith("data:"):
+                            continue
+                        data_str = line[len("data:"):].strip()
+                        try:
+                            data_obj = json.loads(data_str)
+                            if "result" in data_obj:
+                                return {"success": True, "result": data_obj.get("result")}
+                            if "error" in data_obj:
+                                return {"success": False, "error": data_obj.get("error")}
+                        except json.JSONDecodeError:
+                            continue
+        except httpx.HTTPError as e:
+            raise MCPConnectionError(f"HTTP error calling tool '{tool_name}': {e}")
+        except Exception as e:
+            raise MCPConnectionError(f"Failed to call tool '{tool_name}': {str(e)}")
+
+        return {"success": False, "error": "No result received"}
+
     async def close(self):
         if self.session and not self.session.is_closed:
             await self.session.aclose()

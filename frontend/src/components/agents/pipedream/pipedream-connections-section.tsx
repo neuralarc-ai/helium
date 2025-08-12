@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { usePipedreamProfiles, useCreatePipedreamProfile, useUpdatePipedreamProfile, useDeletePipedreamProfile, useConnectPipedreamProfile } from '@/hooks/react-query/pipedream/use-pipedream-profiles';
 import { usePipedreamApps, usePipedreamAppIcon } from '@/hooks/react-query/pipedream/use-pipedream';
+import { pipedreamApi } from '@/hooks/react-query/pipedream/utils';
 import { PipedreamRegistry } from '@/components/agents/pipedream/pipedream-registry';
 import { PipedreamConnector } from '@/components/agents/pipedream/pipedream-connector';
 import { useQueryClient } from '@tanstack/react-query';
@@ -300,6 +301,36 @@ const AppTable: React.FC<AppTableProps> = ({
                 <Edit className="h-4 w-4" />
                 Edit Name
               </DropdownMenuItem>
+              {(() => {
+                const hasEnabled = Array.isArray((profile as any).enabled_tools) && (profile as any).enabled_tools.length > 0;
+                return (
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        if (hasEnabled) {
+                          await onProfileUpdate(profile, { enabled_tools: [] });
+                          toast.success('Disabled tools for this profile');
+                        } else {
+                          const toolsResp = await pipedreamApi.getAppTools(appSlug);
+                          const toolNames = (toolsResp.tools || []).map((t: any) => t.name);
+                          await onProfileUpdate(profile, { enabled_tools: toolNames });
+                          toast.success(`Enabled ${toolNames.length} tools for ${appName}`);
+                        }
+                      } catch (err) {
+                        console.error('Failed to toggle tools', err);
+                        toast.error('Failed to update tools');
+                      }
+                    }}
+                  >
+                    {hasEnabled ? (
+                      <XCircle className="h-4 w-4" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    {hasEnabled ? 'Disable Tools' : 'Enable Tools'}
+                  </DropdownMenuItem>
+                );
+              })()}
               <DropdownMenuItem 
                 onClick={() => onProfileUpdate(profile, { is_default: !profile.is_default })}
               >
@@ -471,6 +502,7 @@ export const PipedreamConnectionsSection: React.FC<PipedreamConnectionsSectionPr
   const [showAppBrowser, setShowAppBrowser] = useState(false);
   const [showConnector, setShowConnector] = useState(false);
   const [selectedApp, setSelectedApp] = useState<PipedreamApp | null>(null);
+  const [enableToolsForProfileId, setEnableToolsForProfileId] = useState<string | null>(null);
   
   // Debug logging
   React.useEffect(() => {
@@ -501,6 +533,18 @@ export const PipedreamConnectionsSection: React.FC<PipedreamConnectionsSectionPr
     setShowConnector(true);
     console.log('Set showConnector to true');
   };
+
+  // Listen for a request to open the tools selector for a specific profile
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const { profileId } = (e as CustomEvent).detail || {};
+      if (profileId) {
+        setEnableToolsForProfileId(profileId);
+      }
+    };
+    window.addEventListener('pipedream-open-tools-for-profile', handler as EventListener);
+    return () => window.removeEventListener('pipedream-open-tools-for-profile', handler as EventListener);
+  }, []);
 
   const handleConnectionComplete = (profileId: string, selectedTools: string[], appName: string, appSlug: string) => {
     setShowConnector(false);
@@ -789,7 +833,10 @@ export const PipedreamConnectionsSection: React.FC<PipedreamConnectionsSectionPr
           open={showConnector}
           onOpenChange={setShowConnector}
           onComplete={handleConnectionComplete}
-          mode="profile-only"
+          mode={enableToolsForProfileId ? 'full' : 'profile-only'}
+          saveMode={enableToolsForProfileId ? 'profile' : 'callback'}
+          targetProfileId={enableToolsForProfileId || undefined}
+          startAtTools={!!enableToolsForProfileId}
         />
       )}
     </div>

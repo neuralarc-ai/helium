@@ -5,6 +5,11 @@ import { Square, Loader2, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UploadedFile } from './chat-input';
 import { FileUploadHandler } from './file-upload-handler';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Zap } from 'lucide-react';
 import { VoiceRecorder } from './voice-recorder';
 import { ModelSelector } from './model-selector';
 import { AgentSelector } from './agent-selector';
@@ -52,6 +57,18 @@ interface MessageInputProps {
   enableAdvancedConfig?: boolean;
   hideAgentSelection?: boolean;
   isSunaAgent?: boolean;
+  // Optional tool control block to render near the attach button
+  toolControl?: {
+    available: boolean;
+    useDirectTool: boolean;
+    onUseDirectToolChange: (v: boolean) => void;
+    profiles: Array<{ profile_id: string; app_name: string; profile_name: string }>;
+    selectedProfileId: string;
+    onProfileChange: (profileId: string) => void;
+    tools: string[];
+    selectedToolName: string;
+    onToolChange: (toolName: string) => void;
+  };
 }
 
 export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
@@ -91,6 +108,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
       enableAdvancedConfig = false,
       hideAgentSelection = false,
       isSunaAgent,
+      toolControl,
     },
     ref,
   ) => {
@@ -222,7 +240,52 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                 isLoggedIn={isLoggedIn}
               />
             )}
-
+            {toolControl && toolControl.available && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-fit p-2 bg-transparent border rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    <span className="text-xs">Use tool</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[320px] p-2">
+                  <div className="flex items-center gap-2 px-1 py-1">
+                    <Switch checked={toolControl.useDirectTool} onCheckedChange={toolControl.onUseDirectToolChange} />
+                    <Label className="text-xs">Use tool</Label>
+                  </div>
+                  {toolControl.useDirectTool && (
+                    <div className="flex flex-col gap-2 mt-1">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs w-16">Profile</Label>
+                        <Select value={toolControl.selectedProfileId} onValueChange={toolControl.onProfileChange}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Profile" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {toolControl.profiles.map((p) => (
+                              <SelectItem key={p.profile_id} value={p.profile_id}>{p.app_name}: {p.profile_name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-xs w-16">Tool</Label>
+                        <Select value={toolControl.selectedToolName} onValueChange={toolControl.onToolChange}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Tool" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {toolControl.tools.map((t) => (
+                              <SelectItem key={t} value={t}>{t}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
 
           {/* {subscriptionStatus === 'no_subscription' && !isLocalMode() &&

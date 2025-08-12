@@ -31,6 +31,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { usePipedreamProfiles, useCreatePipedreamProfile, useConnectPipedreamProfile } from '@/hooks/react-query/pipedream/use-pipedream-profiles';
 import { useUpdatePipedreamToolsForAgent } from '@/hooks/react-query/agents/use-pipedream-tools';
+import { useUpdatePipedreamProfile } from '@/hooks/react-query/pipedream/use-pipedream-profiles';
 import { pipedreamApi } from '@/hooks/react-query/pipedream/utils';
 import type { CreateProfileRequest } from '@/components/agents/pipedream/pipedream-types';
 import type { PipedreamApp } from '@/hooks/react-query/pipedream/utils';
@@ -41,9 +42,11 @@ interface PipedreamConnectorProps {
   onOpenChange: (open: boolean) => void;
   onComplete: (profileId: string, selectedTools: string[], appName: string, appSlug: string) => void;
   mode?: 'full' | 'profile-only';
-  saveMode?: 'direct' | 'callback';
+  saveMode?: 'direct' | 'callback' | 'profile';
   agentId?: string;
   existingProfileIds?: string[];
+  targetProfileId?: string; // when provided, preselect this profile
+  startAtTools?: boolean;   // when true with targetProfileId, jump to tools step directly
 }
 
 interface PipedreamTool {
@@ -59,7 +62,9 @@ export const PipedreamConnector: React.FC<PipedreamConnectorProps> = ({
   mode = 'full',
   saveMode = 'callback',
   agentId,
-  existingProfileIds = []
+  existingProfileIds = [],
+  targetProfileId,
+  startAtTools
 }) => {
   const [step, setStep] = useState<'profile' | 'tools'>('profile');
   const [selectedProfileId, setSelectedProfileId] = useState<string>('');
@@ -73,6 +78,7 @@ export const PipedreamConnector: React.FC<PipedreamConnectorProps> = ({
   const [connectionSuccessProfileId, setConnectionSuccessProfileId] = useState<string | null>(null);
 
   const updatePipedreamTools = useUpdatePipedreamToolsForAgent();
+  const updateProfileMutation = useUpdatePipedreamProfile();
 
   const { data: profiles, refetch: refetchProfiles } = usePipedreamProfiles({ app_slug: app.name_slug });
   const createProfile = useCreatePipedreamProfile();
@@ -99,14 +105,53 @@ export const PipedreamConnector: React.FC<PipedreamConnectorProps> = ({
       setSelectedTools(new Set());
       setTools([]);
       setConnectionSuccessProfileId(null);
+      // Preselect provided profile if any
+      if (targetProfileId) {
+        setSelectedProfileId(targetProfileId);
+      }
     }
-  }, [open]);
+  }, [open, targetProfileId]);
+  
+  // Proceed helper must be declared before effects that depend on it
+  const proceedToTools = useCallback(async () => {
+    if (!selectedProfileId || !selectedProfile) return;
+
+    // Avoid re-entrancy: if we're already loading, skip
+    if (isLoadingTools) return;
+    setIsLoadingTools(true);
+    // Only set step if not already on tools
+    setStep((prev) => (prev === 'tools' ? prev : 'tools'));
+    
+    try {
+      const servers = await pipedreamApi.discoverMCPServers(selectedProfile.external_user_id, app.name_slug);
+      const server = servers.find((s: any) => s.app_slug === app.name_slug);
+      
+      if (server?.available_tools) {
+        setTools(server.available_tools);
+        setSelectedTools(new Set(server.available_tools.map(tool => tool.name)));
+      }
+    } catch (error) {
+      console.error('Error fetching tools:', error);
+      toast.error('Failed to load tools');
+    } finally {
+      setIsLoadingTools(false);
+    }
+  }, [selectedProfileId, selectedProfile, app.name_slug, isLoadingTools]);
 
   useEffect(() => {
-    if (open && availableProfiles.length === 1 && !selectedProfileId) {
+    if (!open) return;
+    if (!selectedProfileId && availableProfiles.length === 1) {
       setSelectedProfileId(availableProfiles[0].profile_id);
     }
-  }, [open, availableProfiles, selectedProfileId]);
+    // If caller wants to start at tools for a specific profile, proceed once we can resolve it
+    if (startAtTools && targetProfileId && availableProfiles.find(p => p.profile_id === targetProfileId)) {
+      setStep('tools');
+      // Ensure state updates apply before fetch
+      setTimeout(() => {
+        proceedToTools();
+      }, 0);
+    }
+  }, [open, availableProfiles, selectedProfileId, startAtTools, targetProfileId, proceedToTools]);
 
   const handleCreateProfile = useCallback(async () => {
     if (!newProfileName.trim()) {
@@ -150,27 +195,7 @@ export const PipedreamConnector: React.FC<PipedreamConnectorProps> = ({
     }
   }, [newProfileName, app.name_slug, app.name, connectedProfiles.length, createProfile, connectProfile, refetchProfiles, mode, onComplete, onOpenChange]);
 
-  const proceedToTools = useCallback(async () => {
-    if (!selectedProfileId || !selectedProfile) return;
-
-    setIsLoadingTools(true);
-    setStep('tools');
-    
-    try {
-      const servers = await pipedreamApi.discoverMCPServers(selectedProfile.external_user_id, app.name_slug);
-      const server = servers.find(s => s.app_slug === app.name_slug);
-      
-      if (server?.available_tools) {
-        setTools(server.available_tools);
-        setSelectedTools(new Set(server.available_tools.map(tool => tool.name)));
-      }
-    } catch (error) {
-      console.error('Error fetching tools:', error);
-      toast.error('Failed to load tools');
-    } finally {
-      setIsLoadingTools(false);
-    }
-  }, [selectedProfileId, selectedProfile, app.name_slug]);
+  // proceedToTools already declared above
 
   // Listen for connection success events
   useEffect(() => {
@@ -214,6 +239,13 @@ export const PipedreamConnector: React.FC<PipedreamConnectorProps> = ({
         });
         toast.success(`Added ${selectedTools.size} tools from ${app.name}!`);
         onOpenChange(false);
+      } else if (saveMode === 'profile') {
+        await updateProfileMutation.mutateAsync({
+          profileId: selectedProfileId,
+          request: { enabled_tools: Array.from(selectedTools) }
+        });
+        toast.success(`Enabled ${selectedTools.size} tool${selectedTools.size !== 1 ? 's' : ''} for ${app.name}`);
+        onOpenChange(false);
       } else {
         onComplete(selectedProfileId, Array.from(selectedTools), app.name, app.name_slug);
         onOpenChange(false);
@@ -222,11 +254,13 @@ export const PipedreamConnector: React.FC<PipedreamConnectorProps> = ({
       console.error('Error completing connection:', error);
       if (saveMode === 'direct') {
         toast.error('Failed to add tools. Please try again.');
+      } else if (saveMode === 'profile') {
+        toast.error('Failed to enable tools for this profile');
       }
     } finally {
       setIsCompletingConnection(false);
     }
-  }, [selectedProfileId, selectedTools, saveMode, agentId, updatePipedreamTools, onComplete, app.name, app.name_slug, onOpenChange]);
+  }, [selectedProfileId, selectedTools, saveMode, agentId, updatePipedreamTools, updateProfileMutation, onComplete, app.name, app.name_slug, onOpenChange]);
 
   const handleProfileOnlyComplete = useCallback(async () => {
     if (!selectedProfileId) {

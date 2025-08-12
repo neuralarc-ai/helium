@@ -411,4 +411,18 @@ export const pipedreamApi = {
     }
     return result.data!;
   },
+
+  async executeTool(profileId: string, toolName: string, args: Record<string, any>): Promise<{ success: boolean; result?: any; error?: string }> {
+    const result = await backendApi.post<{ success: boolean; result?: any; error?: string }>(
+      `/pipedream/tools/execute`,
+      { profile_id: profileId, tool_name: toolName, arguments: args },
+      {
+        errorContext: { operation: 'execute tool', resource: 'Pipedream MCP tool' },
+      }
+    );
+    if (!result.success) {
+      throw new Error(result.error?.message || 'Failed to execute tool');
+    }
+    return result.data!;
+  }
 }; 

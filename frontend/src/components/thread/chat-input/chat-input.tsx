@@ -23,12 +23,18 @@ import { FaGoogle, FaDiscord } from 'react-icons/fa';
 import { SiNotion } from 'react-icons/si';
 import { AgentConfigModal } from '@/components/agents/agent-config-modal';
 import { PipedreamRegistry } from '@/components/agents/pipedream/pipedream-registry';
+import { pipedreamApi } from '@/hooks/react-query/pipedream/utils';
+import { usePipedreamProfiles } from '@/hooks/react-query/pipedream/use-pipedream-profiles';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { useSubscriptionWithStreaming } from '@/hooks/react-query/subscriptions/use-subscriptions';
 import { isLocalMode } from '@/lib/config';
 import { BillingModal } from '@/components/billing/billing-modal';
 import { useRouter } from 'next/navigation';
 import { BorderBeam } from '@/components/magicui/border-beam';
+import { toast } from 'sonner';
 
 // Helper function to check if we're in production mode
 const isProductionMode = (): boolean => {
@@ -154,6 +160,123 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const { data: subscriptionData } = useSubscriptionWithStreaming(isAgentRunning);
     const deleteFileMutation = useFileDelete();
     const queryClient = useQueryClient();
+
+    // Direct tool execution state
+    const [useDirectTool, setUseDirectTool] = useState(false);
+    const [selectedProfileId, setSelectedProfileId] = useState<string>('');
+    const [selectedToolName, setSelectedToolName] = useState<string>('');
+    const [userPickedProfile, setUserPickedProfile] = useState(false);
+    const [userPickedTool, setUserPickedTool] = useState(false);
+    const { data: pdProfiles } = usePipedreamProfiles({ is_active: true });
+    const enabledToolsByProfile = React.useMemo(() => {
+      const map: Record<string, string[]> = {};
+      (pdProfiles || []).forEach((p: any) => {
+        if (p.enabled_tools && p.enabled_tools.length > 0 && p.is_connected) {
+          map[p.profile_id] = p.enabled_tools;
+        }
+      });
+      return map;
+    }, [pdProfiles]);
+
+    // Reset manual flags when toggling mode
+    useEffect(() => {
+      if (useDirectTool) {
+        setUserPickedProfile(false);
+        setUserPickedTool(false);
+      }
+    }, [useDirectTool]);
+
+    // Auto-select profile/tool based on message content using keyword scoring (only if user hasn't picked)
+    useEffect(() => {
+      if (!useDirectTool) return;
+      const text = ((isControlled ? controlledValue : uncontrolledValue) || '').toLowerCase();
+      if (!text.trim()) return;
+      const profiles: any[] = (pdProfiles || []).filter((p: any) => p.is_connected && (p.enabled_tools?.length || 0) > 0);
+      if (profiles.length === 0) return;
+
+      const appKeywordMap: Record<string, string[]> = {
+        google_calendar: ['calendar', 'event', 'invite', 'meeting', 'schedule', 'reschedule'],
+        google_drive: ['drive', 'file', 'files', 'upload', 'doc', 'docs', 'sheet', 'sheets', 'folder'],
+        gmail: ['gmail', 'mail', 'email', 'inbox', 'send email'],
+        slack: ['slack', 'channel', 'dm', 'message'],
+        notion: ['notion', 'page', 'database', 'db'],
+        github: ['github', 'issue', 'pull request', 'pr', 'repo'],
+        zoom: ['zoom', 'meeting', 'schedule', 'invite'],
+      };
+
+      // Tool selection heuristics by app -> list of { match: keywords[], toolContains: substring }
+      const toolKeywordMap: Record<string, Array<{ match: string[]; toolContains: string }>> = {
+        google_calendar: [
+          { match: ['create', 'new', 'schedule', 'add'], toolContains: 'create' },
+          { match: ['update', 'reschedule', 'move', 'change'], toolContains: 'update' },
+          { match: ['delete', 'remove', 'cancel'], toolContains: 'delete' },
+          { match: ['list', 'show', 'find', 'upcoming'], toolContains: 'list' },
+        ],
+        google_drive: [
+          { match: ['upload', 'add', 'put'], toolContains: 'upload' },
+          { match: ['create folder', 'new folder', 'folder'], toolContains: 'folder' },
+          { match: ['list', 'show', 'find'], toolContains: 'list' },
+          { match: ['share'], toolContains: 'share' },
+        ],
+        gmail: [
+          { match: ['send', 'email', 'mail'], toolContains: 'send' },
+          { match: ['search', 'find'], toolContains: 'search' },
+        ],
+        slack: [
+          { match: ['send', 'message', 'post'], toolContains: 'post' },
+          { match: ['create channel', 'new channel'], toolContains: 'channel' },
+        ],
+        notion: [
+          { match: ['create page', 'new page'], toolContains: 'page' },
+          { match: ['database', 'db', 'row'], toolContains: 'database' },
+        ],
+        github: [
+          { match: ['create issue', 'new issue', 'bug'], toolContains: 'issue' },
+          { match: ['pull request', 'pr'], toolContains: 'pull' },
+        ],
+        zoom: [
+          { match: ['schedule', 'create', 'meeting'], toolContains: 'create' },
+        ],
+      };
+
+      const scoreProfile = (p: any): number => {
+        let score = 0;
+        const slug = (p.app_slug || '').toLowerCase();
+        const name = (p.app_name || '').toLowerCase();
+        if (slug && text.includes(slug)) score += 3;
+        if (name && text.includes(name)) score += 3;
+        const kws = appKeywordMap[slug] || appKeywordMap[name] || [];
+        kws.forEach((kw) => { if (text.includes(kw)) score += 2; });
+        const tools: string[] = p.enabled_tools || [];
+        tools.forEach((t) => { if (text.includes(t.toLowerCase())) score += 1; });
+        return score;
+      };
+
+      // Pick highest-scoring profile above a confidence threshold
+      let best = { p: null as any, s: -1 };
+      profiles.forEach((p) => {
+        const s = scoreProfile(p);
+        if (s > best.s) best = { p, s };
+      });
+      const chosen = best.s >= 4 ? best.p : null;
+
+      if (chosen && !userPickedProfile) {
+        if (chosen.profile_id !== selectedProfileId) setSelectedProfileId(chosen.profile_id);
+        const tools: string[] = chosen.enabled_tools || [];
+        // Prefer tool whose name occurs in text
+        let matched = tools.find((t) => text.includes(t.toLowerCase()));
+        if (!matched) {
+          const heur = toolKeywordMap[chosen.app_slug] || toolKeywordMap[chosen.app_name?.toLowerCase() || ''] || [];
+          for (const h of heur) {
+            if (h.match.some((kw) => text.includes(kw)) ) {
+              matched = tools.find((t) => t.toLowerCase().includes(h.toolContains));
+              if (matched) break;
+            }
+          }
+        }
+        if (!userPickedTool && matched && matched !== selectedToolName) setSelectedToolName(matched);
+      }
+    }, [useDirectTool, pdProfiles, controlledValue, uncontrolledValue, isControlled, selectedProfileId, selectedToolName, userPickedProfile, userPickedTool]);
 
     // Show usage preview logic:
     // - Disabled in production environment
@@ -283,10 +406,57 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
         thinkingEnabled = true;
       }
 
-      onSubmit(message, {
-        model_name: baseModelName,
-        enable_thinking: thinkingEnabled,
-      });
+      // If direct tool mode is on, execute the selected tool instead of sending to agent
+      if (useDirectTool && selectedProfileId && selectedToolName) {
+        try {
+          // Build arguments by looking up tool schema and filling sensible defaults
+          let args = { query: message, instruction: message } as Record<string, any>;
+          const chosenProfile: any = (pdProfiles || []).find((p: any) => p.profile_id === selectedProfileId);
+          if (chosenProfile?.app_slug) {
+            try {
+              const toolsResp = await pipedreamApi.getAppTools(chosenProfile.app_slug);
+              const toolMeta: any = (toolsResp.tools || []).find((t: any) => t.name === selectedToolName);
+              const schema: any = toolMeta?.inputSchema || toolMeta?.input_schema;
+              if (schema && schema.properties) {
+                // If specific required fields exist and are strings, fill with the whole message when undefined
+                const props: any = schema.properties;
+                const required: string[] = Array.isArray(schema.required) ? schema.required : [];
+                const textLikeKeys = ['instruction','query','text','prompt','message','input'];
+                // Ensure common text keys are present if defined
+                textLikeKeys.forEach((k) => { if (props[k] && args[k] === undefined) args[k] = message; });
+                // Fill required string fields with message if not present
+                required.forEach((key) => {
+                  const prop = props[key];
+                  if (prop && (prop.type === 'string' || (Array.isArray(prop.type) && prop.type.includes('string'))) && args[key] === undefined) {
+                    args[key] = message;
+                  }
+                });
+              }
+            } catch {}
+          }
+          toast.message('Executing tool...', { description: `${selectedToolName}` });
+          const resp = await pipedreamApi.executeTool(selectedProfileId, selectedToolName, args);
+          if (resp.success) {
+            const text = typeof resp.result === 'string' ? resp.result : JSON.stringify(resp.result, null, 2);
+            // Emit an event so parent chat can add an assistant message
+            try {
+              const evt = new CustomEvent('chat-direct-tool-result', { detail: { role: 'assistant', content: text, tool: selectedToolName } });
+              window.dispatchEvent(evt);
+            } catch {}
+            toast.success('Tool executed', { description: text.slice(0, 500) });
+          } else {
+            toast.error('Tool failed', { description: resp.error || 'Unknown error' });
+          }
+        } catch (err) {
+          console.error('Direct tool execution failed', err);
+          toast.error('Tool execution error');
+        }
+      } else {
+        onSubmit(message, {
+          model_name: baseModelName,
+          enable_thinking: thinkingEnabled,
+        });
+      }
 
       if (!isControlled) {
         setUncontrolledValue('');
@@ -403,10 +573,11 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
           >
             <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
               <CardContent className={`w-full shadow-sm p-1.5 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${bgColor} border-0 ${enableAdvancedConfig && selectedAgentId ? 'rounded-2xl' : 'rounded-2xl'} overflow-hidden relative`}>
-              <div className="absolute inset-0 rounded-[inherit] overflow-hidden">
+              <div className="absolute inset-0 rounded-[inherit] overflow-hidden pointer-events-none">
                 <BorderBeam duration={4} borderWidth={1.5} size={200} className="from-transparent via-helium-teal to-transparent"/>
                 <BorderBeam duration={4} borderWidth={1.5} delay={2} size={200} className="from-transparent via-helium-pink to-transparent"/>
               </div>
+                {/* Bottom tool control moved into MessageInput dropdown */}
                 <AttachmentGroup
                   files={uploadedFiles || []}
                   sandboxId={sandboxId}
@@ -437,6 +608,27 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                   setIsUploading={setIsUploading}
                   hideAttachments={hideAttachments}
                   messages={messages}
+                  toolControl={{
+                    available: (pdProfiles || []).some((p: any) => p.is_connected && (p.enabled_tools?.length || 0) > 0),
+                    useDirectTool,
+                    onUseDirectToolChange: setUseDirectTool,
+                    profiles: (pdProfiles || [])
+                      .filter((p: any) => p.is_connected && (p.enabled_tools?.length || 0) > 0)
+                      .map((p: any) => ({ profile_id: p.profile_id, app_name: p.app_name, profile_name: p.profile_name })),
+                    selectedProfileId,
+                    onProfileChange: (v: string) => {
+                      setSelectedProfileId(v);
+                      setUserPickedProfile(true);
+                      const tools = enabledToolsByProfile[v] || [];
+                      setSelectedToolName((prev) => (tools.includes(prev) ? prev : tools[0] || ''));
+                    },
+                    tools: enabledToolsByProfile[selectedProfileId] || [],
+                    selectedToolName,
+                    onToolChange: (t: string) => {
+                      setSelectedToolName(t);
+                      setUserPickedTool(true);
+                    },
+                  }}
 
                   selectedModel={selectedModel}
                   onModelChange={handleModelChange}
