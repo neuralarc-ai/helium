@@ -489,10 +489,13 @@ export function useUploadThreadFiles() {
   const { getHeaders } = useAuthHeaders();
   
   return useMutation({
-    mutationFn: async ({ threadId, file }: { threadId: string; file: File }): Promise<UploadResponse> => {
+    mutationFn: async ({ threadId, file, customName }: { threadId: string; file: File; customName?: string }): Promise<UploadResponse> => {
       const headers = await getHeaders();
       const formData = new FormData();
       formData.append('file', file);
+      if (customName && customName.trim().length > 0) {
+        formData.append('custom_name', customName.trim());
+      }
 
       // Remove Content-Type header for FormData uploads - browser will set it automatically
       const { 'Content-Type': _, ...uploadHeaders } = headers;

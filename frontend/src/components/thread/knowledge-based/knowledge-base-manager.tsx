@@ -78,6 +78,11 @@ interface EditDialogData {
   isOpen: boolean;
 }
 
+interface DetailsDialogData {
+  entry: KnowledgeBaseEntry | null;
+  isOpen: boolean;
+}
+
 interface DroppedFile {
   id: string;
   file: File;
@@ -156,6 +161,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
   const [previewFile, setPreviewFile] = useState<DroppedFile | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [detailsDialog, setDetailsDialog] = useState<DetailsDialogData>({ isOpen: false, entry: null });
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<CreateKnowledgeBaseEntryRequest>({
@@ -166,6 +172,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
   });
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ file: File; content: string }>>([]);
+  const [previewFiles, setPreviewFiles] = useState<Array<{ file: File; content?: string; status: 'pending' | 'processing' | 'ready' | 'error'; error?: string }>>([]);
 
   const { data: knowledgeBase, isLoading, error, refetch } = useKnowledgeBaseEntries(threadId, showInactive);
   const { data: kbContext, refetch: refetchKbContext, isLoading: isLoadingContext } = useKnowledgeBaseContext(threadId, 16000);
@@ -189,6 +196,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
   const handleOpenCreateDialog = () => {
     setFormData({ name: '', description: '', content: '', usage_context: 'always' });
     setUploadedFiles([]);
+    setPreviewFiles([]);
     uploadingSetRef.current.clear();
     setEditDialog({ isOpen: true });
   };
@@ -208,7 +216,16 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
     setEditDialog({ isOpen: false });
     setUploadedFiles([]);
     setIsUploading(false);
+    setPreviewFiles([]);
     uploadingSetRef.current.clear();
+  };
+
+  const handleOpenDetailsDialog = (entry: KnowledgeBaseEntry) => {
+    setDetailsDialog({ entry, isOpen: true });
+  };
+
+  const handleCloseDetailsDialog = () => {
+    setDetailsDialog({ isOpen: false, entry: null });
   };
 
   const readFileContent = (file: File): Promise<string> => {
@@ -252,20 +269,28 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
       const isTextLike = file.type.startsWith('text/') || /\.(txt|md|json|log|csv)$/i.test(lower);
 
       const uploadKey = `${file.name}|${file.size}`;
-      if (uploadingSetRef.current.has(uploadKey)) {
-        // Debounce duplicate events from drag/drop and input change
+      // Reject duplicates already queued or added or existing entries
+      const existsInEntries = entries.some(e => {
+        const entryName = (e.name || '').toLowerCase();
+        const entryFilename = (e as any).source_metadata?.filename?.toLowerCase?.() || '';
+        const filenameLower = file.name.toLowerCase();
+        return entryName === filenameLower || entryFilename === filenameLower;
+      });
+      if (
+        uploadingSetRef.current.has(uploadKey) ||
+        previewFiles.some((pf) => pf.file.name === file.name && pf.file.size === file.size) ||
+        uploadedFiles.some((uf) => uf.file.name === file.name && uf.file.size === file.size) ||
+        existsInEntries
+      ) {
+        toast.error('File already exists');
         return;
       }
       uploadingSetRef.current.add(uploadKey);
 
       if (isPdf || isCsv || isDocx) {
-        // Send to backend for extraction and direct KB entry creation
-        const response = await uploadMutation.mutateAsync({ threadId, file });
-        if (response) {
-          toast.success(`Uploaded and processed ${file.name}`);
-          await refetch();
-          await refetchKbContext();
-        }
+        // Add to preview list instead of immediate upload
+        setPreviewFiles((prev) => prev.concat({ file, status: 'ready' }));
+        toast.success(`Added ${file.name} to upload queue`);
       } else {
         // Read content client-side and include in the form content
         const content = await readFileContent(file);
@@ -298,6 +323,48 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleUploadFileFromPreview = async (file: File) => {
+    try {
+      setIsUploading(true);
+      const customName = (formData.name || '').trim() || undefined;
+      // Prevent duplicate by name vs existing entries
+      const nameLower = (customName || file.name).toLowerCase();
+      const existsByName = entries.some(e => (e.name || '').toLowerCase() === nameLower);
+      if (existsByName) {
+        toast.error('File already exists');
+        setIsUploading(false);
+        return;
+      }
+      const response = await uploadMutation.mutateAsync({ threadId, file, customName });
+      if (response) {
+        toast.success(`Uploaded and processed ${file.name}`);
+        setPreviewFiles((prev) => prev.filter((pf) => pf.file !== file));
+        await refetch();
+        await refetchKbContext();
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to upload file');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveFileFromPreview = (file: File) => {
+    setPreviewFiles((prev) => prev.filter((pf) => pf.file !== file));
+    const uploadKey = `${file.name}|${file.size}`;
+    uploadingSetRef.current.delete(uploadKey);
+  };
+
+  const getFileIcon = (filename: string) => {
+    const lower = filename.toLowerCase();
+    if (lower.endsWith('.pdf')) return FileText;
+    if (lower.endsWith('.csv')) return FileCode;
+    if (lower.endsWith('.docx')) return FileText;
+    if (/(png|jpg|jpeg|gif|webp)$/i.test(lower)) return ImageIcon;
+    if (lower.endsWith('.zip')) return FileArchive;
+    return File;
   };
 
   const handleFormDragOver = (e: React.DragEvent) => {
@@ -335,7 +402,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
         : nonPdfText;
     }
 
-    if (!combinedContent.trim() && uploadedFiles.length === 0) {
+    if (!combinedContent.trim() && uploadedFiles.length === 0 && previewFiles.length === 0) {
       toast.error('Please provide content or upload files');
       return;
     }
@@ -348,6 +415,23 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
     };
 
     try {
+      // Upload any queued preview files first
+      if (previewFiles.length > 0) {
+        for (const pf of previewFiles) {
+          await handleUploadFileFromPreview(pf.file);
+        }
+      }
+
+      // If there is no inline content and no in-form uploaded text files,
+      // and we only uploaded files via preview, then we're done.
+      if (!combinedContent.trim() && uploadedFiles.length === 0) {
+        toast.success('Files uploaded successfully');
+        handleCloseDialog();
+        refetch();
+        refetchKbContext();
+        return;
+      }
+
       if (editDialog.entry) {
         await updateMutation.mutateAsync({ entryId: editDialog.entry.entry_id, data: payload as UpdateKnowledgeBaseEntryRequest });
         toast.success('Knowledge entry updated');
@@ -469,18 +553,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
 
   return (
     <div className="space-y-6">
-      {/* Context Preview */}
-      {(!isLoadingContext && kbContext?.context) && (
-        <div className="rounded-md border border-blue-500/30 bg-blue-500/10 p-3 text-xs">
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-blue-300">Context Preview (thread)</span>
-            <Button variant="ghost" size="sm" className="h-6 px-2" onClick={() => refetchKbContext()}>Refresh</Button>
-          </div>
-          <div className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap text-blue-200">
-            {kbContext.context.length > 500 ? kbContext.context.slice(0, 500) + '…' : kbContext.context}
-          </div>
-        </div>
-      )}
+     
 
       {/* 
       <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4 border border-blue-500/20">
@@ -540,7 +613,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
       ) : filteredEntries.length === 0 ? (
         <div className="text-center py-12">
           <div className="mx-auto w-24 h-24 bg-muted/50 rounded-full flex items-center justify-center mb-4">
-            <FileText className="h-8 w-8 text-muted-foreground" />
+           <FileText className="h-8 w-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium mb-2">No Knowledge Entries</h3>
           <p className="text-muted-foreground mb-6 max-w-md mx-auto">
@@ -557,7 +630,12 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
             const contextConfig = getUsageContextConfig(entry.usage_context);
             const ContextIcon = contextConfig.icon;
             return (
-              <div key={entry.entry_id} className={cn('group border rounded-lg p-4 transition-all', entry.is_active ? 'border-border bg-card hover:border-border/80' : 'border-border/50 bg-muted/30 opacity-70')}>
+              <Tooltip key={entry.entry_id}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={cn('group border rounded-lg p-4 transition-all cursor-pointer', entry.is_active ? 'border-border bg-card hover:border-border/80' : 'border-border/50 bg-muted/30 opacity-70')}
+                    onClick={() => handleOpenDetailsDialog(entry)}
+                  >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-2">
@@ -580,18 +658,23 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
                       <span>Created {new Date(entry.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleOpenEditDialog(entry)}>
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpenEditDialog(entry); }}>
                         <Edit2 className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleToggleActive(entry)}>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleActive(entry); }}>
                         {entry.is_active ? (
                           <>
                             <EyeOff className="h-4 w-4 mr-2" />
@@ -605,27 +688,32 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
                         )}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleSetUsageContext(entry, 'always')}>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetUsageContext(entry, 'always'); }}>
                         <Eye className="h-4 w-4 mr-2" />
                         Set Always Active
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleSetUsageContext(entry, 'contextual')}>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetUsageContext(entry, 'contextual'); }}>
                         <Eye className="h-4 w-4 mr-2" />
                         Set Contextual
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleSetUsageContext(entry, 'on_request')}>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleSetUsageContext(entry, 'on_request'); }}>
                         <EyeOff className="h-4 w-4 mr-2" />
                         Set On Request Only
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setDeleteEntryId(entry.entry_id)} className="text-red-600">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeleteEntryId(entry.entry_id); }} className="text-red-600">
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </div>
+                </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Click to view details and usage context</p>
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>
@@ -639,7 +727,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name" className="text-lg mb-2">Name</Label>
               <Input
                 id="name"
                 name="name"
@@ -650,20 +738,19 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
               />
             </div>
             <div>
-              <Label htmlFor="description">Helium will diffuse this knowledge effectively when...</Label>
+              <Label htmlFor="description" className="text-lg mb-2">Helium will diffuse this knowledge effectively when... (Optional)</Label>
               <Input
                 id="description"
                 name="description"
                 value={formData.description}
                 onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Describe when this knowledge should be used"
-                required
               />
             </div>
 
             {/* File Upload Section */}
             <div>
-              <Label>Attach Files (Optional)</Label>
+              <Label className="text-lg mb-2">Attach Files (Optional)</Label>
               <div
                 className={cn(
                   'border-2 border-dashed rounded-lg p-4 text-center transition-colors mt-2',
@@ -697,6 +784,37 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
                 />
               </div>
 
+              {/* Preview files queued for backend extraction */}
+              {previewFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <Label className="text-sm font-medium">Files to Upload:</Label>
+                  <div className="space-y-2">
+                    {previewFiles.map((pf, idx) => {
+                      const Icon = getFileIcon(pf.file.name);
+                      return (
+                        <div key={idx} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                          <div className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium truncate max-w-[240px]">{pf.file.name}</span>
+                            <span className="text-xs text-muted-foreground">({Math.round(pf.file.size / 1024)}KB)</span>
+                            {pf.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                            {pf.status === 'error' && <span className="text-xs text-red-500">{pf.error || 'Error'}</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button type="button" variant="outline" size="sm" onClick={() => handleUploadFileFromPreview(pf.file)} disabled={isUploading}>
+                              Upload
+                            </Button>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveFileFromPreview(pf.file)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Display uploaded (in-form) files */}
               {uploadedFiles.length > 0 && (
                 <div className="mt-4 space-y-2">
@@ -713,7 +831,12 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => setUploadedFiles((prev) => prev.filter((_, i) => i !== idx))}
+                          onClick={() => {
+                            const file = fileData.file;
+                            setUploadedFiles((prev) => prev.filter((_, i) => i !== idx));
+                            const uploadKey = `${file.name}|${file.size}`;
+                            uploadingSetRef.current.delete(uploadKey);
+                          }}
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -725,7 +848,7 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
             </div>
 
             <div>
-              <Label htmlFor="content">Content</Label>
+              <Label htmlFor="content" className="text-lg mb-2">Content (Optional)</Label>
               <Textarea
                 id="content"
                 name="content"
@@ -733,11 +856,11 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
                 onChange={(e) => setFormData((p) => ({ ...p, content: e.target.value }))}
                 placeholder="Enter the knowledge content (optional if files uploaded and processed)..."
                 rows={8}
-                required={uploadedFiles.length === 0}
+                required={uploadedFiles.length === 0 && previewFiles.length === 0}
               />
             </div>
             <div>
-              <Label htmlFor="usage_context">Usage Context</Label>
+              <Label htmlFor="usage_context" className="text-lg mb-2">Usage Context</Label>
               <Select
                 value={formData.usage_context}
                 onValueChange={(v) => setFormData((p) => ({ ...p, usage_context: v as any }))}
@@ -770,6 +893,73 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Dialog */}
+      <Dialog open={detailsDialog.isOpen} onOpenChange={handleCloseDetailsDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {detailsDialog.entry?.name || 'Loading...'}
+            </DialogTitle>
+          </DialogHeader>
+          {detailsDialog.entry ? (
+            <div className="space-y-6">
+              <div>
+                <h4 className="font-medium mb-2">Usage Context</h4>
+                <p className="text-sm text-muted-foreground">
+                  {detailsDialog.entry.description || 'No usage context provided'}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Content</h4>
+                <div className="bg-muted/30 rounded-lg p-4 max-h-96 overflow-y-auto border">
+                  {detailsDialog.entry.content ? (
+                    <pre className="text-sm whitespace-pre-wrap break-words font-mono">{detailsDialog.entry.content}</pre>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">No content available for this entry</p>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Status:</span>
+                  <Badge variant={detailsDialog.entry.is_active ? 'default' : 'secondary'} className="ml-2">
+                    {detailsDialog.entry.is_active ? 'Active' : 'Disabled'}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="font-medium">Usage Context:</span>
+                  <Badge variant="outline" className="ml-2">
+                    {getUsageContextConfig(detailsDialog.entry.usage_context).label}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="font-medium">Created:</span>
+                  <span className="ml-2 text-muted-foreground">{new Date(detailsDialog.entry.created_at).toLocaleDateString()}</span>
+                </div>
+                <div>
+                  <span className="font-medium">Updated:</span>
+                  <span className="ml-2 text-muted-foreground">{new Date(detailsDialog.entry.updated_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+              {detailsDialog.entry.content_tokens && (
+                <div>
+                  <span className="font-medium">Content Tokens:</span>
+                  <span className="ml-2 text-muted-foreground">~{detailsDialog.entry.content_tokens.toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Loading entry details...</p>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
