@@ -41,6 +41,7 @@ interface ThreadLayoutProps {
   initialLoadCompleted: boolean;
   agentName?: string;
   disableInitialAnimation?: boolean;
+  agentRunId?: string;
 }
 
 export function ThreadLayout({
@@ -75,7 +76,8 @@ export function ThreadLayout({
   isMobile,
   initialLoadCompleted,
   agentName,
-  disableInitialAnimation = false
+  disableInitialAnimation = false,
+  agentRunId
 }: ThreadLayoutProps) {
   const { state: leftSidebarState } = useSidebar();
   const isLeftSidebarExpanded = leftSidebarState === 'expanded';
@@ -124,6 +126,8 @@ export function ThreadLayout({
         agentName={agentName}
         disableInitialAnimation={disableInitialAnimation}
         isLeftSidebarExpanded={isLeftSidebarExpanded}
+        threadId={threadId}
+        agentRunId={agentRunId}
       />
 
       {sandboxId && (

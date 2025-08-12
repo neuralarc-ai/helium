@@ -601,6 +601,7 @@ export default function ThreadPage({
         isMobile={isMobile}
         initialLoadCompleted={initialLoadCompleted}
         agentName={agent && agent.name}
+        agentRunId={agentRunId}
       >
         <ThreadError error={error} />
       </ThreadLayout>
@@ -645,6 +646,7 @@ export default function ThreadPage({
         initialLoadCompleted={initialLoadCompleted}
         agentName={agent && agent.name}
         disableInitialAnimation={!initialLoadCompleted && toolCalls.length > 0}
+        agentRunId={agentRunId}
       >
         {/* {workflowId && (
           <div className="px-4 pt-4">
