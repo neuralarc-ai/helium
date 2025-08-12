@@ -680,7 +680,7 @@ export default function ThreadPage({
             isMobile ? 'left-0 right-0 pb-6' : ''
           )}>
           <div className={cn(
-            "flex justify-center px-4",
+            "flex justify-center px-0",
             !isMobile && "px-8"
           )}>
             <div className={cn(

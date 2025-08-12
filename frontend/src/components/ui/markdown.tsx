@@ -61,14 +61,14 @@ const INITIAL_COMPONENTS: Partial<Components> = {
   },
   ul: function UnorderedList({ children, ...props }: any) {
     return (
-      <ul className="list-disc pl-5 my-2 ml-1" {...props}>
+      <ul className="list-disc my-2" {...props}>
         {children}
       </ul>
     );
   },
   ol: function OrderedList({ children, ...props }: any) {
     return (
-      <ol className="list-decimal pl-5 my-2 ml-4" {...props}>
+      <ol className="list-decimal my-2" {...props}>
         {children}
       </ol>
     );
