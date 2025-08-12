@@ -40,7 +40,7 @@ export function ExposePortToolView({
 
   return (
     <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-xl mx-2 mt-2">
+      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-lg mx-4 mt-2">
         <div className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             <Computer className="w-5 h-5 text-white" />
@@ -51,7 +51,7 @@ export function ExposePortToolView({
             </div>
           </div>
 
-          {!isStreaming && (
+          {/* {!isStreaming && (
             <Badge
               variant="secondary"
               className={
@@ -67,7 +67,7 @@ export function ExposePortToolView({
               )}
               {actualIsSuccess ? 'Port exposed successfully' : 'Failed to expose port'}
             </Badge>
-          )}
+          )} */}
         </div>
       </CardHeader>
 

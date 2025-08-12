@@ -44,7 +44,7 @@ export const MarkdownRenderer = forwardRef<
   return (
     <ScrollArea className={cn('w-full h-full rounded-md relative', className)}>
       <div
-        className="p-4 markdown prose prose-sm dark:prose-invert max-w-none"
+        className="p-4 px-6 markdown prose prose-sm dark:prose-invert max-w-none chat-markdown"
         ref={ref}
       >
         <ReactMarkdown
@@ -75,7 +75,7 @@ export const MarkdownRenderer = forwardRef<
             },
             // Style other elements as needed
             h1: ({ node, ...props }) => (
-              <h1 className="text-2xl font-bold my-4" {...props} />
+              <h1 className="text-2xl font-bold my-4 libre-baskerville-bold" {...props} />
             ),
             h2: ({ node, ...props }) => (
               <h2 className="text-xl font-bold my-3" {...props} />
@@ -87,13 +87,13 @@ export const MarkdownRenderer = forwardRef<
               <a className="text-primary hover:underline" {...props} />
             ),
             p: ({ node, ...props }) => (
-              <p className="my-2 font-sans cjk-text" {...props} />
+              <p className="my-2" {...props} />
             ),
             ul: ({ node, ...props }) => (
-              <ul className="list-disc pl-5 my-2 ml-4" {...props} />
+              <ul className="list-disc my-2" {...props} />
             ),
             ol: ({ node, ...props }) => (
-              <ol className="list-decimal pl-5 my-2 ml-4" {...props} />
+              <ol className="list-decimal my-2" {...props} />
             ),
             li: ({ node, ...props }) => <li className="my-1" {...props} />,
             blockquote: ({ node, ...props }) => (
@@ -126,7 +126,7 @@ export const MarkdownRenderer = forwardRef<
             ),
             td: ({ node, ...props }) => (
               <td
-                className="border border-slate-300 dark:border-zinc-700 px-3 py-2 cjk-text"
+                className="border border-slate-300 dark:border-zinc-700 px-3 py-2"
                 {...props}
               />
             ),
