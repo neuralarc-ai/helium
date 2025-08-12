@@ -188,6 +188,44 @@ MODELS = {
     #     },
     #     "tier_availability": ["paid"]
     # },   
+    
+    # Z.AI GLM Models from OpenRouter
+    "openrouter/z-ai/glm-4.5v": {
+        "aliases": ["glm-4.5v", "z-ai-glm-4.5v"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.60,
+            "output_cost_per_million_tokens": 1.80
+        },
+        "tier_availability": ["free"],
+        "features": ["vision", "multimodal", "reasoning", "agent-focused"]
+    },
+    "openrouter/z-ai/glm-4.5": {
+        "aliases": ["glm-4.5", "z-ai-glm-4.5"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.60,
+            "output_cost_per_million_tokens": 2.20
+        },
+        "tier_availability": ["free"],
+        "features": ["reasoning", "code-generation", "agent-alignment", "128k-context"]
+    },
+    "openrouter/z-ai/glm-4.5-air": {
+        "aliases": ["glm-4.5-air", "z-ai-glm-4.5-air"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.20,
+            "output_cost_per_million_tokens": 1.10
+        },
+        "tier_availability": ["free"],
+        "features": ["lightweight", "reasoning", "real-time", "cost-effective"]
+    },
+    "openrouter/z-ai/glm-4-32b": {
+        "aliases": ["glm-4-32b", "z-ai-glm-4-32b"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.10,
+            "output_cost_per_million_tokens": 0.10
+        },
+        "tier_availability": ["free"],
+        "features": ["cost-effective", "tool-use", "online-search", "code-tasks"]
+    }
 }
 
 # Derived structures (auto-generated from MODELS)
