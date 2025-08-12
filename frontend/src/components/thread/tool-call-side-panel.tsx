@@ -13,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { ToolView } from './tool-views/wrapper';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { useMediumScreen } from '@/hooks/react-query/se-medium-screen';
+import { useCustomBreakpoint } from '@/hooks/use-custom-breakpoint';
 
 export interface ToolCallInput {
   assistantCall: {
@@ -87,13 +89,35 @@ export function ToolCallSidePanel({
   const [isInitialized, setIsInitialized] = React.useState(false);
 
   const isMobile = useIsMobile();
+  const [isFullScreen, setIsFullScreen] = React.useState(false);
+  const isMediumScreen = useMediumScreen();
+  const isCustomBreakpoint = useCustomBreakpoint();
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const mediaQuery = window.matchMedia('(max-width: 1023px)');
+      const handleChange = (event: MediaQueryListEvent) => {
+        setIsFullScreen(event.matches);
+      };
+
+      // Initial check
+      setIsFullScreen(mediaQuery.matches);
+
+      mediaQuery.addEventListener('change', handleChange);
+
+      return () => {
+        mediaQuery.removeEventListener('change', handleChange);
+      };
+    }
+  }, []);
 
   // Compute responsive width class; shrink a bit when the left sidebar is expanded
   const widthClass = React.useMemo(() => {
-    if (isMobile) return 'left-2';
+    if (isFullScreen) return 'left-2';
+    if (isCustomBreakpoint && isLeftSidebarExpanded) return 'left-2';
+    if (isMediumScreen) return 'w-[calc(100vw-32px)]';
     const base = isLeftSidebarExpanded ? 'w-[45vw]' : 'w-[50vw]';
     return `${base} sm:${base} md:${base} lg:${base} xl:${base}`;
-  }, [isMobile, isLeftSidebarExpanded]);
+  }, [isFullScreen, isLeftSidebarExpanded, isMediumScreen, isCustomBreakpoint]);
 
   const handleClose = React.useCallback(() => {
     onClose();
