@@ -58,7 +58,7 @@ export function AskToolView({
 
   const isPreviewableFile = (filePath: string): boolean => {
     const ext = filePath.split('.').pop()?.toLowerCase() || '';
-    return ext === 'html' || ext === 'htm' || ext === 'md' || ext === 'markdown' || ext === 'csv' || ext === 'tsv';
+    return ext === 'html' || ext === 'htm' || ext === 'md' || ext === 'markdown' || ext === 'csv' || ext === 'tsv' || ext === 'pdf';
   };
 
   const toolTitle = getToolTitle(name) || 'Ask User';

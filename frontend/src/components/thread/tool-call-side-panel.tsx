@@ -450,7 +450,7 @@ export function ToolCallSidePanel({
         <div className="p-4 h-full flex items-stretch justify-end pointer-events-auto">
           <div
             className={cn(
-              'border rounded-2xl flex flex-col shadow-2xl bg-background transition-[width] duration-200 ease-in-out will-change-[width]',
+              'border rounded-2xl flex flex-col bg-white transition-[width] duration-200 ease-in-out will-change-[width]',
               isMobile ? 'w-full' : widthClass,
             )}
           >
@@ -459,7 +459,7 @@ export function ToolCallSidePanel({
                 <div className="pt-4 pl-4 pr-4">
                   <div className="flex items-center justify-between">
                     <div className="ml-2 flex items-center gap-2">
-                      <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                      <h2 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                         {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                         Helium's Core
                       </h2>
@@ -518,7 +518,7 @@ export function ToolCallSidePanel({
           <div className="pt-4 pl-4 pr-4">
             <div className="flex items-center justify-between">
               <div className="ml-2 flex items-center gap-2">
-                <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                   {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                   Helium's Core
                 </h2>
@@ -814,7 +814,7 @@ export function ToolCallSidePanel({
             }
           }}
           className={cn(
-            'fixed top-2 right-2 bottom-4 border rounded-3xl flex flex-col z-30 transition-[width] duration-200 ease-in-out will-change-[width] shadow-sm',
+            'fixed top-2 right-2 bottom-4 shadow-[0px_0px_8px_0px_rgba(0,0,0,0.02)] border border-black/8 dark:border-[var(--border-light)] rounded-3xl flex flex-col z-30 transition-[width] duration-200 ease-in-out will-change-[width]',
             widthClass,
           )}
           style={{
