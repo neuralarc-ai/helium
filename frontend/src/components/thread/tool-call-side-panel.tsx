@@ -85,6 +85,9 @@ export function ToolCallSidePanel({
   const [navigationMode, setNavigationMode] = React.useState<'live' | 'manual'>('live');
   const [toolCallSnapshots, setToolCallSnapshots] = React.useState<ToolCallSnapshot[]>([]);
   const [isInitialized, setIsInitialized] = React.useState(false);
+  const [agentStartTime, setAgentStartTime] = React.useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = React.useState(0);
+  const [finalRuntime, setFinalRuntime] = React.useState<number | null>(null);
 
   const isMobile = useIsMobile();
 
@@ -246,6 +249,21 @@ export function ToolCallSidePanel({
     }
   }, [internalIndex, totalCalls, onNavigate]);
 
+  // Helper function to format elapsed time
+  const formatElapsedTime = (milliseconds: number): string => {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
   const isLiveMode = navigationMode === 'live';
   const showJumpToLive = navigationMode === 'manual' && agentStatus === 'running';
   const showJumpToLatest = navigationMode === 'manual' && agentStatus !== 'running';
@@ -383,6 +401,33 @@ export function ToolCallSidePanel({
     }
   }, [externalNavigateToIndex, totalCalls, internalNavigate]);
 
+  // Timer effect for agent runtime
+  React.useEffect(() => {
+    if (agentStatus === 'running' && !agentStartTime) {
+      // Agent just started running
+      setAgentStartTime(Date.now());
+      setElapsedTime(0);
+      setFinalRuntime(null); // Reset final runtime when starting new
+    } else if (agentStatus !== 'running' && agentStartTime) {
+      // Agent stopped running - store the final runtime
+      const totalRuntime = Date.now() - agentStartTime;
+      setFinalRuntime(totalRuntime);
+      setAgentStartTime(null);
+      setElapsedTime(0);
+    }
+  }, [agentStatus, agentStartTime]);
+
+  // Timer effect for updating elapsed time
+  React.useEffect(() => {
+    if (!agentStartTime || agentStatus !== 'running') return;
+
+    const interval = setInterval(() => {
+      setElapsedTime(Date.now() - agentStartTime);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [agentStartTime, agentStatus]);
+
   React.useEffect(() => {
     if (!isStreaming) return;
     const interval = setInterval(() => {
@@ -418,6 +463,26 @@ export function ToolCallSidePanel({
                         {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                         Helium's Core
                       </h2>
+                      {(agentStatus === 'running' || finalRuntime !== null) && (
+                        <div className={cn(
+                          "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+                          agentStatus === 'running' 
+                            ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+                            : "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                        )}>
+                          {agentStatus === 'running' ? (
+                            <>
+                              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                              <span>{formatElapsedTime(elapsedTime)}</span>
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                              <span>Total: {formatElapsedTime(finalRuntime!)}</span>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <Button
                       variant="ghost"
@@ -457,6 +522,26 @@ export function ToolCallSidePanel({
                   {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                   Helium's Core
                 </h2>
+                {(agentStatus === 'running' || finalRuntime !== null) && (
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+                    agentStatus === 'running' 
+                      ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+                      : "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                  )}>
+                    {agentStatus === 'running' ? (
+                      <>
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                        <span>{formatElapsedTime(elapsedTime)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span>Total: {formatElapsedTime(finalRuntime!)}</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <Button
                 variant="ghost"
@@ -498,6 +583,26 @@ export function ToolCallSidePanel({
                     {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                     Helium's Core
                   </h2>
+                  {(agentStatus === 'running' || finalRuntime !== null) && (
+                    <div className={cn(
+                      "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+                      agentStatus === 'running' 
+                        ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+                        : "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                    )}>
+                      {agentStatus === 'running' ? (
+                        <>
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                          <span>{formatElapsedTime(elapsedTime)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                          <span>Total: {formatElapsedTime(finalRuntime!)}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 flex items-center gap-1.5">
@@ -545,6 +650,26 @@ export function ToolCallSidePanel({
                   {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                   Helium's Core
                 </h2>
+                {(agentStatus === 'running' || finalRuntime !== null) && (
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+                    agentStatus === 'running' 
+                      ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+                      : "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                  )}>
+                    {agentStatus === 'running' ? (
+                      <>
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                        <span>{formatElapsedTime(elapsedTime)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span>Total: {formatElapsedTime(finalRuntime!)}</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <Button
                 variant="ghost"
@@ -596,6 +721,26 @@ export function ToolCallSidePanel({
                 {/* {agentName ? `${agentName}'s Computer` : 'Helium\'s Brain'} */}
                 Helium's Core
               </h2>
+              {(agentStatus === 'running' || finalRuntime !== null) && (
+                <div className={cn(
+                  "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+                  agentStatus === 'running' 
+                    ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+                    : "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                )}>
+                  {agentStatus === 'running' ? (
+                    <>
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                      <span>{formatElapsedTime(elapsedTime)}</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      <span>Total: {formatElapsedTime(finalRuntime!)}</span>
+                    </>
+                  )}
+                </div>
+              )}
             </motion.div>
 
             {displayToolCall.toolResult?.content && !isStreaming && (
