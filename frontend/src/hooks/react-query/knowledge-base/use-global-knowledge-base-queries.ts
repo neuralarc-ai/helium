@@ -237,7 +237,7 @@ export function useUploadGlobalFile() {
   const { getHeaders } = useAuthHeaders();
   
   return useMutation({
-    mutationFn: async (file: File): Promise<{
+    mutationFn: async (params: { file: File; customName?: string }): Promise<{
       success: boolean;
       entry_id: string;
       filename: string;
@@ -245,6 +245,7 @@ export function useUploadGlobalFile() {
       extraction_method: string;
       message: string;
     }> => {
+      const { file, customName } = params;
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -254,6 +255,9 @@ export function useUploadGlobalFile() {
       
       const formData = new FormData();
       formData.append('file', file);
+      if (customName) {
+        formData.append('custom_name', customName);
+      }
       
       const response = await fetch(`${API_URL}/knowledge-base/global/upload-file`, {
         method: 'POST',

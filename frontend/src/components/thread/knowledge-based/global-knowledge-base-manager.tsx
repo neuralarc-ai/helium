@@ -77,6 +77,11 @@ interface EditDialogData {
   isOpen: boolean;
 }
 
+interface DetailsDialogData {
+  entry: KnowledgeBaseEntry | null;
+  isOpen: boolean;
+}
+
 
 
 const USAGE_CONTEXT_OPTIONS = [
@@ -119,10 +124,12 @@ const GlobalKnowledgeBaseSkeleton = () => (
 
 export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) => {
   const [editDialog, setEditDialog] = useState<EditDialogData>({ isOpen: false });
+  const [detailsDialog, setDetailsDialog] = useState<DetailsDialogData>({ isOpen: false, entry: null });
   const [searchTerm, setSearchTerm] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const [isFormDragOver, setIsFormDragOver] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ file: File; content: string; entryId?: string }>>([]);
+  const [previewFiles, setPreviewFiles] = useState<Array<{ file: File; content?: string; status: 'pending' | 'processing' | 'ready' | 'error'; error?: string }>>([]);
   const [isUploading, setIsUploading] = useState(false);
   const formFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -159,64 +166,112 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
   const handleCloseDialog = () => {
     setEditDialog({ isOpen: false });
     setUploadedFiles([]);
+    setPreviewFiles([]);
     setIsUploading(false);
+  };
+
+  const handleOpenDetailsDialog = (entry: KnowledgeBaseEntry) => {
+    setDetailsDialog({ entry, isOpen: true });
+  };
+
+  const handleCloseDetailsDialog = () => {
+    setDetailsDialog({ isOpen: false, entry: null });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     
-    // Check if we have any non-PDF files that need to be processed
-    const nonPdfFiles = uploadedFiles.filter(fileData => 
-      !fileData.file.type.includes('pdf') && !fileData.file.name.toLowerCase().endsWith('.pdf')
-    );
-    
-    // Combine form content with uploaded non-PDF file content
-    let combinedContent = formData.get('content') as string || '';
-    
-    if (nonPdfFiles.length > 0) {
-      const fileContents = nonPdfFiles.map(file => file.content).join('\n\n');
-      if (combinedContent) {
-        combinedContent = `${combinedContent}\n\n--- File Contents ---\n\n${fileContents}`;
-      } else {
-        combinedContent = fileContents;
-      }
-    }
-    
-    // Validate that we have either content or files
-    if (!combinedContent.trim() && uploadedFiles.length === 0) {
-      toast.error('Please provide either content or upload files');
-      return;
-    }
-    
-    // Validate description is provided
-    const description = formData.get('description') as string;
-    if (!description?.trim()) {
-      toast.error('Please describe when this knowledge should be used');
-      return;
-    }
-    
-    // Sanitize the combined content to remove any problematic characters
-    const sanitizedContent = combinedContent
-      .replace(/\u0000/g, '') // Remove null bytes
-      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove other control characters
-      .replace(/\r\n/g, '\n') // Normalize line endings
-      .replace(/\r/g, '\n'); // Normalize line endings
-    
-    if (!sanitizedContent.trim() && uploadedFiles.length === 0) {
-      toast.error('Content is empty after sanitization. Please check your file content.');
-      return;
-    }
-    
-    const entryData: CreateKnowledgeBaseEntryRequest = {
-      name: formData.get('name') as string,
-      description: formData.get('description') as string || undefined,
-      content: sanitizedContent,
-      usage_context: (formData.get('usage_context') as string) || 'always',
-      is_active: true
-    };
-
     try {
+      // First, upload any preview files that need backend processing (PDF/CSV)
+      const previewFilesToUpload = previewFiles.filter(fileData => {
+        const isPdf = fileData.file.type.includes('pdf') || fileData.file.name.toLowerCase().endsWith('.pdf');
+        const isCsv = fileData.file.type.includes('csv') || fileData.file.name.toLowerCase().endsWith('.csv');
+        return (isPdf || isCsv) && fileData.status === 'ready';
+      });
+
+      if (previewFilesToUpload.length > 0) {
+        setIsUploading(true);
+        
+        // Upload preview files one by one using the user-provided name
+        const customName = formData.get('name') as string;
+        
+        for (const fileData of previewFilesToUpload) {
+          try {
+            const response = await uploadFileMutation.mutateAsync({ 
+              file: fileData.file, 
+              customName: customName 
+            });
+            if (response && response.success) {
+              toast.success(`Successfully uploaded and extracted text from ${fileData.file.name}`);
+              // Remove from preview files
+              setPreviewFiles(prev => prev.filter(f => f.file !== fileData.file));
+            } else {
+              throw new Error('Failed to upload file');
+            }
+          } catch (error) {
+            console.error('Error uploading preview file:', error);
+            toast.error(`Failed to upload file: ${fileData.file.name}`);
+            setIsUploading(false);
+            return; // Stop the submission process
+          }
+        }
+        
+        setIsUploading(false);
+        
+        // After uploading preview files, refresh and close dialog
+        refetchGlobal();
+        handleCloseDialog();
+        return;
+      }
+
+      // If no preview files to upload, proceed with regular form submission
+      // Check if we have any non-PDF files that need to be processed
+      const nonPdfFiles = uploadedFiles.filter(fileData => 
+        !fileData.file.type.includes('pdf') && !fileData.file.name.toLowerCase().endsWith('.pdf')
+      );
+      
+      // Combine form content with uploaded non-PDF file content
+      let combinedContent = formData.get('content') as string || '';
+      
+      if (nonPdfFiles.length > 0) {
+        const fileContents = nonPdfFiles.map(file => file.content).join('\n\n');
+        if (combinedContent) {
+          combinedContent = `${combinedContent}\n\n--- File Contents ---\n\n${fileContents}`;
+        } else {
+          combinedContent = fileContents;
+        }
+      }
+      
+      // Validate that we have either content, files, or preview files ready to upload
+      if (!combinedContent.trim() && uploadedFiles.length === 0 && previewFilesToUpload.length === 0) {
+        toast.error('Please provide either content or upload files');
+        return;
+      }
+      
+      // Description is now optional
+      const description = formData.get('description') as string;
+      
+      // Sanitize the combined content to remove any problematic characters
+      const sanitizedContent = combinedContent
+        .replace(/\u0000/g, '') // Remove null bytes
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove other control characters
+        .replace(/\r\n/g, '\n') // Normalize line endings
+        .replace(/\r/g, '\n'); // Normalize line endings
+      
+      if (!sanitizedContent.trim() && uploadedFiles.length === 0) {
+        toast.error('Content is empty after sanitization. Please check your file content.');
+        return;
+      }
+      
+      const entryData: CreateKnowledgeBaseEntryRequest = {
+        name: formData.get('name') as string,
+        description: formData.get('description') as string || undefined,
+        content: sanitizedContent,
+        usage_context: (formData.get('usage_context') as string) || 'always',
+        is_active: true
+      };
+
       if (editDialog.entry) {
         // Update existing entry
         await updateGlobalMutation.mutateAsync({
@@ -232,39 +287,70 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
       refetchGlobal();
     } catch (error) {
       console.error('Error saving global knowledge base entry:', error);
+      setIsUploading(false);
     }
   };
 
   const handleFileUpload = async (file: File) => {
     try {
-      setIsUploading(true);
-      
-      // For PDF and CSV files, we need to use the backend upload endpoint to extract text properly
+      // Add file to preview list first
+      const fileId = Math.random().toString(36).substr(2, 9);
+      // Prevent duplicates across preview and uploaded
+      const dupKey = `${file.name}|${file.size}`;
+      const exists =
+        previewFiles.some(f => f.file.name === file.name && f.file.size === file.size) ||
+        uploadedFiles.some(f => f.file.name === file.name && f.file.size === file.size);
+      // Also prevent duplicates against existing KB entries by filename or name
+      const existsInEntries = globalEntries.some(e => {
+        const entryName = (e.name || '').toLowerCase();
+        const entryFilename = (e as any).source_metadata?.filename?.toLowerCase?.() || '';
+        const filenameLower = file.name.toLowerCase();
+        return entryName === filenameLower || entryFilename === filenameLower;
+      });
+      if (exists) {
+        toast.error('File already exists');
+        return;
+      }
+      if (existsInEntries) {
+        toast.error('File already exists');
+        return;
+      }
+      setPreviewFiles(prev => [...prev, { file, status: 'processing' }]);
+
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') ||
           file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
-        // Use the backend file upload endpoint for PDFs and CSVs
-        const response = await uploadFileMutation.mutateAsync(file);
-        
-        if (response && response.success) {
-          // The backend upload creates a knowledge base entry directly
-          // We don't need to add it to uploadedFiles since it's already in the KB
-          toast.success(`Successfully uploaded and extracted text from ${file.name}`);
-          // Refresh the knowledge base list to show the new entry
-          refetchGlobal();
-        } else {
-          throw new Error('Failed to upload file');
-        }
+        // For PDF and CSV files, just add to preview without uploading yet
+        setPreviewFiles(prev => prev.map(f => 
+          f.file === file ? { ...f, status: 'ready' } : f
+        ));
       } else {
-        // For other files, read as text
-        const content = await readFileContent(file);
-        setUploadedFiles(prev => [...prev, { file, content }]);
+        // For other files, read as text and add to both preview and uploaded files
+        try {
+          const content = await readFileContent(file);
+          // Re-check duplicate by content hash-equivalent (length+name heuristic)
+          const filenameLower = file.name.toLowerCase();
+          const existsByName = globalEntries.some(e => (e.name || '').toLowerCase() === filenameLower);
+          if (existsByName) {
+            toast.error('File already exists');
+            setPreviewFiles(prev => prev.filter(f => f.file !== file));
+            return;
+          }
+          setUploadedFiles(prev => [...prev, { file, content }]);
+          setPreviewFiles(prev => prev.map(f => 
+            f.file === file ? { ...f, content, status: 'ready' } : f
+          ));
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          setPreviewFiles(prev => prev.map(f => 
+            f.file === file ? { ...f, status: 'error', error: errorMessage } : f
+          ));
+          throw error;
+        }
       }
       
     } catch (error) {
       console.error('Error processing file:', error);
       toast.error(`Failed to process file: ${file.name}`);
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -339,6 +425,77 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
     for (const file of files) {
       await handleFileUpload(file);
     }
+  };
+
+  const handleUploadFileFromPreview = async (file: File) => {
+    try {
+      setIsUploading(true);
+      
+      // Get the current name from the form field
+      const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
+      const customName = nameInput?.value || file.name;
+      // Guard: prevent duplicate by name against existing entries
+      const nameLower = customName.toLowerCase();
+      const existsByName = globalEntries.some(e => (e.name || '').toLowerCase() === nameLower);
+      const existsByFilename = globalEntries.some(e => (e as any).source_metadata?.filename?.toLowerCase?.() === file.name.toLowerCase());
+      if (existsByName) {
+        toast.error('File already exists');
+        setIsUploading(false);
+        return;
+      }
+      if (existsByFilename) {
+        toast.error('File already exists');
+        setIsUploading(false);
+        return;
+      }
+      
+      // Use the backend file upload endpoint for PDFs and CSVs
+      const response = await uploadFileMutation.mutateAsync({ 
+        file, 
+        customName: customName 
+      });
+      
+      if (response && response.success) {
+        // The backend upload creates a knowledge base entry directly
+        toast.success(`Successfully uploaded and extracted text from ${file.name}`);
+        // Remove from preview and refresh the knowledge base list
+        setPreviewFiles(prev => prev.filter(f => f.file !== file));
+        refetchGlobal();
+      } else {
+        throw new Error('Failed to upload file');
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast.error(`Failed to upload file: ${file.name}`);
+      // Update preview file status to error
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      setPreviewFiles(prev => prev.map(f => 
+        f.file === file ? { ...f, status: 'error', error: errorMessage } : f
+      ));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveFileFromPreview = (file: File) => {
+    setPreviewFiles(prev => prev.filter(f => f.file !== file));
+    setUploadedFiles(prev => prev.filter(f => f.file !== file));
+  };
+
+  const getFileIcon = (file: File) => {
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      return FileText;
+    }
+    if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
+      return FileCode;
+    }
+    if (file.type.startsWith('image/')) {
+      return ImageIcon;
+    }
+    if (file.name.toLowerCase().endsWith('.zip')) {
+      return FileArchive;
+    }
+    return File;
   };
 
   if (isLoadingGlobal) {
@@ -451,16 +608,17 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
                 <TooltipTrigger asChild>
                   <div
                     className={cn(
-                      "group border rounded-lg p-4 transition-all",
+                      "group border rounded-lg p-4 transition-all cursor-pointer",
                       entry.is_active 
                         ? "border-border bg-card hover:border-border/80" 
                         : "border-border/50 bg-muted/30 opacity-70"
                     )}
+                    onClick={() => handleOpenDetailsDialog(entry)}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0 space-y-2">
                         <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                         {/* <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" /> */}
                           <h3 className="font-medium truncate">{entry.name}</h3>
                           <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
                             <Globe className="h-3 w-3 mr-1" />
@@ -483,16 +641,21 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleOpenEditDialog(entry)}>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleOpenEditDialog(entry); }}>
                             <Edit2 className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleActive(entry)}>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleActive(entry); }}>
                             {entry.is_active ? (
                               <>
                                 <EyeOff className="h-4 w-4 mr-2" />
@@ -507,7 +670,7 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
-                            onClick={() => handleDelete(entry.entry_id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(entry.entry_id); }}
                             className="text-red-600"
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
@@ -527,9 +690,112 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
         )}
       </div>
 
+      {/* Details Dialog */}
+      <Dialog open={detailsDialog.isOpen} onOpenChange={handleCloseDetailsDialog}>
+        <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {detailsDialog.entry?.name || 'Loading...'}
+            </DialogTitle>
+          </DialogHeader>
+          {detailsDialog.entry ? (
+            <div className="space-y-6">
+              <div>
+                <h4 className="font-medium mb-2">Usage Context</h4>
+                <p className="text-sm text-muted-foreground">
+                  {detailsDialog.entry.description || 'No usage context provided'}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-medium mb-2">Content</h4>
+                <div className="bg-muted/30 rounded-lg p-4 max-h-96 overflow-y-auto border">
+                  {detailsDialog.entry.content ? (
+                    <pre className="text-sm whitespace-pre-wrap break-words font-mono">
+                      {detailsDialog.entry.content}
+                    </pre>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">
+                      No content available for this entry
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Status:</span>
+                  <Badge variant={detailsDialog.entry.is_active ? "default" : "secondary"} className="ml-2">
+                    {detailsDialog.entry.is_active ? "Active" : "Disabled"}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="font-medium">Usage Context:</span>
+                  <Badge variant="outline" className="ml-2">
+                    {getUsageContextConfig(detailsDialog.entry.usage_context || 'always').label}
+                  </Badge>
+                </div>
+                <div>
+                  <span className="font-medium">Created:</span>
+                  <span className="ml-2 text-muted-foreground">
+                    {detailsDialog.entry.created_at ? new Date(detailsDialog.entry.created_at).toLocaleDateString() : 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium">Updated:</span>
+                  <span className="ml-2 text-muted-foreground">
+                    {detailsDialog.entry.updated_at ? new Date(detailsDialog.entry.updated_at).toLocaleDateString() : 'N/A'}
+                  </span>
+                </div>
+              </div>
+              {detailsDialog.entry.content_tokens && (
+                <div>
+                  <span className="font-medium">Content Tokens:</span>
+                  <span className="ml-2 text-muted-foreground">
+                    ~{detailsDialog.entry.content_tokens.toLocaleString()}
+                  </span>
+                </div>
+              )}
+              {/* Additional metadata for debugging */}
+              {detailsDialog.entry.source_metadata && (
+                <div>
+                  <h4 className="font-medium mb-2">File Information</h4>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    {detailsDialog.entry.source_metadata.filename && (
+                      <div>
+                        <span className="font-medium">Original Filename:</span>
+                        <span className="ml-2">{detailsDialog.entry.source_metadata.filename}</span>
+                      </div>
+                    )}
+                    {detailsDialog.entry.source_metadata.file_size && (
+                      <div>
+                        <span className="font-medium">File Size:</span>
+                        <span className="ml-2">{Math.round(detailsDialog.entry.source_metadata.file_size / 1024)}KB</span>
+                      </div>
+                    )}
+                    {detailsDialog.entry.source_metadata.extraction_method && (
+                      <div>
+                        <span className="font-medium">Extraction Method:</span>
+                        <span className="ml-2">{detailsDialog.entry.source_metadata.extraction_method}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">Loading entry details...</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Create/Edit Dialog */}
       <Dialog open={editDialog.isOpen} onOpenChange={handleCloseDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto ">
           <DialogHeader>
             <DialogTitle>
               {editDialog.entry ? 'Edit Global Knowledge Entry' : 'Add Global Knowledge Entry'}
@@ -537,7 +803,7 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name" className="mb-2 text-lg">Name</Label>
               <Input
                 id="name"
                 name="name"
@@ -547,19 +813,18 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
               />
             </div>
             <div>
-              <Label htmlFor="description">Helium will diffuse this knowledge effectively when...</Label>
-              <Input
+              <Label htmlFor="description" className="mb-2 text-lg">Helium will diffuse this knowledge effectively when... (Optional)</Label>
+              <Input 
                 id="description"
                 name="description"
                 defaultValue={editDialog.entry?.description}
                 placeholder="Describe when this knowledge should be used (e.g., 'Use for onboarding', 'Reference for compliance questions', etc.)"
-                required
               />
             </div>
 
             {/* File Upload Section */}
             <div>
-              <Label>Attach Files (Optional)</Label>
+              <Label className="text-lg">Attach Files (Optional)</Label>
               <div
                 className={cn(
                   "border-2 border-dashed rounded-lg p-4 text-center transition-colors mt-2",
@@ -601,24 +866,110 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
                 />
               </div>
               
-              {/* Display uploaded files */}
+              {/* Display preview files */}
+              {previewFiles.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <Label className="text-sm font-medium text-lg">File Preview:</Label>
+                  <div className="space-y-2">
+                    {previewFiles.map((fileData, index) => {
+                      const FileIcon = getFileIcon(fileData.file);
+                      const isPdf = fileData.file.type.includes('pdf') || fileData.file.name.toLowerCase().endsWith('.pdf');
+                      const isCsv = fileData.file.type.includes('csv') || fileData.file.name.toLowerCase().endsWith('.csv');
+                      const needsUpload = isPdf || isCsv;
+                      
+                      return (
+                        <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-md border">
+                          <div className="flex items-center gap-3 flex-1">
+                            <FileIcon className="h-5 w-5 text-muted-foreground" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium truncate">{fileData.file.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  ({Math.round(fileData.file.size / 1024)}KB)
+                                </span>
+                                {isPdf && (
+                                  <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
+                                    PDF
+                                  </Badge>
+                                )}
+                                {isCsv && (
+                                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                                    CSV
+                                  </Badge>
+                                )}
+                              </div>
+                              {fileData.status === 'processing' && (
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  <span className="text-xs text-muted-foreground">Processing...</span>
+                                </div>
+                              )}
+                              {fileData.status === 'error' && (
+                                <div className="flex items-center gap-2 mt-1">
+                                  <AlertCircle className="h-3 w-3 text-red-500" />
+                                  <span className="text-xs text-red-600">{fileData.error || 'Error processing file'}</span>
+                                </div>
+                              )}
+                              {/* {fileData.status === 'ready' && needsUpload && (
+                                <span className="text-xs text-amber-600 mt-1 block">Ready to upload - click the upload button</span>
+                              )} */}
+                              {fileData.status === 'ready' && !needsUpload && (
+                                <span className="text-xs text-green-600 mt-1 block">Content loaded - will be included in entry</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {needsUpload && fileData.status === 'ready' && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="default"
+                                onClick={() => handleUploadFileFromPreview(fileData.file)}
+                                disabled={isUploading}
+                                className="text-xs"
+                              >
+                                {isUploading ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Upload className="h-3 w-3 mr-1" />
+                                    Upload
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveFileFromPreview(fileData.file)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Display uploaded files that are ready for form submission */}
               {uploadedFiles.length > 0 && (
                 <div className="mt-4 space-y-2">
-                  <Label className="text-sm font-medium">Uploaded Files:</Label>
+                  <Label className="text-sm font-medium mb-2 text-lg">Content Files (will be included in entry):</Label>
                   <div className="space-y-2">
                     {uploadedFiles.map((fileData, index) => (
-                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                      <div key={index} className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-md dark:bg-green-900/20 dark:border-green-800">
                         <div className="flex items-center gap-2">
-                          <File className="h-4 w-4 text-muted-foreground" />
+                          <File className="h-4 w-4 text-green-600" />
                           <span className="text-sm font-medium">{fileData.file.name}</span>
                           <span className="text-xs text-muted-foreground">
-                            ({Math.round(fileData.content.length / 1024)}KB)
+                            ({Math.round(fileData.content.length / 1024)}KB content)
                           </span>
-                          {fileData.file.type.includes('pdf') || fileData.file.name.toLowerCase().endsWith('.pdf') ? (
-                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
-                              PDF
-                            </Badge>
-                          ) : null}
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+                            Ready
+                          </Badge>
                         </div>
                         <Button
                           type="button"
@@ -636,32 +987,22 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
                 </div>
               )}
               
-              {/* Show message for PDF files that were uploaded directly */}
-              {uploadedFiles.some(fileData => 
-                fileData.file.type.includes('pdf') || fileData.file.name.toLowerCase().endsWith('.pdf')
-              ) && (
-                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md dark:bg-blue-900/20 dark:border-blue-800">
-                  <p className="text-xs text-blue-700 dark:text-blue-400">
-                    <strong>Note:</strong> PDF files are automatically processed and extracted by the backend. 
-                    The extracted text will be included in your knowledge base entry.
-                  </p>
-                </div>
-              )}
+              {/* Info message for file uploads */}
+              
             </div>
 
             <div>
-              <Label htmlFor="content">Content</Label>
+              <Label htmlFor="content" className="mb-2 text-lg">Content (Optional)</Label>
               <Textarea
                 id="content"
                 name="content"
                 defaultValue={editDialog.entry?.content}
                 placeholder="Enter additional knowledge content (optional - files will be automatically included)..."
                 rows={8}
-                required={uploadedFiles.length === 0}
               />
             </div>
             <div>
-              <Label htmlFor="usage_context">Usage Context</Label>
+              <Label htmlFor="usage_context" className="mb-2 text-lg">Usage Context</Label>
               <Select name="usage_context" defaultValue={editDialog.entry?.usage_context || 'always'}>
                 <SelectTrigger>
                   <SelectValue />
@@ -682,7 +1023,10 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
               </Button>
               <Button type="submit" disabled={createGlobalMutation.isPending || updateGlobalMutation.isPending || isUploading}>
                 {createGlobalMutation.isPending || updateGlobalMutation.isPending || isUploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    {isUploading ? 'Uploading Files...' : (editDialog.entry ? 'Updating...' : 'Creating...')}
+                  </>
                 ) : (
                   editDialog.entry ? 'Update' : 'Create'
                 )}

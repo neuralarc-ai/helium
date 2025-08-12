@@ -95,15 +95,15 @@ class KnowledgeBaseListResponse(BaseModel):
 
 class CreateKnowledgeBaseEntryRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    description: str = Field(..., min_length=1, max_length=1000)
-    content: str = Field(..., min_length=1)
+    description: Optional[str] = Field(None, max_length=1000)
+    content: Optional[str] = Field(None)
     usage_context: str = Field(default="always", pattern="^(always|on_request|contextual)$")
     is_active: bool = True
     
     @field_validator('content')
     @classmethod
     def validate_content(cls, v):
-        if isinstance(v, str):
+        if v is not None and isinstance(v, str) and v.strip():
             # Check for null bytes
             if '\u0000' in v:
                 raise ValueError("Content contains null bytes which are not allowed")
@@ -117,7 +117,7 @@ class CreateKnowledgeBaseEntryRequest(BaseModel):
 class UpdateKnowledgeBaseEntryRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
-    content: Optional[str] = Field(None, min_length=1)
+    content: Optional[str] = None
     usage_context: Optional[str] = Field(None, pattern="^(always|on_request|contextual)$")
     is_active: Optional[bool] = None
 
@@ -248,19 +248,21 @@ async def create_global_knowledge_base_entry(
             logger.warning(f"Could not check threads table: {e}")
         
         # Sanitize content to remove problematic characters
-        sanitized_content = entry_data.content
-        if isinstance(sanitized_content, str):
+        sanitized_content = entry_data.content or ""
+        if isinstance(sanitized_content, str) and sanitized_content.strip():
             # Remove null bytes and other problematic Unicode characters
             sanitized_content = sanitized_content.replace('\u0000', '')
             # Remove other control characters except newlines and tabs
             sanitized_content = ''.join(char for char in sanitized_content if ord(char) >= 32 or char in '\n\t')
             # Normalize line endings
             sanitized_content = sanitized_content.replace('\r\n', '\n').replace('\r', '\n')
+        else:
+            sanitized_content = ""
         
         # Prepare the KB document data for storage
         kb_document_data = {
             'name': entry_data.name,
-            'description': entry_data.description,
+            'description': entry_data.description or "",
             'content': sanitized_content,
             'content_tokens': len(sanitized_content) // 4,  # Estimate tokens
             'usage_context': entry_data.usage_context,
@@ -484,6 +486,7 @@ async def delete_global_knowledge_base_entry(
 @router.post("/global/upload-file")
 async def upload_file_to_global_kb(
     file: UploadFile = File(...),
+    custom_name: Optional[str] = Form(None),
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     if not await is_enabled("knowledge_base"):
@@ -495,6 +498,7 @@ async def upload_file_to_global_kb(
     """Upload and process a file for global knowledge base"""
     try:
         logger.info(f"Starting file upload for user {user_id}, filename: {file.filename}")
+        logger.info(f"Custom name provided: {custom_name}")
         logger.info(f"File content type: {file.content_type}")
         logger.info(f"File size: {file.size if hasattr(file, 'size') else 'unknown'}")
         
@@ -512,7 +516,7 @@ async def upload_file_to_global_kb(
         logger.info("FileProcessor initialized")
         
         result = await processor.process_global_file_upload(
-            account_id, file_content, file.filename, file.content_type or 'application/octet-stream'
+            account_id, file_content, file.filename, file.content_type or 'application/octet-stream', custom_name
         )
         logger.info(f"File processing result: {result}")
         
@@ -737,6 +741,7 @@ async def get_thread_knowledge_base(
 async def upload_file_to_thread_kb(
     thread_id: str,
     file: UploadFile = File(...),
+    custom_name: Optional[str] = Form(None),
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     if not await is_enabled("knowledge_base"):
@@ -762,7 +767,11 @@ async def upload_file_to_thread_kb(
         # Process the file directly
         processor = FileProcessor()
         result = await processor.process_thread_file_upload(
-            thread_id, account_id, file_content, file.filename, file.content_type or 'application/octet-stream'
+            thread_id,
+            account_id,
+            file_content,
+            custom_name or file.filename,
+            file.content_type or 'application/octet-stream'
         )
         
         if result['success']:
@@ -774,7 +783,7 @@ async def upload_file_to_thread_kb(
             return {
                 "success": True,
                 "entry_id": result['entry_id'],
-                "filename": file.filename,
+                "filename": custom_name or file.filename,
                 "content_length": result.get('content_length'),
                 "extraction_method": result.get('extraction_method'),
                 "message": "File processed and added to thread knowledge base"
@@ -821,14 +830,20 @@ async def create_knowledge_base_entry(
             'thread_id': thread_id,
             'account_id': account_id,
             'name': entry_data.name,
-            'description': entry_data.description,
-            'content': entry_data.content,
+            'description': entry_data.description or "",
+            'content': entry_data.content or "",
             'usage_context': entry_data.usage_context
         }
         
-        result = await client.table('knowledge_base_entries').insert(insert_data).execute()
+        result = await client.table('knowledge_base_entries').insert(insert_data).select('*').execute()
         
         if not result.data:
+            # Provide more diagnostic information if available
+            try:
+                error_detail = getattr(result, 'error', None)
+                logger.error(f"Insert into knowledge_base_entries returned no data. Error: {error_detail}")
+            except Exception:
+                pass
             raise HTTPException(status_code=500, detail="Failed to create knowledge base entry")
         
         created_entry = result.data[0]
