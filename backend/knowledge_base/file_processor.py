@@ -229,41 +229,41 @@ class FileProcessor:
             
             # Use custom name if provided, otherwise use filename
             display_name = custom_name if custom_name else filename
-            
-        # Deduplicate: avoid inserting duplicates for same account
-        try:
-            logger.info("Checking for existing global KB entries to avoid duplicates")
-            existing_query = (
-                await client.table('global_knowledge_base_entries')
-                .select('entry_id, name, content, source_metadata')
-                .eq('account_id', account_id)
-                .eq('name', display_name)
-                .order('created_at', desc=True)
-                .limit(5)
-                .execute()
-            )
 
-            if existing_query.data:
-                for row in existing_query.data:
-                    try:
-                        existing_filename = (row.get('source_metadata') or {}).get('filename')
-                    except Exception:
-                        existing_filename = None
+            # Deduplicate: avoid inserting duplicates for same account
+            try:
+                logger.info("Checking for existing global KB entries to avoid duplicates")
+                existing_query = (
+                    await client.table('global_knowledge_base_entries')
+                    .select('entry_id, name, content, source_metadata')
+                    .eq('account_id', account_id)
+                    .eq('name', display_name)
+                    .order('created_at', desc=True)
+                    .limit(5)
+                    .execute()
+                )
 
-                    if (row.get('content') == sanitized_content) or (
-                        isinstance(existing_filename, str) and existing_filename == filename
-                    ):
-                        logger.info("Duplicate detected; reusing existing entry_id")
-                        return {
-                            'success': True,
-                            'entry_id': row['entry_id'],
-                            'filename': filename,
-                            'content_length': len(sanitized_content),
-                            'extraction_method': self._get_extraction_method(file_extension, mime_type),
-                            'deduplicated': True,
-                        }
-        except Exception as dedup_err:
-            logger.warning(f"Global KB dedup check failed: {dedup_err}")
+                if existing_query.data:
+                    for row in existing_query.data:
+                        try:
+                            existing_filename = (row.get('source_metadata') or {}).get('filename')
+                        except Exception:
+                            existing_filename = None
+
+                        if (row.get('content') == sanitized_content) or (
+                            isinstance(existing_filename, str) and existing_filename == filename
+                        ):
+                            logger.info("Duplicate detected; reusing existing entry_id")
+                            return {
+                                'success': True,
+                                'entry_id': row['entry_id'],
+                                'filename': filename,
+                                'content_length': len(sanitized_content),
+                                'extraction_method': self._get_extraction_method(file_extension, mime_type),
+                                'deduplicated': True,
+                            }
+            except Exception as dedup_err:
+                logger.warning(f"Global KB dedup check failed: {dedup_err}")
 
             entry_data = {
                 'account_id': account_id,
