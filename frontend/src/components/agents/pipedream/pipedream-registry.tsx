@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { X, Bot, Search, Sparkles, TrendingUp, Star, Filter, ArrowRight } from 'lucide-react';
+import { X, Bot, Search, Sparkles, TrendingUp, Star, Filter, ArrowRight, Boxes } from 'lucide-react';
 import { usePipedreamApps, usePipedreamPopularApps } from '@/hooks/react-query/pipedream/use-pipedream';
 import { usePipedreamProfiles } from '@/hooks/react-query/pipedream/use-pipedream-profiles';
 import { useAgent } from '@/hooks/react-query/agents/use-agents';
@@ -222,19 +222,16 @@ export const PipedreamRegistry: React.FC<PipedreamRegistryProps> = ({
       <div className="sticky flex items-center justify-between top-0 z-10 flex-shrink-0 border-b bg-background px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-muted-foreground/20 flex items-center justify-center">
-              <Sparkles className="h-5 w-5" />
+            <div className="h-10 w-10 rounded-lg bg-helium-teal flex items-center justify-center">
+              <Boxes className="h-6 w-6 stroke-[1.5] text-white" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-semibold text-foreground">
                   {agent?.name ? `${agent.name} Integrations` : 'Integrations'}
                 </h1>
-                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 dark:border-blue-900 dark:bg-blue-900/20 dark:text-blue-400">
-                  2700+ Apps
-                </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground">
                 {agent?.name ? 'Connect apps to enhance your agent\'s capabilities' : 'Connect your favorite apps and services'}
               </p>
             </div>
@@ -287,9 +284,6 @@ export const PipedreamRegistry: React.FC<PipedreamRegistryProps> = ({
             {connectedApps.length > 0 && (!showAgentSelector || currentAgentId) && (
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="border border-green-200 dark:border-green-900 h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
-                    <Star className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  </div>
                   <div>
                     <h2 className="text-md font-semibold text-foreground">
                     Your Apps
@@ -318,9 +312,6 @@ export const PipedreamRegistry: React.FC<PipedreamRegistryProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 border border-orange-200 dark:border-orange-900 rounded-lg bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-                      <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                    </div>
                     <div>
                       <h2 className="text-md font-semibold text-foreground">
                         {search.trim() ? 'Search Results' : showAllApps ? 'All Apps' : 'Popular Apps'}

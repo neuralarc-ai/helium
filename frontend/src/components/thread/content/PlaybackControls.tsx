@@ -29,6 +29,7 @@ const HIDE_STREAMING_XML_TAGS = new Set([
   'deploy',
   'ask',
   'complete',
+  'think',
   'crawl-webpage',
   'web-search',
 ]);

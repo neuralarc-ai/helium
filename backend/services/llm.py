@@ -122,18 +122,15 @@ def get_openrouter_fallback(model_name: str) -> Optional[str]:
     
     # Map models to their OpenRouter equivalents
     fallback_mapping = {
-        "deepseek/deepseek-chat-v3-0324:free": "openrouter/deepseek/deepseek-chat-v3-0324:free",
         "z-ai/glm-4.5-air:free": "openrouter/z-ai/glm-4.5-air:free",
-        "agentica-org/deepcoder-14b-preview:free": "openrouter/agentica-org/deepcoder-14b-preview:free",
+        "deepseek/deepseek-chat-v3-0324:free": "openrouter/deepseek/deepseek-chat-v3-0324:free",
+        "mistralai/mistral-small-3.2-24b-instruct": "openrouter/mistralai/mistral-small-3.2-24b-instruct",
         
         # Add Z.AI GLM models
         "z-ai/glm-4.5v": "openrouter/z-ai/glm-4.5v",
         "z-ai/glm-4.5": "openrouter/z-ai/glm-4.5",
         "z-ai/glm-4.5-air": "openrouter/z-ai/glm-4.5-air",
         "z-ai/glm-4-32b": "openrouter/z-ai/glm-4-32b",
-        
-        # Add Mistral models
-        "mistralai/mistral-small-3.2-24b-instruct": "openrouter/mistralai/mistral-small-3.2-24b-instruct",
     }
     
     # Check for exact match first

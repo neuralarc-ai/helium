@@ -174,7 +174,7 @@ export default function HeroSection() {
     <>
       {/* Hero Top Section: background image, text, buttons */}
       <section
-        className="absolute top-0 left-0 right-0 w-screen h-[100vh] flex flex-col items-center justify-center pt-24 relative overflow-hidden z-0"
+        className="absolute top-0 left-0 right-0 w-screen h-[100vh] flex flex-col items-center justify-center pt-24 overflow-hidden z-0"
         style={{ margin: 0, padding: 0, borderRadius: 0, maxWidth: '100%' }}
       >
         <Image
@@ -210,7 +210,7 @@ export default function HeroSection() {
               />
             </motion.div>
             <motion.h1
-              className="text-center text-[2rem] w-[19rem] mb-8 sm:w-auto sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl 2xl:text-[92px] font-extralight text-white leading-tight tracking-tight mb-6 sm:mb-8 z-2 px-4 sm:px-6"
+              className="text-center text-[2rem] w-[19rem] sm:w-auto sm:text-4xl md:text-5xl lg:text-6xl xl:text-6xl 2xl:text-[92px] font-extralight text-white leading-tight tracking-tight mb-6 sm:mb-8 z-2 px-4 sm:px-6"
               initial="hidden"
               animate={showHero ? 'visible' : 'hidden'}
               variants={contentVariants}

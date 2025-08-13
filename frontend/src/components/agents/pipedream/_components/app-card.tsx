@@ -151,7 +151,7 @@ export const AppCard: React.FC<AppCardProps> = ({
 
         {hasAgentTools && (
           <div className="mb-3">
-            <div className="rounded-xl bg-muted py-2 border border" onClick={(e) => e.stopPropagation()}>
+            <div className="rounded-xl bg-muted py-2 border-border" onClick={(e) => e.stopPropagation()}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" variant="ghost" className="h-auto w-full justify-between p-0 hover:bg-transparent">
