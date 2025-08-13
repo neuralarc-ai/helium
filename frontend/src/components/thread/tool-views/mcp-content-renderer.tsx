@@ -354,7 +354,7 @@ export function MCPContentRenderer({ detectionResult, rawContent }: MCPContentRe
 
     case ContentFormat.MARKDOWN:
       return (
-        <div className="p-3">
+        <div className="p-3 chat-markdown">
           <div className="flex items-center gap-2 mb-3">
             <BookOpen className="h-4 w-4 text-zinc-600 dark:text-zinc-400" />
             <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">

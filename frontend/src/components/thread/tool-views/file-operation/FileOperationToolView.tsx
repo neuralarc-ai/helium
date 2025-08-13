@@ -164,7 +164,7 @@ export function FileOperationToolView({
 
     if (isMarkdown) {
       return (
-        <div className="p-1 py-0 prose dark:prose-invert prose-zinc max-w-none">
+        <div className="p-1 py-0 prose dark:prose-invert prose-zinc max-w-none chat-markdown">
           <MarkdownRenderer
             content={processUnicodeContent(fileContent)}
           />
@@ -226,7 +226,7 @@ export function FileOperationToolView({
 
     if (hasHighlighting) {
       return (
-        <div className="relative">
+        <div className="relative py-2">
           <div className="absolute left-0 top-0 bottom-0 w-12 border-r border-zinc-200 dark:border-zinc-800 z-10 flex flex-col bg-zinc-50 dark:bg-zinc-900">
             {contentLines.map((_, idx) => (
               <div
@@ -241,7 +241,7 @@ export function FileOperationToolView({
             <CodeBlockCode
               code={processUnicodeContent(fileContent)}
               language={language}
-              className="text-xs"
+              className="text-sm"
             />
           </div>
         </div>
@@ -271,7 +271,7 @@ export function FileOperationToolView({
   return (
     <Card className="flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
       <Tabs defaultValue={'preview'} className="w-full h-full">
-        <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 rounded-xl mx-2 mt-2 mb-1 flex flex-row items-center justify-between">
+        <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] border-b p-2 px-4 rounded-lg mx-4 mt-2 flex flex-row items-center justify-between">
           <div className="flex items-center gap-2 mt-4">
             <Icon className="h-5 w-5 text-white" />
             <CardTitle className="text-base font-medium text-white">
@@ -280,7 +280,7 @@ export function FileOperationToolView({
           </div>
           <div className='flex items-center gap-x-2 mt-4'>
             {isHtml && htmlPreviewUrl && !isStreaming && (
-              <Button variant="outline" size="sm" className="h-7 px-3 text-xs rounded-full bg-white dark:bg-muted/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-none font-medium" asChild>
+              <Button variant="outline" className="h-7 px-5 text-xs rounded-full bg-white dark:bg-muted/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-none font-medium" asChild>
                 <a href={htmlPreviewUrl} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4 mr-1" />
                   Open in Browser

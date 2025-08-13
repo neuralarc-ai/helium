@@ -108,14 +108,14 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
               damping: 30
             }
           }}
-          className="-mb-4 w-full"
+          className="-mb-2 w-full"
           style={{ pointerEvents: 'auto' }}
         >
           <motion.div
             layoutId={CONTENT_LAYOUT_ID}
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
-            className="bg-card border border-border rounded-[12px] p-2 w-full cursor-pointer group"
+            className="bg-card border border-border rounded-xl shadow-[0px_12px_32px_0px_rgba(0,0,0,0.05)] p-2 w-full cursor-pointer group"
             onClick={handleClick}
             style={{ opacity: isExpanding ? 0 : 1 }}
           >
@@ -124,7 +124,7 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
                 <motion.div
                   layoutId="tool-icon"
                   className={cn(
-                    "w-10 h-10 rounded-2xl flex items-center justify-center",
+                    "w-10 h-10 rounded-3xl flex items-center justify-center",
                     isStreaming
                       ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
                       : isSuccess
@@ -194,7 +194,7 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
                 </button>
               )}
 
-              <Button value='ghost' className="bg-transparent hover:bg-transparent flex-shrink-0" style={{ opacity: isExpanding ? 0 : 1 }}>
+              <Button value='ghost' className="bg-transparent hover:bg-transparent flex-shrink-0">
                 <Maximize2 className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
               </Button>
             </div>

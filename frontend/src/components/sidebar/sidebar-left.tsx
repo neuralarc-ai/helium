@@ -408,7 +408,7 @@ export function SidebarLeft({
             </Tooltip>
           )}
           {/* Divider above NavUserWithTeams only when expanded */}
-          {state !== 'collapsed' && (
+          {(state !== 'collapsed' || isMobile) && (
             <div className="w-full h-px bg-border my-2" />
           )}
           <NavUserWithTeams user={user} />

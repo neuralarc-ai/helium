@@ -143,7 +143,7 @@ export function renderMarkdownContent(
             <PipedreamUrlDetector
               key={`md-${lastIndex}`}
               content={textBeforeBlock}
-              className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
+              className="text-sm xl:text-base prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
             />,
           );
         }
@@ -169,10 +169,10 @@ export function renderMarkdownContent(
 
           // Render ask tool content with attachment UI
           contentParts.push(
-            <div key={`ask-${match.index}-${index}`} className="space-y-3">
+            <div key={`ask-${match.index}-${index}`} className="space-y-4">
               <PipedreamUrlDetector
                 content={askText}
-                className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
+                className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
               {renderAttachments(
                 attachmentArray,
@@ -196,10 +196,10 @@ export function renderMarkdownContent(
 
           // Render complete tool content with attachment UI
           contentParts.push(
-            <div key={`complete-${match.index}-${index}`} className="space-y-3">
+            <div key={`complete-${match.index}-${index}`} className="space-y-4">
               <PipedreamUrlDetector
                 content={completeText}
-                className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
+                className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
               {renderAttachments(
                 attachmentArray,
@@ -261,7 +261,7 @@ export function renderMarkdownContent(
           <PipedreamUrlDetector
             key={`md-${lastIndex}`}
             content={remainingText}
-            className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
+            className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
           />,
         );
       }
@@ -272,7 +272,7 @@ export function renderMarkdownContent(
     ) : (
       <PipedreamUrlDetector
         content={content}
-        className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
+        className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
       />
     );
   }
@@ -289,7 +289,7 @@ export function renderMarkdownContent(
     return (
       <PipedreamUrlDetector
         content={content}
-        className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
+        className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
       />
     );
   }
@@ -302,7 +302,7 @@ export function renderMarkdownContent(
         <PipedreamUrlDetector
           key={`md-${lastIndex}`}
           content={textBeforeTag}
-          className="text-sm prose prose-sm dark:prose-invert chat-markdown max-w-none inline-block mr-1 break-words"
+          className="text-sm xl:text-base prose prose-sm dark:prose-invert chat-markdown max-w-none inline-block mr-1 break-words"
         />,
       );
     }
@@ -324,10 +324,10 @@ export function renderMarkdownContent(
 
       // Render <ask> tag content with attachment UI (using the helper)
       contentParts.push(
-        <div key={`ask-${match.index}`} className="space-y-3">
+        <div key={`ask-${match.index}`} className="space-y-4">
           <PipedreamUrlDetector
             content={askContent}
-            className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
+            className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
           />
           {renderAttachments(
             attachments,
@@ -352,10 +352,10 @@ export function renderMarkdownContent(
 
       // Render <complete> tag content with attachment UI (using the helper)
       contentParts.push(
-        <div key={`complete-${match.index}`} className="space-y-3">
+        <div key={`complete-${match.index}`} className="space-y-4">
           <PipedreamUrlDetector
             content={completeContent}
-            className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
+            className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
           />
           {renderAttachments(
             attachments,
@@ -403,7 +403,7 @@ export function renderMarkdownContent(
       <PipedreamUrlDetector
         key={`md-${lastIndex}`}
         content={content.substring(lastIndex)}
-        className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
+        className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
       />,
     );
   }
@@ -561,9 +561,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
           )}
         </>
       ) : (
-        <div className="h-5 w-5 flex items-center justify-center rounded text-xs">
+        <div className="h-5 w-5 flex items-center justify-center">
           <HeliumLogo
-            size={16}
+            size={20}
             animated={agentStatus === 'running' || agentStatus === 'connecting'}
           />
         </div>
@@ -577,7 +577,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       name: agentName || 'Helium',
       avatar: (
         <HeliumLogo
-          size={16}
+          size={20}
           animated={agentStatus === 'running' || agentStatus === 'connecting'}
         />
       ),
@@ -677,11 +677,11 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
           <div
             className={
               isSidePanelOpen
-                ? 'mr-auto ml-0 max-w-3xl md:px-8 min-w-0'
+                ? 'mx-auto max-w-2xl md:px-8 min-w-0'
                 : 'mx-auto max-w-3xl md:px-8 min-w-0'
             }
           >
-            <div className="space-y-8 min-w-0">
+            <div className="space-y-12 min-w-0">
               {(() => {
                 type MessageGroup = {
                   type: 'user' | 'assistant_group';
@@ -898,30 +898,21 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                     return (
                       <div
                         key={group.key}
-                        className="flex justify-end"
+                        className="flex justify-end group transition-all duration-300 ease-in-out"
                         data-message-id={group.key}
                       >
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-1">
                           <div
-                            className={cn('flex max-w-[100%]')}
-                            style={{ gap: '4px', opacity: 1 }}
+                            className={cn('flex ml-auto max-w-[85%]')}
                           >
                             <div
                               style={{
                                 background: '#FFFFFF',
                                 color: 'black',
-                                paddingTop: '16px',
-                                paddingRight: '24px',
-                                paddingBottom: '16px',
-                                paddingLeft: '24px',
-                                borderTopLeftRadius: '24px',
-                                borderTopRightRadius: '24px',
-                                borderBottomRightRadius: '8px',
-                                borderBottomLeftRadius: '24px',
                               }}
-                              className="break-words overflow-hidden"
+                              className="break-words overflow-hidden border border-black/10 rounded-l-2xl rounded-tr-2xl rounded-br-sm px-4 py-2"
                             >
-                              <div className="space-y-3 min-w-0 flex-1">
+                              <div className="space-y-4 min-w-0 flex-1">
                                 {cleanContent && (
                                   <div
                                     className={cn(
@@ -955,7 +946,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                   >
                                     <PipedreamUrlDetector
                                       content={cleanContent}
-                                      className="text-sm prose prose-sm chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere text-black md:text-base"
+                                      className="text-sm prose prose-sm chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere text-black xl:text-base"
                                     />
                                   </div>
                                 )}
@@ -970,13 +961,13 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                           </div>
                           {/* Copy and Edit buttons for user prompt - OUTSIDE the message box */}
                           {!readOnly && (
-                            <div className="flex justify-end gap-2">
+                            <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                    className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
                                     onClick={() => {
                                       navigator.clipboard.writeText(
                                         cleanContent,
@@ -1008,7 +999,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                        className="h-8 w-8 p-0 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-foreground/80"
                                         onClick={() => {
                                           const messageElement =
                                             document.querySelector(
@@ -1040,7 +1031,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                        className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
                                         onClick={() => {
                                           // Cancel editing and restore original content
                                           const messageElement =
@@ -1072,7 +1063,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                      className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
                                       onClick={() => {
                                         // Start editing mode
                                         setEditingMessageId(group.key);
@@ -1132,7 +1123,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         <div className="flex flex-col gap-3">
                           {/* Message content - ALL messages in the group */}
                           <div className="flex max-w-[90%] text-sm break-words overflow-hidden">
-                            <div className="space-y-2 min-w-0 flex-1">
+                            <div className="space-y-4 min-w-0 flex-1">
                               {(() => {
                                 // In debug mode, just show raw messages content
                                 if (debugMode) {
@@ -1142,7 +1133,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                         message.message_id ||
                                         `raw-msg-${msgIndex}`;
                                       return (
-                                        <div key={msgKey} className="mb-4">
+                                        <div key={msgKey} className="mb-6">
                                           <div className="text-xs font-medium text-muted-foreground mb-1">
                                             Type: {message.type} | ID:{' '}
                                             {message.message_id || 'no-id'}
@@ -1156,7 +1147,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                           </pre>
                                           {message.metadata &&
                                             message.metadata !== '{}' && (
-                                              <div className="mt-2">
+                                              <div className="mt-4">
                                                 <div className="text-xs font-medium text-muted-foreground mb-1">
                                                   Metadata:
                                                 </div>
@@ -1238,7 +1229,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                               ] = el;
                                             }
                                           }}
-                                          className="text-sm lg:text-base xl:text-lg leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-hidden"
+                                          className="text-sm xl:text-base leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-hidden"
                                         >
                                           {renderedContent}
                                         </div>
@@ -1262,7 +1253,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 group.messages.some(
                                   (msg) => msg.type === 'assistant',
                                 ) && (
-                                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/50 px-4 pb-0">
+                                  <div className="flex items-center justify-end pt-3 gap-1 border-t border-border/50 px-4 pb-0">
                                     {/* Copy Button */}
                                     <Tooltip>
                                       <TooltipTrigger asChild>
@@ -1449,7 +1440,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 !readOnly &&
                                 (streamHookStatus === 'streaming' ||
                                   streamHookStatus === 'connecting') && (
-                                  <div className="mt-2">
+                                  <div className="mt-4">
                                     {(() => {
                                       // In debug mode, show raw streaming content
                                       if (debugMode && streamingTextContent) {
@@ -1506,7 +1497,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                           {textBeforeTag && (
                                             <PipedreamUrlDetector
                                               content={textBeforeTag}
-                                              className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
+                                              className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                             />
                                           )}
                                           {showCursor && (
@@ -1542,7 +1533,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 groupIndex ===
                                   finalGroupedMessages.length - 1 &&
                                 isStreamingText && (
-                                  <div className="mt-2">
+                                  <div className="mt-4">
                                     {(() => {
                                       let detectedTag: string | null = null;
                                       let tagStartIndex = -1;
@@ -1594,7 +1585,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                               {textBeforeTag && (
                                                 <PipedreamUrlDetector
                                                   content={textBeforeTag}
-                                                  className="text-sm leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
+                                                  className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                                 />
                                               )}
                                               {showCursor && (
@@ -1646,7 +1637,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 (messages.length === 0 ||
                   messages[messages.length - 1].type === 'user') && (
                   <div ref={latestMessageRef} className="w-full h-22 rounded">
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-4">
                       {/* Logo positioned above the loader */}
                       <div className="flex items-center gap-2">
                         <div className="h-8 w-fit rounded-xl flex items-center justify-center">
@@ -1660,7 +1651,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                       </div>
 
                       {/* Loader content */}
-                      <div className="space-y-2 w-full h-12">
+                                              <div className="space-y-4 w-full h-12">
                         <AgentLoader />
                       </div>
                     </div>
@@ -1680,6 +1671,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                     </div>
                     
                     {/* Logo positioned below the tool call */}
+
                     <div className="flex items-center gap-2">
                       <div className="h-12 w-fit rounded-xl flex items-center justify-center">
                         {getAgentInfo().avatar}
@@ -1690,6 +1682,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         </p>
                       </div>
                     </div>
+
                   </div>
                 </div>
               )}

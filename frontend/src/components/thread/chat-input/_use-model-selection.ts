@@ -158,10 +158,59 @@ export const MODELS = {
   // },
   'openrouter/deepseek/deepseek-chat-v3-0324:free': { 
     tier: 'free', 
-    priority: 75,
+    priority: 96,
     recommended: false,
     lowQuality: false
   },
+  
+  // Z.AI GLM Models from OpenRouter
+  'openrouter/z-ai/glm-4.5v': { 
+    tier: 'free', 
+    priority: 95,
+    recommended: true,
+    lowQuality: false,
+    features: ['vision', 'multimodal', 'reasoning']
+  },
+  'openrouter/z-ai/glm-4.5': { 
+    tier: 'free', 
+    priority: 96,
+    recommended: true,
+    lowQuality: false,
+    features: ['reasoning', 'code-generation', '128k-context']
+  },
+  'openrouter/z-ai/glm-4.5-air': { 
+    tier: 'free', 
+    priority: 94,
+    recommended: true,
+    lowQuality: false,
+    features: ['lightweight', 'real-time', 'cost-effective']
+  },
+  'openrouter/z-ai/glm-4-32b': { 
+    tier: 'free', 
+    priority: 92,
+    recommended: false,
+    lowQuality: false,
+    features: ['cost-effective', 'tool-use']
+  },
+  
+  // Mistral Models from OpenRouter
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': { 
+    tier: 'free', 
+    priority: 93,
+    recommended: true,
+    lowQuality: false,
+    features: ['instruction-following', 'function-calling', 'coding', 'stem', 'vision', 'structured-output', '131k-context']
+  }
+};
+
+// Add model descriptions for better user experience
+export const MODEL_DESCRIPTIONS = {
+  'openrouter/z-ai/glm-4.5v': 'Vision-language model with multimodal capabilities, perfect for image analysis and complex reasoning tasks',
+  'openrouter/z-ai/glm-4.5': 'Flagship model optimized for agent applications with 128K context and advanced reasoning',
+  'openrouter/z-ai/glm-4.5-air': 'Lightweight variant offering fast responses and cost-effective reasoning capabilities',
+  'openrouter/z-ai/glm-4-32b': 'Cost-effective model with strong tool use and code generation abilities',
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': 'High-performance 24B model with strong coding, STEM, and vision capabilities, optimized for instruction following and function calling',
+  // ... other models ...
 };
 
 // Production-only models for Helio branding
@@ -192,7 +241,57 @@ export const PRODUCTION_MODELS = {
     priority: 80,
     recommended: false,
     lowQuality: false
+  },
+  
+  // Add Z.AI models as premium options
+  'helio-vision': {
+    id: 'openrouter/z-ai/glm-4.5v',
+    label: 'Helio Vision',
+    description: 'Multimodal AI with vision capabilities for image analysis and complex reasoning',
+    tier: 'free',
+    priority: 95,
+    recommended: true,
+    lowQuality: false
+  },
+  'helio-reasoning': {
+    id: 'openrouter/z-ai/glm-4.5',
+    label: 'Helio Reasoning',
+    description: 'Advanced reasoning model with 128K context for complex agent tasks',
+    tier: 'free',
+    priority: 96,
+    recommended: true,
+    lowQuality: false
+  },
+  'helio-fast': {
+    id: 'openrouter/z-ai/glm-4.5-air',
+    label: 'Helio Fast',
+    description: 'Lightweight model for quick responses and cost-effective reasoning',
+    tier: 'free',
+    priority: 94,
+    recommended: false,
+    lowQuality: false
+  },
+  
+  // Add Mistral model as premium option
+  'helio-mistral': {
+    id: 'openrouter/mistralai/mistral-small-3.2-24b-instruct',
+    label: 'Helio Mistral',
+    description: 'High-performance model with strong coding, STEM, and vision capabilities',
+    tier: 'free',
+    priority: 93,
+    recommended: true,
+    lowQuality: false
   }
+};
+
+// Model tags for categorization and search
+export const MODEL_TAGS = {
+  'openrouter/z-ai/glm-4.5v': ['vision', 'multimodal', 'reasoning', 'agent-focused', 'z-ai'],
+  'openrouter/z-ai/glm-4.5': ['reasoning', 'code-generation', 'agent-alignment', '128k-context', 'z-ai'],
+  'openrouter/z-ai/glm-4.5-air': ['lightweight', 'reasoning', 'real-time', 'cost-effective', 'z-ai'],
+  'openrouter/z-ai/glm-4-32b': ['cost-effective', 'tool-use', 'online-search', 'code-tasks', 'z-ai'],
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': ['instruction-following', 'function-calling', 'coding', 'stem', 'vision', 'structured-output', '131k-context', 'mistral'],
+  // ... other models ...
 };
 
 // Helper to check if a user can access a model based on subscription status
