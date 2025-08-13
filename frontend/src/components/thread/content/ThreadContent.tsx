@@ -38,6 +38,7 @@ import {
 } from '@/components/thread/tool-views/xml-parser';
 import { ShowToolStream } from './ShowToolStream';
 import { PipedreamUrlDetector } from './pipedream-url-detector';
+import { ThinkingAccordion } from './ThinkingAccordion';
 import {
   Tooltip,
   TooltipContent,
@@ -73,6 +74,7 @@ const HIDE_STREAMING_XML_TAGS = new Set([
   'crawl-webpage',
   'web-search',
   'see-image',
+  'think',
   'execute_data_provider_call',
   'execute_data_provider_endpoint',
 
@@ -115,6 +117,8 @@ export function renderMarkdownContent(
   sandboxId?: string,
   project?: Project,
   debugMode?: boolean,
+  streamingTextContent?: string,
+  streamHookStatus?: string,
 ) {
   // If in debug mode, just display raw content in a pre tag
   if (debugMode) {
@@ -207,6 +211,25 @@ export function renderMarkdownContent(
                 project,
               )}
             </div>,
+          );
+        } else if (toolName === 'think') {
+          // Handle think tool specially - extract text content
+          const thinkText = toolCall.parameters.text || toolCall.parameters.content || '';
+
+          // Check if this think tag is currently streaming
+          const isCurrentlyStreaming = streamingTextContent && 
+            streamingTextContent.includes('<think') && 
+            !streamingTextContent.includes('</think>');
+
+          // Render think tool content with thinking UI
+          contentParts.push(
+            <ThinkingAccordion 
+              key={`think-${match.index}-${index}`}
+              content={thinkText}
+              isStreaming={isCurrentlyStreaming}
+              streamingContent={isCurrentlyStreaming ? streamingTextContent : ''}
+              streamHookStatus={streamHookStatus}
+            />
           );
         } else {
           const IconComponent = getToolIcon(toolName);
@@ -363,6 +386,26 @@ export function renderMarkdownContent(
             project,
           )}
         </div>,
+      );
+    } else if (toolName === 'think') {
+      // Extract content from the think tag
+      const contentMatch = rawXml.match(/<think[^>]*>([\s\S]*?)<\/think>/i);
+      const thinkContent = contentMatch ? contentMatch[1] : '';
+
+      // Check if this think tag is currently streaming
+      const isCurrentlyStreaming = streamingTextContent && 
+        streamingTextContent.includes('<think') && 
+        !streamingTextContent.includes('</think>');
+
+      // Render <think> tag content with thinking UI
+      contentParts.push(
+        <ThinkingAccordion 
+          key={`think-${match.index}`}
+          content={thinkContent}
+          isStreaming={isCurrentlyStreaming}
+          streamingContent={isCurrentlyStreaming ? streamingTextContent : ''}
+          streamHookStatus={streamHookStatus}
+        />
       );
     } else {
       const IconComponent = getToolIcon(toolName);
@@ -902,7 +945,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                       >
                         <div className="flex flex-col gap-1">
                           <div
-                            className={cn('flex ml-auto max-w-[85%]')}
+                            className={cn('flex max-w-[100%]')}
                           >
                             <div
                               style={{
@@ -1220,6 +1263,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                         sandboxId,
                                         project,
                                         debugMode,
+                                        streamingTextContent,
+                                        streamHookStatus,
                                       );
 
                                     elements.push(
@@ -1463,6 +1508,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
                                       let detectedTag: string | null = null;
                                       let tagStartIndex = -1;
+                                      let thinkTagEndIndex = -1;
+                                      let hasThinkTag = false;
+                                      
                                       if (streamingTextContent) {
                                         // First check for new format
                                         const functionCallsIndex =
@@ -1473,34 +1521,52 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                           detectedTag = 'function_calls';
                                           tagStartIndex = functionCallsIndex;
                                         } else {
-                                          // Fall back to old format detection
-                                          for (const tag of HIDE_STREAMING_XML_TAGS) {
-                                            const openingTagPattern = `<${tag}`;
-                                            const index =
-                                              streamingTextContent.indexOf(
-                                                openingTagPattern,
-                                              );
-                                            if (index !== -1) {
-                                              detectedTag = tag;
-                                              tagStartIndex = index;
-                                              break;
+                                          // Check for think tag specifically
+                                          const thinkStartIndex = streamingTextContent.indexOf('<think');
+                                          if (thinkStartIndex !== -1) {
+                                            hasThinkTag = true;
+                                            detectedTag = 'think';
+                                            tagStartIndex = thinkStartIndex;
+                                            
+                                            // Find the end of think tag
+                                            const thinkEndIndex = streamingTextContent.indexOf('</think>');
+                                            if (thinkEndIndex !== -1) {
+                                              thinkTagEndIndex = thinkEndIndex + 7; // +7 for '</think>'
+                                            }
+                                          } else {
+                                            // Fall back to old format detection for other tags
+                                            for (const tag of HIDE_STREAMING_XML_TAGS) {
+                                              if (tag === 'think') continue; // Skip think as we already handled it
+                                              const openingTagPattern = `<${tag}`;
+                                              const index =
+                                                streamingTextContent.indexOf(
+                                                  openingTagPattern,
+                                                );
+                                              if (index !== -1) {
+                                                detectedTag = tag;
+                                                tagStartIndex = index;
+                                                break;
+                                              }
                                             }
                                           }
                                         }
                                       }
 
-                                      const textToRender =
-                                        streamingTextContent || '';
+                                      const textToRender = streamingTextContent || '';
                                       const textBeforeTag = detectedTag
-                                        ? textToRender.substring(
-                                            0,
-                                            tagStartIndex,
-                                          )
+                                        ? textToRender.substring(0, tagStartIndex)
                                         : textToRender;
+                                      
+                                      // If think tag is complete, show content after it
+                                      const textAfterThink = hasThinkTag && thinkTagEndIndex > 0 
+                                        ? textToRender.substring(thinkTagEndIndex)
+                                        : '';
+                                      
                                       const showCursor =
                                         (streamHookStatus === 'streaming' ||
                                           streamHookStatus === 'connecting') &&
-                                        !detectedTag;
+                                        !detectedTag &&
+                                        !textAfterThink;
 
                                       return (
                                         <>
@@ -1514,7 +1580,14 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                             <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
                                           )}
 
-                                          {detectedTag && (
+                                          {detectedTag && detectedTag === 'think' ? (
+                                            <ThinkingAccordion
+                                              content=""
+                                              isStreaming={streamHookStatus === 'streaming' && !textToRender.includes('</think>')} // Only streaming if actively streaming and no closing tag
+                                              streamingContent={textToRender.substring(tagStartIndex)}
+                                              streamHookStatus={streamHookStatus}
+                                            />
+                                          ) : detectedTag && (
                                             <ShowToolStream
                                               content={textToRender.substring(
                                                 tagStartIndex,
@@ -1532,6 +1605,14 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                               startTime={Date.now()}
                                             />
                                           )}
+                                          
+                                          {/* Show content after think tag if it exists */}
+                                          {textAfterThink && (
+                                            <PipedreamUrlDetector
+                                              content={textAfterThink}
+                                              className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
+                                            />
+                                          )}
                                         </>
                                       );
                                     })()}
@@ -1547,6 +1628,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                     {(() => {
                                       let detectedTag: string | null = null;
                                       let tagStartIndex = -1;
+                                      let thinkTagEndIndex = -1;
+                                      let hasThinkTag = false;
+                                      
                                       if (streamingText) {
                                         // First check for new format
                                         const functionCallsIndex =
@@ -1557,17 +1641,32 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                           detectedTag = 'function_calls';
                                           tagStartIndex = functionCallsIndex;
                                         } else {
-                                          // Fall back to old format detection
-                                          for (const tag of HIDE_STREAMING_XML_TAGS) {
-                                            const openingTagPattern = `<${tag}`;
-                                            const index =
-                                              streamingText.indexOf(
-                                                openingTagPattern,
-                                              );
-                                            if (index !== -1) {
-                                              detectedTag = tag;
-                                              tagStartIndex = index;
-                                              break;
+                                          // Check for think tag specifically
+                                          const thinkStartIndex = streamingText.indexOf('<think');
+                                          if (thinkStartIndex !== -1) {
+                                            hasThinkTag = true;
+                                            detectedTag = 'think';
+                                            tagStartIndex = thinkStartIndex;
+                                            
+                                            // Find the end of think tag
+                                            const thinkEndIndex = streamingText.indexOf('</think>');
+                                            if (thinkEndIndex !== -1) {
+                                              thinkTagEndIndex = thinkEndIndex + 7; // +7 for '</think>'
+                                            }
+                                          } else {
+                                            // Fall back to old format detection for other tags
+                                            for (const tag of HIDE_STREAMING_XML_TAGS) {
+                                              if (tag === 'think') continue; // Skip think as we already handled it
+                                              const openingTagPattern = `<${tag}`;
+                                              const index =
+                                                streamingText.indexOf(
+                                                  openingTagPattern,
+                                                );
+                                              if (index !== -1) {
+                                                detectedTag = tag;
+                                                tagStartIndex = index;
+                                                break;
+                                              }
                                             }
                                           }
                                         }
@@ -1575,13 +1674,16 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
                                       const textToRender = streamingText || '';
                                       const textBeforeTag = detectedTag
-                                        ? textToRender.substring(
-                                            0,
-                                            tagStartIndex,
-                                          )
+                                        ? textToRender.substring(0, tagStartIndex)
                                         : textToRender;
+                                      
+                                      // If think tag is complete, show content after it
+                                      const textAfterThink = hasThinkTag && thinkTagEndIndex > 0 
+                                        ? textToRender.substring(thinkTagEndIndex)
+                                        : '';
+                                      
                                       const showCursor =
-                                        isStreamingText && !detectedTag;
+                                        isStreamingText && !detectedTag && !textAfterThink;
 
                                       return (
                                         <>
@@ -1602,7 +1704,14 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                 <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
                                               )}
 
-                                              {detectedTag && (
+                                              {detectedTag && detectedTag === 'think' ? (
+                                                <ThinkingAccordion
+                                                  content=""
+                                                  isStreaming={!textToRender.includes('</think>')} // Only streaming if no closing tag
+                                                  streamingContent={textToRender.substring(tagStartIndex)}
+                                                  streamHookStatus="streaming"
+                                                />
+                                              ) : detectedTag && (
                                                 <ShowToolStream
                                                   content={textToRender.substring(
                                                     tagStartIndex,
@@ -1611,6 +1720,14 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                   onToolClick={handleToolClick}
                                                   showExpanded={true}
                                                   startTime={Date.now()} // Tool just started now
+                                                />
+                                              )}
+                                              
+                                              {/* Show content after think tag if it exists */}
+                                              {textAfterThink && (
+                                                <PipedreamUrlDetector
+                                                  content={textAfterThink}
+                                                  className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                                 />
                                               )}
                                             </>

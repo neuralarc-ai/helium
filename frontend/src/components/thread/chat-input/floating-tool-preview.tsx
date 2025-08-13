@@ -1,9 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CircleDashed, Maximize2 } from 'lucide-react';
-import { getToolIcon, getUserFriendlyToolName } from '@/components/thread/utils';
+import { ChevronUp, CheckCircle, Check } from 'lucide-react';
+import { getUserFriendlyToolName } from '@/components/thread/utils';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 
 export interface ToolCallInput {
   assistantCall: {
@@ -35,29 +34,69 @@ interface FloatingToolPreviewProps {
 const FLOATING_LAYOUT_ID = 'tool-panel-float';
 const CONTENT_LAYOUT_ID = 'tool-panel-content';
 
-const getToolResultStatus = (toolCall: any): boolean => {
-  const content = toolCall?.toolResult?.content;
-  if (!content) return toolCall?.toolResult?.isSuccess ?? true;
+// Function to extract meaningful task description from tool call content
+const extractTaskDescription = (toolCall: ToolCallInput): string => {
+  const content = toolCall.assistantCall?.content;
+  if (!content) return 'Tool Call';
 
-  const safeParse = (data: any) => {
-    try { return typeof data === 'string' ? JSON.parse(data) : data; }
-    catch { return null; }
-  };
+  try {
+    // Try to parse as JSON first
+    const parsed = typeof content === 'string' ? JSON.parse(content) : content;
+    
+    // Check if it's the new structured format
+    if (parsed && typeof parsed === 'object') {
+      // If it has a content field, use that
+      if (parsed.content && typeof parsed.content === 'string') {
+        return parsed.content;
+      }
+      
+      // If it has tool_calls, extract the first one's description
+      if (parsed.tool_calls && Array.isArray(parsed.tool_calls) && parsed.tool_calls.length > 0) {
+        const firstToolCall = parsed.tool_calls[0];
+        if (firstToolCall.function?.description) {
+          return firstToolCall.function.description;
+        }
+        if (firstToolCall.function?.arguments) {
+          const args = typeof firstToolCall.function.arguments === 'string' 
+            ? JSON.parse(firstToolCall.function.arguments) 
+            : firstToolCall.function.arguments;
+          
+          // Look for common task description fields
+          if (args.task || args.description || args.prompt || args.query) {
+            return args.task || args.description || args.prompt || args.query;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // If JSON parsing fails, treat as string
+  }
 
-  const parsed = safeParse(content);
-  if (!parsed) return toolCall?.toolResult?.isSuccess ?? true;
-
-  if (parsed.content) {
-    const inner = safeParse(parsed.content);
-    if (inner?.tool_execution?.result?.success !== undefined) {
-      return inner.tool_execution.result.success;
+  // If it's a string, try to extract meaningful content
+  if (typeof content === 'string') {
+    // Remove XML tags and extract content
+    const cleanContent = content
+      .replace(/<[^>]*>/g, '') // Remove XML tags
+      .replace(/function_calls?/gi, '') // Remove function_calls text
+      .replace(/tool_calls?/gi, '') // Remove tool_calls text
+      .trim();
+    
+    if (cleanContent && cleanContent.length > 10) {
+      // Truncate if too long
+      return cleanContent.length > 100 
+        ? cleanContent.substring(0, 100) + '...' 
+        : cleanContent;
     }
   }
-  const success = parsed.tool_execution?.result?.success ??
-    parsed.result?.success ??
-    parsed.success;
 
-  return success !== undefined ? success : (toolCall?.toolResult?.isSuccess ?? true);
+  // Fallback to tool name if no meaningful description found
+  const toolName = toolCall.assistantCall?.name || 'Tool Call';
+  return getUserFriendlyToolName(toolName);
+};
+
+// Function to check if task is completed
+const isTaskCompleted = (toolCall: ToolCallInput): boolean => {
+  return toolCall.toolResult?.content && toolCall.toolResult.content !== 'STREAMING';
 };
 
 export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
@@ -83,10 +122,8 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
 
   if (!currentToolCall || totalCalls === 0) return null;
 
-  const toolName = currentToolCall.assistantCall?.name || 'Tool Call';
-  const CurrentToolIcon = getToolIcon(toolName);
-  const isStreaming = currentToolCall.toolResult?.content === 'STREAMING';
-  const isSuccess = isStreaming ? true : getToolResultStatus(currentToolCall);
+  const taskDescription = extractTaskDescription(currentToolCall);
+  const isCompleted = isTaskCompleted(currentToolCall);
 
   const handleClick = () => {
     setIsExpanding(true);
@@ -113,90 +150,35 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
         >
           <motion.div
             layoutId={CONTENT_LAYOUT_ID}
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            className="bg-card border border-border rounded-xl shadow-[0px_12px_32px_0px_rgba(0,0,0,0.05)] p-2 w-full cursor-pointer group"
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-[0px_12px_32px_0px_rgba(0,0,0,0.05)] p-3 w-full cursor-pointer group transition-colors"
             onClick={handleClick}
             style={{ opacity: isExpanding ? 0 : 1 }}
           >
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0">
-                <motion.div
-                  layoutId="tool-icon"
-                  className={cn(
-                    "w-10 h-10 rounded-3xl flex items-center justify-center",
-                    isStreaming
-                      ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
-                      : isSuccess
-                        ? "bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800"
-                        : "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
-                  )}
-                  style={{ opacity: isExpanding ? 0 : 1 }}
-                >
-                  {isStreaming ? (
-                    <CircleDashed className="h-5 w-5 text-blue-500 dark:text-blue-400 animate-spin" style={{ opacity: isExpanding ? 0 : 1 }} />
-                  ) : (
-                    <CurrentToolIcon className="h-5 w-5 text-foreground" style={{ opacity: isExpanding ? 0 : 1 }} />
-                  )}
-                </motion.div>
-              </div>
-
+            <div className="flex items-center justify-between">
+              {/* Task description - full width, no truncation */}
               <div className="flex-1 min-w-0" style={{ opacity: isExpanding ? 0 : 1 }}>
-                <motion.div layoutId="tool-title" className="flex items-center gap-2 mb-1">
-                  <h4 className="text-sm font-medium text-foreground truncate">
-                    {getUserFriendlyToolName(toolName)}
+                <motion.div layoutId="tool-title" className="flex items-center gap-2">
+                  {isCompleted && (
+                    <div className="w-5 h-5 rounded-full bg-helium-teal flex items-center justify-center flex-shrink-0">
+                      <Check className="h-3 w-3 text-white" />
+                    </div>
+                  )}
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-tight">
+                    {isCompleted ? "Task Completed" : taskDescription}
                   </h4>
                 </motion.div>
-
-                <motion.div layoutId="tool-status" className="flex items-center gap-2">
-                  <div className={cn(
-                    "w-2 h-2 rounded-full",
-                    isStreaming
-                      ? "bg-blue-500 animate-pulse"
-                      : isSuccess
-                        ? "bg-green-500"
-                        : "bg-red-500"
-                  )} />
-                  <span className="text-xs text-muted-foreground truncate">
-                    {isStreaming
-                      ? `${agentName || 'o1'} is thinking...`
-                      : isSuccess
-                        ? "Success"
-                        : "Failed"
-                    }
-                  </span>
-                </motion.div>
               </div>
 
-              {/* Apple-style notification indicators - only for multiple notification types */}
-              {showIndicators && indicatorTotal === 2 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent tool expansion
-                    // Toggle between the two notifications (binary switch)
-                    const nextIndex = indicatorIndex === 0 ? 1 : 0;
-                    onIndicatorClick?.(nextIndex);
-                  }}
-                  className="flex items-center gap-1.5 mr-3 px-2 py-1.5 rounded-lg hover:bg-muted/30 transition-colors"
-                  style={{ opacity: isExpanding ? 0 : 1 }}
-                >
-                  {Array.from({ length: indicatorTotal }).map((_, index) => (
-                    <div
-                      key={index}
-                      className={cn(
-                        "transition-all duration-300 ease-out rounded-full",
-                        index === indicatorIndex
-                          ? "w-6 h-2 bg-foreground"
-                          : "w-3 h-2 bg-muted-foreground/40"
-                      )}
-                    />
-                  ))}
-                </button>
-              )}
+              {/* Step count and expand button */}
+              <div className="flex items-center gap-3 flex-shrink-0" style={{ opacity: isExpanding ? 0 : 1 }}>
+                {/* Step count */}
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  {currentIndex + 1} / {totalCalls}
+                </span>
 
-              <Button value='ghost' className="bg-transparent hover:bg-transparent flex-shrink-0">
-                <Maximize2 className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-              </Button>
+                {/* Expand button */}
+                <ChevronUp className="h-4 w-4 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+              </div>
             </div>
           </motion.div>
         </motion.div>

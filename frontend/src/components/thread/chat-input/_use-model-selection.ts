@@ -75,12 +75,6 @@ export const MODELS = {
     recommended: false,
     lowQuality: false
   },
-  'openrouter/agentica-org/deepcoder-14b-preview:free': { 
-    tier: 'free', 
-    priority: 96,
-    recommended: false,
-    lowQuality: false
-  },
   
   // AWS Bedrock Models
   'bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0': { 
