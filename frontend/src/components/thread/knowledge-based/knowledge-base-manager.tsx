@@ -152,6 +152,7 @@ const KnowledgeBaseSkeleton = () => (
   );
 
 export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) => {
+  const ENTRY_LIMIT = 14;
   const [editDialog, setEditDialog] = useState<EditDialogData>({ isOpen: false });
   const [deleteEntryId, setDeleteEntryId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -173,6 +174,9 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ file: File; content: string }>>([]);
   const [previewFiles, setPreviewFiles] = useState<Array<{ file: File; content?: string; status: 'pending' | 'processing' | 'ready' | 'error'; error?: string }>>([]);
+  const [isMultiSelect, setIsMultiSelect] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   const { data: knowledgeBase, isLoading, error, refetch } = useKnowledgeBaseEntries(threadId, showInactive);
   const { data: kbContext, refetch: refetchKbContext, isLoading: isLoadingContext } = useKnowledgeBaseContext(threadId, 16000);
@@ -182,6 +186,31 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
   const uploadMutation = useUploadThreadFiles();
 
   const entries = knowledgeBase?.entries ?? [];
+  const atLimit = (entries?.length || 0) >= ENTRY_LIMIT;
+  const toggleSelect = (entryId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(entryId)) next.delete(entryId); else next.add(entryId);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleBulkDelete = async () => {
+    try {
+      const ids = Array.from(selectedIds);
+      for (const id of ids) {
+        await deleteMutation.mutateAsync(id);
+      }
+      clearSelection();
+      setIsMultiSelect(false);
+      setIsBulkDeleteOpen(false);
+      refetch();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const filteredEntries = entries.filter((entry) => {
     const q = searchQuery.trim().toLowerCase();
@@ -194,6 +223,10 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
   });
 
   const handleOpenCreateDialog = () => {
+    if (atLimit) {
+      toast.error(`Limit reached: maximum ${ENTRY_LIMIT} files in beta`);
+      return;
+    }
     setFormData({ name: '', description: '', content: '', usage_context: 'always' });
     setUploadedFiles([]);
     setPreviewFiles([]);
@@ -254,6 +287,10 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
 
   const handleFileUpload = async (file: File) => {
     try {
+      if (atLimit) {
+        toast.error(`Limit reached: maximum ${ENTRY_LIMIT} files in beta`);
+        return;
+      }
       if (isUploading) {
         // Prevent overlapping uploads; user can queue after current finishes
         return;
@@ -328,6 +365,11 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
   const handleUploadFileFromPreview = async (file: File) => {
     try {
       setIsUploading(true);
+      if (atLimit) {
+        toast.error(`Limit reached: maximum ${ENTRY_LIMIT} files in beta`);
+        setIsUploading(false);
+        return;
+      }
       const customName = (formData.name || '').trim() || undefined;
       // Prevent duplicate by name vs existing entries
       const nameLower = (customName || file.name).toLowerCase();
@@ -591,9 +633,22 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
             {showInactive ? 'Hide Inactive' : 'Show Inactive'}
           </Button>
           <Button
+            variant={isMultiSelect ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => { setIsMultiSelect(v => !v); if (isMultiSelect) clearSelection(); }}
+          >
+            {isMultiSelect ? 'Cancel Select' : 'Select'}
+          </Button>
+          {isMultiSelect && selectedIds.size > 0 && (
+            <Button size="sm" className="bg-red-600 text-white" onClick={() => setIsBulkDeleteOpen(true)}>
+              Delete ({selectedIds.size})
+            </Button>
+          )}
+          <Button
             size="sm"
             onClick={handleOpenCreateDialog}
             className="cursor-pointer rounded-md bg-[#0ac5b2]"
+            disabled={atLimit}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Knowledge
@@ -634,12 +689,21 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
                 <TooltipTrigger asChild>
                   <div
                     className={cn('group border rounded-lg p-4 transition-all cursor-pointer', entry.is_active ? 'border-border bg-card hover:border-border/80' : 'border-border/50 bg-muted/30 opacity-70')}
-                    onClick={() => handleOpenDetailsDialog(entry)}
+                    onClick={() => isMultiSelect ? toggleSelect(entry.entry_id) : handleOpenDetailsDialog(entry)}
                   >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      {isMultiSelect && (
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={selectedIds.has(entry.entry_id)}
+                          onChange={() => toggleSelect(entry.entry_id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      )}
                       <h3 className="font-medium truncate">{entry.name}</h3>
                       <Badge variant="outline" className={`text-xs ${contextConfig.color}`}>
                         <ContextIcon className="h-3 w-3 mr-1" />
@@ -976,6 +1040,24 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => deleteEntryId && handleDelete(deleteEntryId)}>
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={isBulkDeleteOpen} onOpenChange={(open) => { if (!open) setIsBulkDeleteOpen(false); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Selected Entries</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {selectedIds.size} selected entr{selectedIds.size === 1 ? 'y' : 'ies'}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsBulkDeleteOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-red-600 text-white">
+              Delete ({selectedIds.size})
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
