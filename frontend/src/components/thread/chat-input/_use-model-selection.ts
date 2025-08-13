@@ -7,9 +7,9 @@ import { useAvailableModels } from '@/hooks/react-query/subscriptions/use-model'
 
 export const STORAGE_KEY_MODEL = 'suna-preferred-model-v3';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
-export const DEFAULT_PREMIUM_MODEL_ID = 'openrouter/deepseek/deepseek-chat-v3-0324:free';
+export const DEFAULT_PREMIUM_MODEL_ID = 'openrouter/z-ai/glm-4.5-air:free';
 // export const DEFAULT_FREE_MODEL_ID = 'moonshotai/kimi-k2';
-export const DEFAULT_FREE_MODEL_ID = 'openrouter/deepseek/deepseek-chat-v3-0324:free';
+export const DEFAULT_FREE_MODEL_ID = 'openrouter/z-ai/glm-4.5-air:free';
 
 export type SubscriptionStatus = 'no_subscription' | 'active';
 
@@ -218,61 +218,70 @@ export const PRODUCTION_MODELS = {
     recommended: false,
     lowQuality: false
   },
-  'helio-o1-lite': {
-    id: 'bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0',
-    label: 'Helio o1 Lite',
-    description: 'Fast and efficient for everyday tasks',
+  'helio-k1': {
+    id: 'moonshot/kimi-k2-turbo-preview',
+    label: 'Helio k1',
+    description: 'Great for deep analysis',
     tier: 'free',
     priority: 90,
     recommended: false,
     lowQuality: false
   },
   'helio-g1': {
-    id: 'moonshot/kimi-k2-turbo-preview',
+    id: 'openrouter/z-ai/glm-4.5',
     label: 'Helio g1',
-    description: 'Great for coding and analysis',
+    description: 'Great for coding and dashboard',
     tier: 'free',
     priority: 80,
     recommended: false,
     lowQuality: false
   },
-  
-  // Add Z.AI models as premium options
-  'helio-vision': {
-    id: 'openrouter/z-ai/glm-4.5v',
-    label: 'Helio Vision',
-    description: 'Multimodal AI with vision capabilities for image analysis and complex reasoning',
+  'helio-t1': {
+    id: 'openrouter/qwen/qwen3-235b-a22b:free',
+    label: 'Helio t1',
+    description: 'Our thinking model',
     tier: 'free',
-    priority: 95,
-    recommended: true,
-    lowQuality: false
-  },
-  'helio-reasoning': {
-    id: 'openrouter/z-ai/glm-4.5',
-    label: 'Helio Reasoning',
-    description: 'Advanced reasoning model with 128K context for complex agent tasks',
-    tier: 'free',
-    priority: 96,
-    recommended: true,
-    lowQuality: false
-  },
-  'helio-fast': {
-    id: 'openrouter/z-ai/glm-4.5-air',
-    label: 'Helio Fast',
-    description: 'Lightweight model for quick responses and cost-effective reasoning',
-    tier: 'free',
-    priority: 94,
+    priority: 70,
     recommended: false,
     lowQuality: false
   },
   
+  // Add Z.AI models as premium options
+  // 'helio-vision': {
+  //   id: 'openrouter/z-ai/glm-4.5v',
+  //   label: 'Helio Vision',
+  //   description: 'Multimodal AI with vision capabilities for image analysis and complex reasoning',
+  //   tier: 'free',
+  //   priority: 95,
+  //   recommended: true,
+  //   lowQuality: false
+  // },
+  // 'helio-reasoning': {
+  //   id: 'openrouter/z-ai/glm-4.5',
+  //   label: 'Helio Reasoning',
+  //   description: 'Advanced reasoning model with 128K context for complex agent tasks',
+  //   tier: 'free',
+  //   priority: 96,
+  //   recommended: true,
+  //   lowQuality: false
+  // },
+  // 'helio-fast': {
+  //   id: 'openrouter/z-ai/glm-4.5-air',
+  //   label: 'Helio Fast',
+  //   description: 'Lightweight model for quick responses and cost-effective reasoning',
+  //   tier: 'free',
+  //   priority: 94,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
+  
   // Add Mistral model as premium option
-  'helio-mistral': {
+  'helio-m1': {
     id: 'openrouter/mistralai/mistral-small-3.2-24b-instruct',
-    label: 'Helio Mistral',
+    label: 'Helio m1',
     description: 'High-performance model with strong coding, STEM, and vision capabilities',
     tier: 'free',
-    priority: 93,
+    priority: 60,
     recommended: true,
     lowQuality: false
   }
@@ -395,14 +404,14 @@ export const useModelSelection = () => {
         models = [
           { 
             id: DEFAULT_FREE_MODEL_ID, 
-            label: 'DeepSeek', 
+            label: 'GLM 4.5', 
             requiresSubscription: false,
             priority: MODELS[DEFAULT_FREE_MODEL_ID]?.priority || 50
           },
           { 
             id: DEFAULT_PREMIUM_MODEL_ID, 
             label: 'Sonnet 4', 
-            requiresSubscription: true, 
+            requiresSubscription: false, 
             priority: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.priority || 100
           },
         ];
