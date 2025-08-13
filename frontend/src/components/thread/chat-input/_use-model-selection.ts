@@ -161,21 +161,21 @@ export const MODELS = {
   'openrouter/z-ai/glm-4.5v': { 
     tier: 'free', 
     priority: 95,
-    recommended: true,
+    recommended: false,
     lowQuality: false,
     features: ['vision', 'multimodal', 'reasoning']
   },
   'openrouter/z-ai/glm-4.5': { 
     tier: 'free', 
     priority: 96,
-    recommended: true,
+    recommended: false,
     lowQuality: false,
     features: ['reasoning', 'code-generation', '128k-context']
   },
   'openrouter/z-ai/glm-4.5-air': { 
     tier: 'free', 
     priority: 94,
-    recommended: true,
+    recommended: false,
     lowQuality: false,
     features: ['lightweight', 'real-time', 'cost-effective']
   },
@@ -191,7 +191,7 @@ export const MODELS = {
   'openrouter/mistralai/mistral-small-3.2-24b-instruct': { 
     tier: 'free', 
     priority: 93,
-    recommended: true,
+    recommended: false,
     lowQuality: false,
     features: ['instruction-following', 'function-calling', 'coding', 'stem', 'vision', 'structured-output', '131k-context']
   }
@@ -218,21 +218,30 @@ export const PRODUCTION_MODELS = {
     recommended: false,
     lowQuality: false
   },
-  'helio-k1': {
-    id: 'moonshot/kimi-k2-turbo-preview',
-    label: 'Helio k1',
-    description: 'Great for deep analysis',
-    tier: 'free',
-    priority: 90,
-    recommended: false,
-    lowQuality: false
-  },
   'helio-g1': {
     id: 'openrouter/z-ai/glm-4.5',
     label: 'Helio g1',
     description: 'Great for coding and dashboard',
     tier: 'free',
+    priority: 90,
+    recommended: false,
+    lowQuality: false
+  },
+  'helio-k1': {
+    id: 'moonshot/kimi-k2-turbo-preview',
+    label: 'Helio k1',
+    description: 'Great for deep analysis',
+    tier: 'free',
     priority: 80,
+    recommended: false,
+    lowQuality: false
+  },
+  'helio-m1': {
+    id: 'openrouter/mistralai/mistral-small-3.2-24b-instruct',
+    label: 'Helio m1',
+    description: 'High-performance model with strong coding, STEM, and vision capabilities',
+    tier: 'free',
+    priority: 70,
     recommended: false,
     lowQuality: false
   },
@@ -241,7 +250,7 @@ export const PRODUCTION_MODELS = {
     label: 'Helio t1',
     description: 'Our thinking model',
     tier: 'free',
-    priority: 70,
+    priority: 60,
     recommended: false,
     lowQuality: false
   },
@@ -276,15 +285,7 @@ export const PRODUCTION_MODELS = {
   // },
   
   // Add Mistral model as premium option
-  'helio-m1': {
-    id: 'openrouter/mistralai/mistral-small-3.2-24b-instruct',
-    label: 'Helio m1',
-    description: 'High-performance model with strong coding, STEM, and vision capabilities',
-    tier: 'free',
-    priority: 60,
-    recommended: true,
-    lowQuality: false
-  }
+  
 };
 
 // Model tags for categorization and search
