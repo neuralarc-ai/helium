@@ -1120,18 +1120,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                             : null
                         }
                       >
-                        <div className="flex flex-col gap-4 -mt-8">
-                          <div className="flex items-center gap-2">
-                            <div className="h-fit w-fit flex items-center justify-center">
-                              {getAgentInfo().avatar}
-                            </div>
-                            <div className="flex flex-col">
-                              <p className="text-sm md:text-base xl:text-xl font-semibold text-foreground">
-                                {getAgentInfo().name}
-                              </p>
-                            </div>
-                          </div>
-
+                        <div className="flex flex-col gap-3">
                           {/* Message content - ALL messages in the group */}
                           <div className="flex max-w-[90%] text-sm break-words overflow-hidden">
                             <div className="space-y-4 min-w-0 flex-1">
@@ -1623,6 +1612,18 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 )}
                             </div>
                           </div>
+                          
+                          {/* Helium logo and text at the bottom */}
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="h-fit w-fit rounded-xl flex items-center justify-center">
+                              {getAgentInfo().avatar}
+                            </div>
+                            <div className="flex flex-col">
+                              <p className="text-sm font-medium text-foreground/60">
+                                {getAgentInfo().name}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1658,8 +1659,19 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 )}
               {readOnly && currentToolCall && (
                 <div ref={latestMessageRef}>
-                  <div className="flex flex-col gap-4">
-                    {/* Logo positioned above the tool call */}
+                  <div className="flex flex-col gap-2">
+                    {/* Tool call content */}
+                    <div className="space-y-2">
+                      <div className="animate-shimmer inline-flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-primary bg-primary/10 rounded-md border border-primary/20">
+                        <CircleDashed className="h-3.5 w-3.5 text-primary flex-shrink-0 animate-spin animation-duration-2000" />
+                        <span className="font-mono text-xs text-primary">
+                          {currentToolCall.name || 'Using Tool'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Logo positioned below the tool call */}
+
                     <div className="flex items-center gap-2">
                       <div className="h-12 w-fit rounded-xl flex items-center justify-center">
                         {getAgentInfo().avatar}
@@ -1671,15 +1683,6 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                       </div>
                     </div>
 
-                    {/* Tool call content */}
-                                            <div className="space-y-4">
-                      <div className="animate-shimmer inline-flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-primary bg-primary/10 rounded-md border border-primary/20">
-                        <CircleDashed className="h-3.5 w-3.5 text-primary flex-shrink-0 animate-spin animation-duration-2000" />
-                        <span className="font-mono text-xs text-primary">
-                          {currentToolCall.name || 'Using Tool'}
-                        </span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
@@ -1690,8 +1693,17 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 visibleMessages.length === 0 &&
                 isStreamingText && (
                   <div ref={latestMessageRef}>
-                    <div className="flex flex-col gap-4">
-                      {/* Logo positioned above the streaming indicator */}
+                    <div className="flex flex-col gap-2">
+                      {/* Streaming indicator content */}
+                      <div className="max-w-[90%] px-4 py-3 text-sm">
+                        <div className="flex items-center gap-1.5 py-1">
+                          <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse" />
+                          <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-150" />
+                          <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-300" />
+                        </div>
+                      </div>
+                      
+                      {/* Logo positioned below the streaming indicator */}
                       <div className="flex items-center gap-2">
                         <div className="h-12 w-fit rounded-xl flex items-center justify-center">
                           {getAgentInfo().avatar}
@@ -1700,15 +1712,6 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                           <p className="text-sm font-semibold text-foreground/80">
                             {getAgentInfo().name}
                           </p>
-                        </div>
-                      </div>
-
-                      {/* Streaming indicator content */}
-                      <div className="max-w-[90%] px-4 py-3 text-sm">
-                        <div className="flex items-center gap-1.5 py-1">
-                          <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse" />
-                          <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-150" />
-                          <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-300" />
                         </div>
                       </div>
                     </div>
