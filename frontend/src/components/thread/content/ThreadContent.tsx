@@ -1730,17 +1730,19 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                             </div>
                           </div>
                           
-                          {/* Helium logo and text at the bottom */}
-                          <div className="flex items-center gap-2 mt-2">
-                            <div className="h-fit w-fit rounded-xl flex items-center justify-center">
-                              {getAgentInfo().avatar}
+                          {/* Helium logo and text at the bottom - only for the last assistant group */}
+                          {groupIndex === finalGroupedMessages.length - 1 && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <div className="h-fit w-fit rounded-xl flex items-center justify-center">
+                                {getAgentInfo().avatar}
+                              </div>
+                              <div className="flex flex-col">
+                                <p className="text-sm font-medium text-foreground/60">
+                                  {getAgentInfo().name}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex flex-col">
-                              <p className="text-sm font-medium text-foreground/60">
-                                {getAgentInfo().name}
-                              </p>
-                            </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     );
