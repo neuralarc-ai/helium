@@ -227,15 +227,42 @@ MODELS = {
         "features": ["cost-effective", "tool-use", "online-search", "code-tasks"]
     },
     
-    # Mistral Models from OpenRouter
-    "openrouter/mistralai/mistral-small-3.2-24b-instruct": {
-        "aliases": ["mistral-small-3.2", "mistral-small-3.2-24b", "mistral-small"],
+    # AWS Bedrock Models - Mistral (Available in us-east-1)
+    "bedrock/mistral.mistral-7b-instruct-v1:0": {
+        "aliases": ["mistral-7b-instruct", "mistral-7b", "bedrock-mistral-7b"],
         "pricing": {
             "input_cost_per_million_tokens": 0.02,
             "output_cost_per_million_tokens": 0.08
         },
         "tier_availability": ["free"],
-        "features": ["instruction-following", "function-calling", "coding", "stem", "vision", "structured-output", "131k-context"]
+        "features": ["instruction-following", "function-calling", "coding", "stem", "vision", "structured-output", "7b-parameters", "aws-bedrock"]
+    },
+    "bedrock/mistral.mixtral-8x7b-instruct-v1:0": {
+        "aliases": ["mixtral-8x7b-instruct", "mixtral-8x7b", "bedrock-mixtral"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.02,
+            "output_cost_per_million_tokens": 0.08
+        },
+        "tier_availability": ["free"],
+        "features": ["instruction-following", "function-calling", "coding", "stem", "vision", "structured-output", "mixture-of-experts", "aws-bedrock"]
+    },
+    "bedrock/mistral.mistral-large-2-7b-instruct-v1:0": {
+        "aliases": ["mistral-large-2-7b", "mistral-large", "bedrock-mistral-large"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.02,
+            "output_cost_per_million_tokens": 0.08
+        },
+        "tier_availability": ["free"],
+        "features": ["instruction-following", "function-calling", "coding", "stem", "vision", "structured-output", "large-model", "aws-bedrock"]
+    },
+    "bedrock/mistral.mistral-small-2-24b-instruct-v1:0": {
+        "aliases": ["mistral-small-2-24b", "mistral-small-2", "bedrock-mistral-small"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.02,
+            "output_cost_per_million_tokens": 0.08
+        },
+        "tier_availability": ["free"],
+        "features": ["instruction-following", "function-calling", "coding", "stem", "vision", "structured-output", "24b-parameters", "aws-bedrock"]
     }
 }
 

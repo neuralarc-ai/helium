@@ -106,11 +106,36 @@ def setup_api_keys() -> None:
         os.environ['AWS_REGION_NAME'] = aws_region
         logger.info(f"AWS region set to: {aws_region}")
         
-        # Debug: Log the environment variables that were set
-        logger.debug(f"AWS_ACCESS_KEY_ID: {os.environ.get('AWS_ACCESS_KEY_ID', 'NOT_SET')[:10]}...")
-        logger.debug(f"AWS_SECRET_ACCESS_KEY: {os.environ.get('AWS_SECRET_ACCESS_KEY', 'NOT_SET')[:10]}...")
-        logger.debug(f"AWS_REGION: {os.environ.get('AWS_REGION', 'NOT_SET')}")
-        logger.debug(f"AWS_DEFAULT_REGION: {os.environ.get('AWS_DEFAULT_REGION', 'NOT_SET')}")
+        # For Mistral models, we'll need to dynamically set us-east-1
+        # This will be handled in prepare_params when the model is actually used
+        logger.info(f"AWS credentials configured for Bedrock in region: {aws_region}")
+        logger.info(f"Note: Mistral models will automatically use us-east-1 region")
+        logger.info(f"Important: AWS credentials must have access to both {aws_region} and us-east-1 regions")
+        
+        # Verify that credentials can access both regions
+        try:
+            import boto3
+            from botocore.exceptions import ClientError
+            
+            # Test access to us-east-1 (for Mistral models)
+            bedrock_us_east_1 = boto3.client('bedrock-runtime', region_name='us-east-1')
+            bedrock_us_east_1.list_foundation_models()
+            logger.info("✅ AWS credentials verified for us-east-1 region")
+            
+            # Test access to configured region
+            if aws_region != 'us-east-1':
+                bedrock_configured = boto3.client('bedrock-runtime', region_name=aws_region)
+                bedrock_configured.list_foundation_models()
+                logger.info(f"✅ AWS credentials verified for {aws_region} region")
+            
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'UnauthorizedOperation':
+                logger.error(f"❌ AWS credentials do not have access to Bedrock in us-east-1 region")
+                logger.error("Please ensure your AWS credentials have Bedrock permissions in both us-east-1 and us-east-2")
+            else:
+                logger.warning(f"Could not verify AWS credentials for us-east-1: {e}")
+        except Exception as e:
+            logger.warning(f"Could not verify AWS credentials: {e}")
     else:
         logger.warning(f"Missing AWS credentials for Bedrock integration - access_key: {bool(aws_access_key)}, secret_key: {bool(aws_secret_key)}, region: {aws_region}")
 
@@ -131,6 +156,16 @@ def get_openrouter_fallback(model_name: str) -> Optional[str]:
         "z-ai/glm-4.5": "openrouter/z-ai/glm-4.5",
         "z-ai/glm-4.5-air": "openrouter/z-ai/glm-4.5-air",
         "z-ai/glm-4-32b": "openrouter/z-ai/glm-4-32b",
+        
+        # Add Bedrock Mistral models (including short names from localStorage)
+        "mistral-7b-instruct": "bedrock/mistral.mistral-7b-instruct-v1:0",
+        "mistralai/mistral-7b-instruct": "bedrock/mistral.mistral-7b-instruct-v1:0",
+        "mixtral-8x7b-instruct": "bedrock/mistral.mixtral-8x7b-instruct-v1:0",
+        "mistralai/mixtral-8x7b-instruct": "bedrock/mistral.mixtral-8x7b-instruct-v1:0",
+        "mistral-large-2-7b": "bedrock/mistral.mistral-large-2-7b-instruct-v1:0",
+        "mistralai/mistral-large-2-7b": "bedrock/mistral.mistral-large-2-7b-instruct-v1:0",
+        "mistral-small-2-24b": "bedrock/mistral.mistral-small-2-24b-instruct-v1:0",
+        "mistralai/mistral-small-2-24b": "bedrock/mistral.mistral-small-2-24b-instruct-v1:0",
     }
     
     # Check for exact match first
@@ -264,6 +299,12 @@ def prepare_params(
                 "bedrock/meta.llama4-scout-17b-instruct-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.meta.llama4-scout-17b-instruct-v1:0",
                 "bedrock/meta.llama4-maverick-17b-instruct-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.meta.llama4-maverick-17b-instruct-v1:0",
                 "bedrock/deepseek.r1-v1:0": "arn:aws:bedrock:us-east-2:492597629786:inference-profile/us.deepseek.r1-v1:0",
+                
+                # Mistral Models (Available in us-east-1)
+                "bedrock/mistral.mistral-7b-instruct-v1:0": "arn:aws:bedrock:us-east-1:492597629786:inference-profile/us.mistral.mistral-7b-instruct-v1:0",
+                "bedrock/mistral.mixtral-8x7b-instruct-v1:0": "arn:aws:bedrock:us-east-1:492597629786:inference-profile/us.mistral.mixtral-8x7b-instruct-v1:0",
+                "bedrock/mistral.mistral-large-2-7b-instruct-v1:0": "arn:aws:bedrock:us-east-1:492597629786:inference-profile/us.mistral.mistral-large-2-7b-instruct-v1:0",
+                "bedrock/mistral.mistral-small-2-24b-instruct-v1:0": "arn:aws:bedrock:us-east-1:492597629786:inference-profile/us.mistral.mistral-small-2-24b-instruct-v1:0",
             }
             
             # Check if the model name is in our mapping
@@ -286,9 +327,35 @@ def prepare_params(
         else:
             logger.debug("Using AWS credentials from environment variables for Bedrock")
         
-        # Set AWS region
+        # Set AWS region dynamically based on model type
         if config.AWS_REGION_NAME:
-            params["api_base"] = f"https://bedrock-runtime.{config.AWS_REGION_NAME}.amazonaws.com"
+            # For Mistral models, use us-east-1; for others, use configured region
+            if "mistral" in model_name.lower():
+                bedrock_region = "us-east-1"
+                logger.info(f"Mistral model detected, using us-east-1 region for {model_name}")
+                
+                # For Mistral models, we need to ensure credentials work with us-east-1
+                # The issue is that AWS credentials might be region-scoped
+                logger.warning(f"⚠️  Using us-east-1 for Mistral model. Ensure your AWS credentials have access to us-east-1 region")
+                logger.warning(f"⚠️  If you get 'Credential should be scoped to a valid region' error, your credentials need us-east-1 access")
+                
+                # Set environment variables for us-east-1
+                os.environ['AWS_REGION'] = 'us-east-1'
+                os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+                logger.debug(f"Temporarily set AWS region to us-east-1 for Mistral model")
+                
+                # Add fallback to configured region if us-east-1 fails
+                logger.info(f"🔄 If us-east-1 fails, the system will automatically fallback to {config.AWS_REGION_NAME}")
+            else:
+                bedrock_region = config.AWS_REGION_NAME
+                logger.debug(f"Using configured AWS region {bedrock_region} for {model_name}")
+                
+                # Reset to configured region
+                os.environ['AWS_REGION'] = config.AWS_REGION_NAME
+                os.environ['AWS_DEFAULT_REGION'] = config.AWS_REGION_NAME
+                logger.debug(f"Reset AWS region to configured region: {config.AWS_REGION_NAME}")
+            
+            params["api_base"] = f"https://bedrock-runtime.{bedrock_region}.amazonaws.com"
             logger.debug(f"Set Bedrock API base to: {params['api_base']}")
             
             # Validate that the region is supported by Bedrock
@@ -296,12 +363,12 @@ def prepare_params(
             supported_regions = [
                 "us-east-1", "us-east-2", "us-west-2", "eu-west-1", "ap-southeast-1"
             ]
-            if config.AWS_REGION_NAME not in supported_regions:
-                logger.error(f"AWS region {config.AWS_REGION_NAME} is not supported by Bedrock. Supported regions: {supported_regions}")
+            if bedrock_region not in supported_regions:
+                logger.error(f"AWS region {bedrock_region} is not supported by Bedrock. Supported regions: {supported_regions}")
                 logger.error("Please update your AWS_REGION_NAME to one of the supported regions.")
                 logger.error("Recommended: us-west-2 (most comprehensive Bedrock support)")
             else:
-                logger.info(f"AWS region {config.AWS_REGION_NAME} is supported by Bedrock")
+                logger.info(f"AWS region {bedrock_region} is supported by Bedrock")
         else:
             logger.error("No AWS region configured for Bedrock!")
             
@@ -316,6 +383,11 @@ def prepare_params(
     
     fallback_model = get_openrouter_fallback(model_name)
     if fallback_model:
+        # Replace the model name with the fallback model
+        params["model"] = fallback_model
+        logger.info(f"Model fallback applied: {model_name} -> {fallback_model}")
+        
+        # Also add as fallback for additional safety
         params["fallbacks"] = [{
             "model": fallback_model,
             "messages": messages,
