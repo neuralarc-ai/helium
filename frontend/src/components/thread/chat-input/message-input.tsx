@@ -148,9 +148,6 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
           />
         </div>
 
-        <div className="flex items-center justify-between mt-0 mb-1 px-2 flex-shrink-0">
-          <div className='flex items-center gap-2 w-full'>
-            {/* Attach button */}
         <div className="flex items-center justify-between mt-0 mb-2 px-2 flex-shrink-0">
           <div className="flex items-center gap-3 w-full">
             {!hideAttachments && (
