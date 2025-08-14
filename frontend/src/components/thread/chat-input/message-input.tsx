@@ -165,7 +165,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div className="relative flex items-center rounded-full bg-muted gap-1.5 p-2 px-4 shadow-sm cursor-pointer">
+                    <div className="relative flex items-center rounded-full shadow-xs border border-black/10 gap-1.5 p-2 px-4 cursor-pointer">
                       {/* Inner Helio o1 section with dark background */}
                         <HeliumLogo size={16} />
                         <span className="text-sm font-medium text-foreground">Helio o1</span>
