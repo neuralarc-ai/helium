@@ -121,7 +121,7 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
         {isStreaming && !hasData ? (
           <div className="flex flex-col items-center justify-center h-full py-12 px-6 bg-gradient-to-b from-white to-zinc-50 dark:from-zinc-950 dark:to-zinc-900">
             <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6 bg-gradient-to-b from-green-100 to-green-50 shadow-inner dark:from-green-800/40 dark:to-green-900/60">
-              <Clock className="h-10 w-10 text-green-500 dark:text-green-400 animate-spin" />
+              <Clock className="h-10 w-10 text-helium-teal animate-spin" />
             </div>
             <h3 className="text-xl font-semibold mb-2 text-zinc-900 dark:text-zinc-100">
               Loading Tasks
@@ -162,7 +162,7 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
                 {sections.length} sections
               </Badge>
               {completedTasks === totalTasks && totalTasks > 0 && (
-                <Badge variant="outline" className="h-6 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 border-green-200 dark:border-green-700">
+                <Badge variant="outline" className="h-6 py-0.5 bg-green-50 dark:bg-green-900/20 text-helium-teal border-helium-teal/80">
                   <Check className="h-3 w-3" />
                   All complete
                 </Badge>
