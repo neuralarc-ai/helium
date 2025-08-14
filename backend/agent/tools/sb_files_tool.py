@@ -3,7 +3,7 @@ from sandbox.tool_base import SandboxToolsBase
 from utils.files_utils import should_exclude_file, clean_path
 from agentpress.thread_manager import ThreadManager
 from utils.logger import logger
-from utils.config import config
+from utils.config import EnvMode, config
 import os
 import json
 import litellm
@@ -341,7 +341,13 @@ class SandboxFilesTool(SandboxToolsBase):
 
     async def _call_ai_edit_api(self, file_content: str, code_edit: str, instructions: str, file_path: str) -> tuple[Optional[str], Optional[str]]:
         """
-        Call OpenRouter API to apply edits to file content using free models.
+        Call OpenRouter API to apply edits to file content using environment-appropriate models.
+        
+        Production: Uses Morph v3 Large as primary for best code editing experience
+        Development/Staging: Uses fallback models (Qwen Coder, Z.AI GLM, Moonshot)
+        
+        Environment detection: Uses config.ENV_MODE to determine available models
+        
         Returns a tuple (new_content, error_message).
         On success, error_message is None.
         On failure, new_content is None.
@@ -359,13 +365,26 @@ class SandboxFilesTool(SandboxToolsBase):
                 "content": f"<instruction>{instructions}</instruction>\n<code>{file_content}</code>\n<update>{code_edit}</update>"
             }]
 
-            # Define models in order of preference
-            models = [
-                "openrouter/qwen/qwen3-coder:free",
-                "openrouter/z-ai/glm-4.5-air:free", 
-                "moonshot/kimi-k2-0711-preview",
-                "moonshot/moonshot-v1-8k"
-            ]
+            # Define models based on environment - Morph v3 Large only in production
+            if config.ENV_MODE == EnvMode.PRODUCTION:
+                # Production: Use Morph v3 Large as primary for best code editing experience
+                models = [
+                    "openrouter/morph/morph-v3-large",  # Primary: Morph v3 Large for intelligent code editing
+                    "openrouter/qwen/qwen3-coder:free",  # Fallback: Qwen Coder for code-specific tasks
+                    "openrouter/z-ai/glm-4.5-air:free",  # Fallback: Z.AI GLM for general AI tasks
+                    "moonshot/kimi-k2-0711-preview",     # Fallback: Moonshot Kimi for additional options
+                    "moonshot/moonshot-v1-8k"            # Fallback: Moonshot v1 as last resort
+                ]
+                logger.info("Production environment detected - using Morph v3 Large for code editing")
+            else:
+                # Development/Staging: Use fallback models without Morph
+                models = [
+                    "openrouter/qwen/qwen3-coder:free",  # Primary: Qwen Coder for code-specific tasks
+                    "openrouter/z-ai/glm-4.5-air:free",  # Fallback: Z.AI GLM for general AI tasks
+                    "moonshot/kimi-k2-0711-preview",     # Fallback: Moonshot Kimi for additional options
+                    "moonshot/moonshot-v1-8k"            # Fallback: Moonshot v1 as last resort
+                ]
+                logger.info(f"Development/Staging environment detected ({config.ENV_MODE}) - using fallback models for code editing")
             
             last_error = None
             
@@ -390,7 +409,11 @@ class SandboxFilesTool(SandboxToolsBase):
                             if len(lines) > 2:
                                 content = '\n'.join(lines[1:-1])
                         
-                        logger.info(f"Successfully edited file using model: {model}")
+                        # Log success with special mention for Morph
+                        if "morph" in model.lower():
+                            logger.info(f"Successfully edited file using Morph v3 Large through OpenRouter: {model}")
+                        else:
+                            logger.info(f"Successfully edited file using fallback model: {model}")
                         return content, None
                     else:
                         last_error = f"Invalid response from {model}: {response}"

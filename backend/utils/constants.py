@@ -1,3 +1,5 @@
+import os
+
 # Master model configuration - single source of truth
 MODELS = {
     # Free tier models
@@ -74,8 +76,20 @@ MODELS = {
     #         "input_cost_per_million_tokens": 0.13,
     #         "output_cost_per_million_tokens": 0.60
     #     },
-    #     "tier_availability": ["free", "paid"]
+    #         "tier_availability": ["free", "paid"]
     # },
+    
+    # Morph v3 Large - Specialized for code editing and AI-powered development (PRODUCTION ONLY)
+    # This model is only available in production environments for enhanced code editing capabilities
+    **({"openrouter/morph/morph-v3-large": {
+        "aliases": ["morph-v3-large", "morph", "morph-v3"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.0,
+            "output_cost_per_million_tokens": 0.0
+        },
+        "tier_availability": ["free", "paid"]
+    }} if os.getenv('ENV_MODE') == 'production' else {}),
+    
     "openrouter/agentica-org/deepcoder-14b-preview:free": {
         "aliases": ["agentica-org/deepcoder-14b-preview:free"],
         "pricing": {

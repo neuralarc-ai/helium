@@ -51,6 +51,17 @@ export const MODELS = {
   // },
 
   // Premium/Paid tier models (require subscription) - except specific free models
+  
+  // Morph v3 Large - Specialized for code editing and AI-powered development (PRODUCTION ONLY)
+  ...(process.env.NEXT_PUBLIC_ENV_MODE === 'production' ? {
+    'openrouter/morph/morph-v3-large': { 
+      tier: 'free', 
+      priority: 100,
+      recommended: true,
+      lowQuality: false
+    }
+  } : {}),
+  
   'moonshot/moonshot-v1-8k': { 
     tier: 'free', 
     priority: 99,
@@ -205,6 +216,9 @@ export const MODELS = {
 
 // Add model descriptions for better user experience
 export const MODEL_DESCRIPTIONS = {
+  ...(process.env.NEXT_PUBLIC_ENV_MODE === 'production' ? {
+    'openrouter/morph/morph-v3-large': 'Specialized AI model designed specifically for code editing and development tasks, providing intelligent and accurate code modifications'
+  } : {}),
   'openrouter/z-ai/glm-4.5v': 'Vision-language model with multimodal capabilities, perfect for image analysis and complex reasoning tasks',
   'openrouter/z-ai/glm-4.5': 'Flagship model optimized for agent applications with 128K context and advanced reasoning',
   'openrouter/z-ai/glm-4.5-air': 'Lightweight variant offering fast responses and cost-effective reasoning capabilities',
@@ -244,6 +258,20 @@ export const PRODUCTION_MODELS = {
   },
   
   // Add Z.AI models as premium options
+  
+  // Morph v3 Large as Helio Code Editor (PRODUCTION ONLY)
+  ...(process.env.NEXT_PUBLIC_ENV_MODE === 'production' ? {
+    'helio-code-editor': {
+      id: 'openrouter/morph/morph-v3-large',
+      label: 'Helio Code Editor',
+      description: 'Specialized AI model for intelligent code editing and development tasks',
+      tier: 'free',
+      priority: 100,
+      recommended: true,
+      lowQuality: false
+    }
+  } : {}),
+  
   'helio-vision': {
     id: 'openrouter/z-ai/glm-4.5v',
     label: 'Helio Vision',
@@ -286,6 +314,9 @@ export const PRODUCTION_MODELS = {
 
 // Model tags for categorization and search
 export const MODEL_TAGS = {
+  ...(process.env.NEXT_PUBLIC_ENV_MODE === 'production' ? {
+    'openrouter/morph/morph-v3-large': ['code-editing', 'development', 'ai-powered', 'morph', 'specialized']
+  } : {}),
   'openrouter/z-ai/glm-4.5v': ['vision', 'multimodal', 'reasoning', 'agent-focused', 'z-ai'],
   'openrouter/z-ai/glm-4.5': ['reasoning', 'code-generation', 'agent-alignment', '128k-context', 'z-ai'],
   'openrouter/z-ai/glm-4.5-air': ['lightweight', 'reasoning', 'real-time', 'cost-effective', 'z-ai'],
