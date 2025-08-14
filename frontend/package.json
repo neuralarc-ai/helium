@@ -71,6 +71,7 @@
     "cobe": "^0.6.3",
     "color-bits": "^1.1.0",
     "comment-json": "^4.2.5",
+    "cors": "^2.8.5",
     "date-fns": "^3.6.0",
     "diff": "^7.0.0",
     "extract-colors": "^4.2.0",

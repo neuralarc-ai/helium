@@ -82,10 +82,19 @@ export const useDeepgramVoiceAgent = ({
   };
 
   // Stop conversation
-  const stopConversation = () => {
+  const stopConversation = async () => {
     if (voiceAgentRef.current) {
-      voiceAgentRef.current.stopConversation();
-      setIsRecording(false);
+      try {
+        await voiceAgentRef.current.stopConversation();
+        setIsRecording(false);
+        setIsSpeaking(false);
+        console.log('Conversation stopped successfully');
+      } catch (error) {
+        console.error('Error stopping conversation:', error);
+        // Still reset state even if there's an error
+        setIsRecording(false);
+        setIsSpeaking(false);
+      }
     }
   };
 

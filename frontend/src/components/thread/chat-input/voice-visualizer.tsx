@@ -25,8 +25,6 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
         isInitialized,
         isRecording,
         isSpeaking,
-        transcript,
-        response,
         startConversation,
         stopConversation
     } = useDeepgramVoiceAgent({
@@ -38,11 +36,13 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
         }
     });
 
+    // Enhanced status checking
+    const isVoiceActive = isRecording || isSpeaking;
+    const shouldShowActiveState = isActive || localIsActive || isVoiceActive;
+
     // Animate the bars when active
     useEffect(() => {
-        const shouldAnimate = isActive || localIsActive || isRecording || isSpeaking;
-        
-        if (!shouldAnimate) return;
+        if (!shouldShowActiveState) return;
 
         const animate = () => {
             setAnimationFrame(prev => (prev + 1) % 120);
@@ -51,13 +51,11 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
 
         const animationId = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(animationId);
-    }, [isActive, localIsActive, isRecording, isSpeaking]);
+    }, [shouldShowActiveState]);
 
     // Generate dynamic heights for the bars
     const getBarHeight = (index: number) => {
-        const isCurrentlyActive = isActive || localIsActive || isRecording || isSpeaking;
-        
-        if (!isCurrentlyActive) {
+        if (!shouldShowActiveState) {
             // Static symmetrical pattern: medium-shorter-shortest-shorter-medium
             return [9, 6, 3, 6, 9][index];
         }
@@ -80,16 +78,33 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
         setIsPopupOpen(true);
     };
 
-    const handleClosePopup = () => {
+    const handleClosePopup = async () => {
+        console.log('Voice popup closing, stopping conversation...');
         setIsPopupOpen(false);
+        
         // Stop any ongoing conversation when closing
         if (isRecording || isSpeaking) {
-            stopConversation();
-            setLocalIsActive(false);
+            try {
+                await stopConversation();
+                console.log('Voice conversation stopped from visualizer');
+            } catch (error) {
+                console.warn('Error stopping voice conversation:', error);
+            }
         }
+        
+        // Reset local state
+        setLocalIsActive(false);
+        setThreadId(null);
+        setAgentRunId(null);
+        setMessages([]);
+        setInputValue('');
+        setAgentStatus('idle');
+        setSaveStatus('idle');
+        setIsSubmitting(false);
+        setHasStartedConversation(false);
     };
 
-    const isCurrentlyActive = isActive || localIsActive || isRecording || isSpeaking;
+    const isCurrentlyActive = shouldShowActiveState;
 
     return (
         <>

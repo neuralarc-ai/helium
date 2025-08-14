@@ -349,6 +349,73 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
     onResponse: () => {}
   });
 
+  // Enhanced close handler that ensures voice conversation is stopped
+  const handleClose = useCallback(async () => {
+    console.log('Voice mode popup closing, stopping conversation...');
+    console.log('Current state:', { voiceState, isRecording, isSpeaking });
+    
+    // Stop any ongoing voice conversation
+    if (isRecording || isSpeaking || voiceState === 'listening' || voiceState === 'speaking') {
+      try {
+        console.log('Stopping active voice conversation...');
+        await stopConversation();
+        console.log('Voice conversation stopped successfully');
+      } catch (error) {
+        console.warn('Error stopping voice conversation:', error);
+      }
+    } else {
+      console.log('No active voice conversation to stop');
+    }
+    
+    // Reset local state
+    setVoiceState('idle');
+    setVoiceLevel(0);
+    setAudioLevel(0);
+    setError(null);
+    setRetryCount(0);
+    
+    console.log('Voice mode popup state reset, calling onClose...');
+    
+    // Call the original onClose
+    onClose();
+  }, [isRecording, isSpeaking, voiceState, stopConversation, onClose]);
+
+  // Handle conversation stopping when popup is closed by user
+  useEffect(() => {
+    if (!isOpen && (isRecording || isSpeaking || voiceState === 'listening' || voiceState === 'speaking')) {
+      console.log('Popup closed by user, stopping conversation...');
+      stopConversation().catch(error => {
+        console.warn('Error stopping conversation when popup closed:', error);
+      });
+    }
+  }, [isOpen, isRecording, isSpeaking, voiceState, stopConversation]);
+
+  // Cleanup effect to stop conversation when component unmounts
+  useEffect(() => {
+    return () => {
+      // Component cleanup - only stop conversation if it was actually started
+      // Don't stop during initialization or if conversation was never started
+      console.log('Cleanup effect triggered with states:', {
+        isRecording,
+        isSpeaking,
+        voiceState,
+        isInitialized
+      });
+      
+      if ((isRecording || isSpeaking || voiceState === 'listening' || voiceState === 'speaking') && 
+          voiceState !== 'initializing' && 
+          voiceState !== 'idle') {
+        console.log('Voice mode popup unmounting, stopping conversation...');
+        // stopConversation is now async, so we need to handle it properly
+        stopConversation().catch(error => {
+          console.warn('Error stopping conversation during cleanup:', error);
+        });
+      } else {
+        console.log('Cleanup effect triggered but not stopping conversation - states indicate no active conversation');
+      }
+    };
+  }, []); // Empty dependency array - only run on unmount
+
   // Real-time audio analysis
   useEffect(() => {
     if (voiceState === 'listening' && !audioContextRef.current) {
@@ -435,7 +502,7 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
           }
           break;
         case 'Escape':
-          onClose();
+          handleClose();
           break;
         case 'm':
         case 'M':
@@ -446,7 +513,7 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [isOpen, voiceState]);
+  }, [isOpen, voiceState, handleClose]);
 
   const handleStartConversation = async () => {
     if (!isInitialized) {
@@ -493,7 +560,7 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
       <div className="absolute top-8 right-8 z-[200]">
         <Tooltip text="Close Voice Mode (Esc)" position="bottom">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{ ...glassBtnStyle, width: 56, height: 56, borderRadius: '50%', fontSize: 0, boxShadow: '0 4px 24px 0 rgba(0,0,0,0.15)' }}
             className="hover:scale-110 transition-transform"
             aria-label="Close"
@@ -521,7 +588,7 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
                 Retry
               </button>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
               >
                 Close

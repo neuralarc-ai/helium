@@ -133,14 +133,12 @@ async def log_requests_middleware(request: Request, call_next):
 allowed_origins = ["https://www.he2.ai", "https://he2.ai"]
 allow_origin_regex = None
 
-# Add staging-specific origins
-if config.ENV_MODE == EnvMode.LOCAL:
-    allowed_origins.append("http://localhost:3000")
+# Always add localhost for development
+allowed_origins.append("http://localhost:3000")
 
 # Add staging-specific origins
 if config.ENV_MODE == EnvMode.STAGING:
     allowed_origins.append("https://staging.he2.ai")
-    allowed_origins.append("http://localhost:3000")
     allow_origin_regex = r"https://he2-.*-prjcts\.vercel\.app"
 
 app.add_middleware(
