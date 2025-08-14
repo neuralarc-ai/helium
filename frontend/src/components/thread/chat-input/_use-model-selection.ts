@@ -7,9 +7,9 @@ import { useAvailableModels } from '@/hooks/react-query/subscriptions/use-model'
 
 export const STORAGE_KEY_MODEL = 'suna-preferred-model-v3';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
-export const DEFAULT_PREMIUM_MODEL_ID = 'openrouter/z-ai/glm-4.5-air:free';
+export const DEFAULT_PREMIUM_MODEL_ID = 'helio-o1';
 // export const DEFAULT_FREE_MODEL_ID = 'moonshotai/kimi-k2';
-export const DEFAULT_FREE_MODEL_ID = 'openrouter/z-ai/glm-4.5-air:free';
+export const DEFAULT_FREE_MODEL_ID = 'helio-o1';
 
 export type SubscriptionStatus = 'no_subscription' | 'active';
 
@@ -215,77 +215,22 @@ export const PRODUCTION_MODELS = {
     description: 'Our most powerful model for complex tasks',
     tier: 'free',
     priority: 100,
-    recommended: false,
-    lowQuality: false
-  },
-  'helio-g1': {
-    id: 'openrouter/z-ai/glm-4.5',
-    label: 'Helio g1',
-    description: 'Great for coding and dashboard',
-    tier: 'free',
-    priority: 90,
-    recommended: false,
-    lowQuality: false
-  },
-  'helio-k1': {
-    id: 'moonshot/kimi-k2-turbo-preview',
-    label: 'Helio k1',
-    description: 'Great for deep analysis',
-    tier: 'free',
-    priority: 80,
-    recommended: false,
-    lowQuality: false
-  },
-  'helio-m1': {
-    id: 'openrouter/mistralai/mistral-small-3.2-24b-instruct',
-    label: 'Helio m1',
-    description: 'High-performance model with strong coding, STEM, and vision capabilities',
-    tier: 'free',
-    priority: 70,
-    recommended: false,
-    lowQuality: false
-  },
-  'helio-t1': {
-    id: 'openrouter/qwen/qwen3-235b-a22b:free',
-    label: 'Helio t1',
-    description: 'Our thinking model',
-    tier: 'free',
-    priority: 60,
-    recommended: false,
-    lowQuality: false
-  },
-  
-  // Add Z.AI models as premium options
-  // 'helio-vision': {
-  //   id: 'openrouter/z-ai/glm-4.5v',
-  //   label: 'Helio Vision',
-  //   description: 'Multimodal AI with vision capabilities for image analysis and complex reasoning',
-  //   tier: 'free',
-  //   priority: 95,
-  //   recommended: true,
-  //   lowQuality: false
-  // },
-  // 'helio-reasoning': {
-  //   id: 'openrouter/z-ai/glm-4.5',
-  //   label: 'Helio Reasoning',
-  //   description: 'Advanced reasoning model with 128K context for complex agent tasks',
-  //   tier: 'free',
-  //   priority: 96,
-  //   recommended: true,
-  //   lowQuality: false
-  // },
-  // 'helio-fast': {
-  //   id: 'openrouter/z-ai/glm-4.5-air',
-  //   label: 'Helio Fast',
-  //   description: 'Lightweight model for quick responses and cost-effective reasoning',
-  //   tier: 'free',
-  //   priority: 94,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  
-  // Add Mistral model as premium option
-  
+    recommended: true,
+    lowQuality: false,
+    fallbacks: [
+      'openrouter/anthropic/claude-3-5-sonnet-20241022',
+      'openrouter/moonshot/kimi-k2-0711-preview'
+    ]
+  }
+};
+
+// Fallback model chain for production
+export const PRODUCTION_FALLBACK_CHAIN = {
+  'helio-o1': [
+    'bedrock/anthropic.claude-sonnet-4-20250514-v1:0', // Primary: Claude Sonnet 4 from Bedrock
+    'openrouter/anthropic/claude-3-5-sonnet-20241022', // Fallback 1: Claude Sonnet 4 from OpenRouter
+    'openrouter/moonshot/kimi-k2-0711-preview'         // Fallback 2: Kimi K2 from OpenRouter
+  ]
 };
 
 // Model tags for categorization and search
@@ -402,67 +347,98 @@ export const useModelSelection = () => {
     } else {
       // Default models if API data not available
       if (!modelsData?.models || isLoadingModels) {
-        models = [
-          { 
-            id: DEFAULT_FREE_MODEL_ID, 
-            label: 'GLM 4.5', 
-            requiresSubscription: false,
-            priority: MODELS[DEFAULT_FREE_MODEL_ID]?.priority || 50
-          },
-          { 
-            id: DEFAULT_PREMIUM_MODEL_ID, 
-            label: 'Sonnet 4', 
-            requiresSubscription: false, 
-            priority: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.priority || 100
-          },
-        ];
+        // In production, show only Helio o1
+        if (!isLocalMode()) {
+          models = [
+            { 
+              id: 'helio-o1', 
+              label: 'Helio o1', 
+              requiresSubscription: false,
+              priority: 100,
+              description: 'Our most powerful model for complex tasks'
+            }
+          ];
+        } else {
+          // In local mode, show all models
+          models = [
+            { 
+              id: DEFAULT_FREE_MODEL_ID, 
+              label: 'GLM 4.5', 
+              requiresSubscription: false,
+              priority: MODELS[DEFAULT_FREE_MODEL_ID]?.priority || 50
+            },
+            { 
+              id: DEFAULT_PREMIUM_MODEL_ID, 
+              label: 'Sonnet 4', 
+              requiresSubscription: false, 
+              priority: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.priority || 100
+            },
+          ];
+        }
       } else {
         // Process API-provided models
-        const processedModelIds = new Set(); // Track processed models to avoid duplicates
-        models = modelsData.models
-          .filter(model => {
-            const shortName = model.short_name || model.id;
-            // Skip if we've already processed this model ID
-            if (processedModelIds.has(shortName)) {
-              return false;
+        if (!isLocalMode()) {
+          // In production, show only Helio o1
+          models = [
+            { 
+              id: 'helio-o1', 
+              label: 'Helio o1', 
+              requiresSubscription: false,
+              priority: 100,
+              description: 'Our most powerful model for complex tasks',
+              top: true,
+              recommended: true,
+              lowQuality: false
             }
-            processedModelIds.add(shortName);
-            return true;
-          })
-          .map(model => {
-            const shortName = model.short_name || model.id;
-            const displayName = model.display_name || shortName;
-            
-            // Format the display label
-            let cleanLabel = displayName;
-            if (cleanLabel.includes('/')) {
-              cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
-            }
-            
-            cleanLabel = cleanLabel
-              .replace(/-/g, ' ')
-              .split(' ')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(' ');
-            
-            // Get model data from our central MODELS constant
-            const modelData = MODELS[shortName] || {};
-            const isPremium = model?.requires_subscription || modelData.tier === 'premium' || false;
-            
-            return {
-              id: shortName,
-              label: cleanLabel,
-              requiresSubscription: isPremium,
-              top: modelData.priority >= 90, // Mark high-priority models as "top"
-              priority: modelData.priority || 0,
-              lowQuality: modelData.lowQuality || false,
-              recommended: modelData.recommended || false
-            };
-          });
+          ];
+        } else {
+          // In local mode, process all API models
+          const processedModelIds = new Set(); // Track processed models to avoid duplicates
+          models = modelsData.models
+            .filter(model => {
+              const shortName = model.short_name || model.id;
+              // Skip if we've already processed this model ID
+              if (processedModelIds.has(shortName)) {
+                return false;
+              }
+              processedModelIds.add(shortName);
+              return true;
+            })
+            .map(model => {
+              const shortName = model.short_name || model.id;
+              const displayName = model.display_name || shortName;
+              
+              // Format the display label
+              let cleanLabel = displayName;
+              if (cleanLabel.includes('/')) {
+                cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
+              }
+              
+              cleanLabel = cleanLabel
+                .replace(/-/g, ' ')
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+              
+              // Get model data from our central MODELS constant
+              const modelData = MODELS[shortName] || {};
+              const isPremium = model?.requires_subscription || modelData.tier === 'premium' || false;
+              
+              return {
+                id: shortName,
+                label: cleanLabel,
+                requiresSubscription: isPremium,
+                top: modelData.priority >= 90, // Mark high-priority models as "top"
+                priority: modelData.priority || 0,
+                lowQuality: modelData.lowQuality || false,
+                recommended: modelData.recommended || false
+              };
+            });
+        }
       }
       
       // Add custom models if in local mode
-      if (customModels.length > 0) {
+      if (isLocalMode() && customModels.length > 0) {
         const customModelOptions = customModels.map(model => ({
           id: model.id,
           label: model.label || formatModelName(model.id),
@@ -657,6 +633,25 @@ export const useModelSelection = () => {
       return MODEL_OPTIONS.find(m => m.id === modelId)?.requiresSubscription || false;
     }
   };
+};
+
+// Function to get the actual model ID from Helio aliases (for backend routing)
+export const getActualModelId = (helioModelId: string): string => {
+  if (helioModelId === 'helio-o1') {
+    return 'bedrock/anthropic.claude-sonnet-4-20250514-v1:0';
+  }
+  return helioModelId;
+};
+
+// Function to get fallback models for a given Helio model
+export const getFallbackModels = (helioModelId: string): string[] => {
+  if (helioModelId === 'helio-o1') {
+    return [
+      'openrouter/anthropic/claude-3-5-sonnet-20241022',
+      'openrouter/moonshot/kimi-k2-0711-preview'
+    ];
+  }
+  return [];
 };
 
 // Export the hook but not any sorting logic - sorting is handled internally

@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils';
 import { UploadedFile } from './chat-input';
 import { FileUploadHandler } from './file-upload-handler';
 import { VoiceRecorder } from './voice-recorder';
-import { VoiceVisualizer } from './voice-visualizer';
 import { ModelSelector } from './model-selector';
 import { AgentSelector } from './agent-selector';
 import { canAccessModel, SubscriptionStatus } from './_use-model-selection';
@@ -17,6 +16,9 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 import { BillingModal } from '@/components/billing/billing-modal';
 import ChatDropdown from './chat-dropdown';
+import { handleFiles } from './file-upload-handler';
+import { HeliumLogo } from '@/components/sidebar/helium-logo';
+
 
 interface MessageInputProps {
   value: string;
@@ -130,6 +132,84 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
       }
     };
 
+    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!e.clipboardData) return;
+      const items = Array.from(e.clipboardData.items);
+      const imageFiles: File[] = [];
+      for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        handleFiles(
+          imageFiles,
+          sandboxId,
+          setPendingFiles,
+          setUploadedFiles,
+          setIsUploading,
+          messages,
+        );
+      }
+    };
+
+    const renderDropdown = () => {
+      if (isLoggedIn) {
+        // In production mode, show Helium logo with Helio o1 text
+        if (!isLocalMode()) {
+          return (
+            <div className='flex items-center gap-[10px]'>
+              {/* Pill-shaped toggle with Helium gradient */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="relative flex items-center rounded-full shadow-xs border border-black/10 gap-1.5 p-2 px-4 cursor-pointer">
+                      {/* Inner Helio o1 section with dark background */}
+                        <HeliumLogo size={16} />
+                        <span className="text-sm font-medium text-foreground">Helio o1</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Our most powerful agent system
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <span className='h-6 w-[1px] bg-muted-foreground/20'></span>
+            </div>
+          );
+        }
+
+        // In local mode, show full functionality
+        const showAdvancedFeatures = enableAdvancedConfig || (customAgentsEnabled && !flagsLoading);
+
+        return (
+          <div className="flex items-center gap-2">
+            {showAdvancedFeatures && !hideAgentSelection && (
+              <AgentSelector
+                selectedAgentId={selectedAgentId}
+                onAgentSelect={onAgentSelect}
+                disabled={loading || (disabled && !isAgentRunning)}
+                isSunaAgent={isSunaAgent}
+              />
+            )}
+            <ModelSelector
+              selectedModel={selectedModel}
+              onModelChange={onModelChange}
+              modelOptions={modelOptions}
+              subscriptionStatus={subscriptionStatus}
+              canAccessModel={canAccessModel}
+              refreshCustomModels={refreshCustomModels}
+              billingModalOpen={billingModalOpen}
+              setBillingModalOpen={setBillingModalOpen}
+            />
+          </div>
+        );
+      }
+      return <ChatDropdown />;
+    }
+
     return (
       <div className="relative flex flex-col w-full h-full gap-10 justify-between">
         <div className="flex flex-col px-2 flex-grow">
@@ -184,12 +264,17 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               setBillingModalOpen={setBillingModalOpen}
             />
 
-            {/* Billing Modal */}
-            <BillingModal
-              open={billingModalOpen}
-              onOpenChange={setBillingModalOpen}
-              returnUrl={typeof window !== 'undefined' ? window.location.href : '/'}
-            />
+          <div className='flex items-center gap-2'>
+            {renderDropdown()}
+            
+            {/* Billing Modal - only show in local mode */}
+            {isLocalMode() && (
+              <BillingModal
+                open={billingModalOpen}
+                onOpenChange={setBillingModalOpen}
+                returnUrl={typeof window !== 'undefined' ? window.location.href : '/'}
+              />
+            )}
 
             {/* Voice Recorder Button */}
             {isLoggedIn && <VoiceRecorder
@@ -197,19 +282,12 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               disabled={loading || (disabled && !isAgentRunning)}
             />}
 
-            {/* Voice Visualizer Button */}
-            {isLoggedIn && (
-              <VoiceVisualizer
-                disabled={loading || (disabled && !isAgentRunning)}
-              />
-            )}
-
             <Button
               type="submit"
               onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
               size="icon"
               className={cn(
-                'w-8 h-8 flex-shrink-0 self-end rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
+                'w-8 h-8 flex-shrink-0 rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
                 (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
                   loading ||
                   (disabled && !isAgentRunning)
