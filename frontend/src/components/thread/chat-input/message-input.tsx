@@ -17,6 +17,7 @@ import { TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 import { BillingModal } from '@/components/billing/billing-modal';
 import ChatDropdown from './chat-dropdown';
 import { handleFiles } from './file-upload-handler';
+import { HeliumLogo } from '@/components/sidebar/helium-logo';
 
 interface MessageInputProps {
   value: string;
@@ -156,6 +157,31 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
 
     const renderDropdown = () => {
       if (isLoggedIn) {
+        // In production mode, show Helium logo with Helio o1 text
+        if (!isLocalMode()) {
+          return (
+            <div className='flex items-center gap-[10px]'>
+              {/* Pill-shaped toggle with Helium gradient */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="relative flex items-center rounded-full bg-muted gap-1.5 p-2 px-4 shadow-sm cursor-pointer">
+                      {/* Inner Helio o1 section with dark background */}
+                        <HeliumLogo size={16} />
+                        <span className="text-sm font-medium text-foreground">Helio o1</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Our most powerful agent system
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <span className='h-6 w-[1px] bg-muted-foreground/20'></span>
+            </div>
+          );
+        }
+
+        // In local mode, show full functionality
         const showAdvancedFeatures = enableAdvancedConfig || (customAgentsEnabled && !flagsLoading);
 
         return (
@@ -240,11 +266,15 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
 
           <div className='flex items-center gap-2'>
             {renderDropdown()}
-            <BillingModal
-              open={billingModalOpen}
-              onOpenChange={setBillingModalOpen}
-              returnUrl={typeof window !== 'undefined' ? window.location.href : '/'}
-            />
+            
+            {/* Billing Modal - only show in local mode */}
+            {isLocalMode() && (
+              <BillingModal
+                open={billingModalOpen}
+                onOpenChange={setBillingModalOpen}
+                returnUrl={typeof window !== 'undefined' ? window.location.href : '/'}
+              />
+            )}
 
             {isLoggedIn && <VoiceRecorder
               onTranscription={onTranscription}
@@ -256,7 +286,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
               size="sm"
               className={cn(
-                'w-8 h-8 flex-shrink-0 self-end rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
+                'w-8 h-8 flex-shrink-0 rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
                 (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
                   loading ||
                   (disabled && !isAgentRunning)
