@@ -26,16 +26,11 @@ import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
 import { CodeBlockCode } from '@/components/ui/code-block';
 import { constructHtmlPreviewUrl } from '@/lib/utils/url';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 import {
   getLanguageFromFileName,
@@ -94,13 +89,21 @@ export function FileOperationToolView({
   if (!fileContent && operation !== 'delete') {
     fileContent = isStreaming
       ? extractStreamingFileContent(
-        assistantContent,
-        operation === 'create' ? 'create-file' : operation === 'edit' ? 'edit-file' : 'full-file-rewrite',
-      ) || ''
+          assistantContent,
+          operation === 'create'
+            ? 'create-file'
+            : operation === 'edit'
+              ? 'edit-file'
+              : 'full-file-rewrite',
+        ) || ''
       : extractFileContent(
-        assistantContent,
-        operation === 'create' ? 'create-file' : operation === 'edit' ? 'edit-file' : 'full-file-rewrite',
-      );
+          assistantContent,
+          operation === 'create'
+            ? 'create-file'
+            : operation === 'edit'
+              ? 'edit-file'
+              : 'full-file-rewrite',
+        );
   }
 
   const toolTitle = getToolTitle(name || `file-${operation}`);
@@ -143,7 +146,9 @@ export function FileOperationToolView({
         <div className="flex items-center justify-center h-full p-12">
           <div className="text-center">
             <FileIcon className="h-12 w-12 mx-auto mb-4 text-zinc-400" />
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">No content to preview</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              No content to preview
+            </p>
           </div>
         </div>
       );
@@ -165,9 +170,7 @@ export function FileOperationToolView({
     if (isMarkdown) {
       return (
         <div className="p-1 py-0 prose dark:prose-invert prose-zinc max-w-none chat-markdown">
-          <MarkdownRenderer
-            content={processUnicodeContent(fileContent)}
-          />
+          <MarkdownRenderer content={processUnicodeContent(fileContent)} />
         </div>
       );
     }
@@ -184,7 +187,7 @@ export function FileOperationToolView({
 
     return (
       <div className="p-4">
-        <div className='w-full h-full bg-muted/20 border rounded-xl px-4 py-2 pb-6'>
+        <div className="w-full h-full bg-muted/20 border rounded-xl px-4 py-2 pb-6">
           <pre className="text-sm font-mono text-zinc-800 dark:text-zinc-300 whitespace-pre-wrap break-words">
             {processUnicodeContent(fileContent)}
           </pre>
@@ -195,8 +198,13 @@ export function FileOperationToolView({
 
   const renderDeleteOperation = () => (
     <div className="flex flex-col items-center justify-center h-full py-12 px-6 bg-gradient-to-b from-white to-zinc-50 dark:from-zinc-950 dark:to-zinc-900">
-      <div className={cn("w-20 h-20 rounded-full flex items-center justify-center mb-6", config.bgColor)}>
-        <Icon className={cn("h-10 w-10", config.color)} />
+      <div
+        className={cn(
+          'w-20 h-20 rounded-full flex items-center justify-center mb-6',
+          config.bgColor,
+        )}
+      >
+        <Icon className={cn('h-10 w-10', config.color)} />
       </div>
       <h3 className="text-xl font-semibold mb-6 text-zinc-900 dark:text-zinc-100">
         File Deleted
@@ -218,7 +226,9 @@ export function FileOperationToolView({
         <div className="flex items-center justify-center h-full p-12">
           <div className="text-center">
             <FileIcon className="h-12 w-12 mx-auto mb-4 text-zinc-400" />
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">No source code to display</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              No source code to display
+            </p>
           </div>
         </div>
       );
@@ -253,7 +263,7 @@ export function FileOperationToolView({
         {contentLines.map((line, idx) => (
           <div
             key={idx}
-            className={cn("table-row transition-colors", config.hoverColor)}
+            className={cn('table-row transition-colors', config.hoverColor)}
           >
             <div className="table-cell text-right pr-3 pl-6 py-0.5 text-xs font-mono text-zinc-500 dark:text-zinc-500 select-none w-12 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
               {idx + 1}
@@ -269,25 +279,33 @@ export function FileOperationToolView({
   };
 
   return (
-    <Card className="flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
+    <Card className="flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
       <Tabs defaultValue={'preview'} className="w-full h-full">
-        <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] border-b p-2 px-4 rounded-lg mx-4 mt-2 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2 mt-4">
-            <Icon className="h-5 w-5 text-white" />
-            <CardTitle className="text-base font-medium text-white">
+        <CardHeader className="h-10 flex flex-row items-center justify-between bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 rounded-t-lg">
+          <div className="flex items-center gap-2 h-10 justify-center mt-4">
+            <Icon className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-base font-medium text-muted-foreground">
               {toolTitle}
             </CardTitle>
           </div>
-          <div className='flex items-center gap-x-2 mt-4'>
+          <div className="flex items-center gap-x-2 mt-4">
             {isHtml && htmlPreviewUrl && !isStreaming && (
-              <Button variant="outline" className="h-7 px-5 text-xs rounded-full bg-white dark:bg-muted/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-none font-medium" asChild>
-                <a href={htmlPreviewUrl} target="_blank" rel="noopener noreferrer">
+              <Button
+                variant="outline"
+                className="h-7 px-5 text-xs rounded-full bg-white dark:bg-muted/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-none font-medium"
+                asChild
+              >
+                <a
+                  href={htmlPreviewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <ExternalLink className="h-4 w-4 mr-1" />
                   Open in Browser
                 </a>
               </Button>
             )}
-            <TabsList className="h-7 bg-white/60 dark:bg-muted/60 border border-border/50 p-0.5 gap-x-2 rounded-full flex items-center">
+            <TabsList className="h-7 bg-foreground/20 p-1 gap-x-2 rounded-full flex items-center">
               <TabsTrigger
                 value="code"
                 className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full transition-all [&[data-state=active]]:bg-white [&[data-state=active]]:dark:bg-primary/10 [&[data-state=active]]:text-foreground hover:bg-background/50 text-muted-foreground shadow-none"
@@ -307,7 +325,10 @@ export function FileOperationToolView({
         </CardHeader>
 
         <CardContent className="p-0 -my-2 h-full flex-1 overflow-hidden relative">
-          <TabsContent value="code" className="flex-1 h-full mt-0 p-0 overflow-hidden">
+          <TabsContent
+            value="code"
+            className="flex-1 h-full mt-0 p-0 overflow-hidden"
+          >
             <ScrollArea className="h-screen w-full min-h-0">
               {isStreaming && !fileContent ? (
                 <LoadingState
@@ -321,8 +342,13 @@ export function FileOperationToolView({
                 />
               ) : operation === 'delete' ? (
                 <div className="flex flex-col items-center justify-center h-full py-12 px-6">
-                  <div className={cn("w-20 h-20 rounded-full flex items-center justify-center mb-6", config.bgColor)}>
-                    <Icon className={cn("h-10 w-10", config.color)} />
+                  <div
+                    className={cn(
+                      'w-20 h-20 rounded-full flex items-center justify-center mb-6',
+                      config.bgColor,
+                    )}
+                  >
+                    <Icon className={cn('h-10 w-10', config.color)} />
                   </div>
                   <h3 className="text-xl font-semibold mb-6 text-zinc-900 dark:text-zinc-100">
                     Delete Operation
@@ -339,7 +365,10 @@ export function FileOperationToolView({
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="preview" className="w-full flex-1 h-full mt-0 p-0 overflow-hidden">
+          <TabsContent
+            value="preview"
+            className="w-full flex-1 h-full mt-0 p-0 overflow-hidden"
+          >
             <ScrollArea className="h-full w-full min-h-0">
               {isStreaming && !fileContent ? (
                 <LoadingState
@@ -372,7 +401,9 @@ export function FileOperationToolView({
           <div className="h-full flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
             <Badge variant="outline" className="py-0.5 h-6">
               <FileIcon className="h-3 w-3" />
-              {hasHighlighting ? language.toUpperCase() : fileExtension.toUpperCase() || 'TEXT'}
+              {hasHighlighting
+                ? language.toUpperCase()
+                : fileExtension.toUpperCase() || 'TEXT'}
             </Badge>
           </div>
 
