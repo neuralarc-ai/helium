@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,8 @@ import {
     ArrowUpDown,
     Filter,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -34,29 +36,78 @@ interface SortConfig {
     direction: SortDirection;
 }
 
-function parseCSV(content: string) {
-    if (!content) return { data: [], headers: [], meta: null };
+function parseCSV(content: string, headerOverride?: boolean) {
+    if (!content) return { data: [], headers: [], meta: null, detectedHeader: false };
 
     try {
+        // Preview first two rows to guess header
+        const preview = Papa.parse(content, {
+            header: false,
+            skipEmptyLines: true,
+            preview: 2,
+            dynamicTyping: true,
+        });
+
+        if (!preview.data || preview.data.length === 0) {
+            return { headers: [], data: [], meta: null, detectedHeader: false };
+        }
+
+        const firstRow = preview.data[0] as any[];
+        const secondRow = preview.data.length > 1 ? preview.data[1] as any[] : null;
+
+        let detectedHeader = false;
+        if (secondRow) {
+            const firstRowIsString = firstRow.every(cell => typeof cell === 'string' && isNaN(Number(cell)));
+            const secondRowHasNumber = secondRow.some(cell => typeof cell === 'number' && !isNaN(cell));
+
+            if (firstRowIsString && secondRowHasNumber) {
+                detectedHeader = true;
+            } else {
+                // Fallback for when types are not perfectly detected, e.g., all strings
+                const firstRowLooksLikeHeader = firstRow.every(cell => isNaN(Number(cell)));
+                const secondRowLooksLikeData = secondRow.some(cell => !isNaN(Number(cell)));
+                if (firstRowLooksLikeHeader && secondRowLooksLikeData) {
+                    detectedHeader = true;
+                }
+            }
+        }
+
+        const useHeader = headerOverride !== undefined ? headerOverride : detectedHeader;
+
+        // Full parse with correct header setting
         const results = Papa.parse(content, {
-            header: true,
+            header: useHeader,
             skipEmptyLines: true,
             dynamicTyping: true,
         });
 
-        let headers: string[] = [];
-        if (results.meta && results.meta.fields) {
-            headers = results.meta.fields || [];
+        let headers = results.meta.fields || [];
+        if (!useHeader || headers.length === 0) {
+            headers = (results.data[0] ? Object.keys(results.data[0]) : []).map((_, i) => `Column ${i + 1}`);
+        }
+
+        // If we generated headers but the first row was a header, PapaParse keeps it as data.
+        // We need to format the data to match our generated headers.
+        let data = results.data;
+        if (!useHeader) {
+             data = results.data.map((row: any) => {
+                const newRow: { [key: string]: any } = {};
+                headers.forEach((header, i) => {
+                    newRow[header] = row[i];
+                });
+                return newRow;
+            });
         }
 
         return { 
-            headers, 
-            data: results.data,
-            meta: results.meta
+            headers,
+            data,
+            meta: results.meta,
+            detectedHeader
         };
     } catch (error) {
         console.error("Error parsing CSV:", error);
-        return { headers: [], data: [], meta: null };
+        return { headers: [], data: [], meta: null, detectedHeader: false };
     }
 }
 
@@ -68,9 +119,18 @@ export function CsvRenderer({
     const [sortConfig, setSortConfig] = useState<SortConfig>({ column: '', direction: null });
     const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
-    const [rowsPerPage] = useState(50); 
+    const [rowsPerPage] = useState(50);
+    const [hasHeader, setHasHeader] = useState<boolean | undefined>(undefined);
 
-    const parsedData = parseCSV(content);
+    useEffect(() => {
+        const initialParse = parseCSV(content);
+        setHasHeader(initialParse.detectedHeader);
+    }, [content]);
+
+    const parsedData = useMemo(() => {
+        return parseCSV(content, hasHeader);
+    }, [content, hasHeader]);
+
     const isEmpty = parsedData.data.length === 0;
 
     const processedData = useMemo(() => {
@@ -188,23 +248,28 @@ export function CsvRenderer({
     return (
         <div className={cn('w-full h-full flex flex-col bg-background', className)}>
             <div className="flex-shrink-0 border-b bg-muted/30 p-4 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
                         <FileSpreadsheet className="h-5 w-5 text-primary" />
-                        <div className='flex items-center gap-2'>
+                        <div>
                             <h3 className="font-medium text-foreground">CSV Data</h3>
                             <p className="text-xs text-muted-foreground">
-                                - {processedData.length.toLocaleString()} rows, {visibleHeaders.length} columns
+                                {processedData.length.toLocaleString()} rows, {visibleHeaders.length} columns
                                 {searchTerm && ` (filtered from ${parsedData.data.length.toLocaleString()})`}
                             </p>
                         </div>
                     </div>
-                    
-                    <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                            Page {currentPage} of {totalPages}
-                        </Badge>
-                        
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center space-x-2">
+                            <Switch
+                                id="header-toggle"
+                                checked={hasHeader === true}
+                                onCheckedChange={setHasHeader}
+                            />
+                            <Label htmlFor="header-toggle" className="text-sm font-medium whitespace-nowrap">
+                                First row is header
+                            </Label>
+                        </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="outline" size="sm">
@@ -215,9 +280,9 @@ export function CsvRenderer({
                             <DropdownMenuContent align="end" className="w-48">
                                 <div className="px-2 py-1.5 text-sm font-medium">Show/Hide Columns</div>
                                 <DropdownMenuSeparator />
-                                {parsedData.headers.map(header => (
+                                {parsedData.headers.map((header, index) => (
                                     <DropdownMenuCheckboxItem
-                                        key={header}
+                                        key={`${header}-${index}`}
                                         checked={!hiddenColumns.has(header)}
                                         onCheckedChange={() => toggleColumnVisibility(header)}
                                     >
@@ -229,28 +294,30 @@ export function CsvRenderer({
                     </div>
                 </div>
 
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search data..."
-                        value={searchTerm}
-                        onChange={(e) => {
-                            setSearchTerm(e.target.value);
-                            setCurrentPage(1);
-                        }}
-                        className="pl-9"
-                    />
+                <div className="flex items-center justify-between">
+                    <div className="relative w-full max-w-xs">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search data..."
+                            value={searchTerm}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            className="pl-10 w-full"
+                        />
+                    </div>
                 </div>
             </div>
 
             <div className="flex-1 overflow-hidden">
                 <div className="w-full h-full overflow-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent">
                     <table className="w-full border-collapse table-fixed" style={{ minWidth: `${visibleHeaders.length * 150}px` }}>
-                        <thead className="bg-muted/50 sticky top-0 z-10">
+                        <thead className="sticky top-0 z-10">
                             <tr>
                                 {visibleHeaders.map((header, index) => (
                                     <th 
-                                        key={header} 
+                                        key={`${header}-${index}`} 
                                         className="px-4 py-3 text-left font-medium border-b border-border bg-muted/50 backdrop-blur-sm"
                                         style={{ width: '150px', minWidth: '150px' }}
                                     >
@@ -268,7 +335,7 @@ export function CsvRenderer({
                             </tr>
                         </thead>
                         <tbody>
-                            {paginatedData.map((row: any, rowIndex) => (
+                            {paginatedData.map((row, rowIndex) => (
                                 <tr 
                                     key={startIndex + rowIndex} 
                                     className="border-b border-border hover:bg-muted/30 transition-colors"
