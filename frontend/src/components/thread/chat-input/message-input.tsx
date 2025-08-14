@@ -1,22 +1,21 @@
 import React, { forwardRef, useEffect, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Square, Loader2, ArrowUp, BarChart3 } from 'lucide-react';
+import { Loader2, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UploadedFile } from './chat-input';
 import { FileUploadHandler } from './file-upload-handler';
 import { VoiceRecorder } from './voice-recorder';
 import { VoiceVisualizer } from './voice-visualizer';
 import { ModelSelector } from './model-selector';
-import { AgentSelector } from './agent-selector';
-import { canAccessModel, SubscriptionStatus } from './_use-model-selection';
+import { SubscriptionStatus } from './_use-model-selection';
 import { isLocalMode } from '@/lib/config';
 import { useFeatureFlag } from '@/lib/feature-flags';
 import { TooltipContent } from '@/components/ui/tooltip';
 import { Tooltip } from '@/components/ui/tooltip';
 import { TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 import { BillingModal } from '@/components/billing/billing-modal';
-import ChatDropdown from './chat-dropdown';
+// import ChatDropdown from './chat-dropdown';
 
 interface MessageInputProps {
   value: string;
@@ -148,9 +147,6 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
           />
         </div>
 
-        <div className="flex items-center justify-between mt-0 mb-1 px-2 flex-shrink-0">
-          <div className='flex items-center gap-2 w-full'>
-            {/* Attach button */}
         <div className="flex items-center justify-between mt-0 mb-2 px-2 flex-shrink-0">
           <div className="flex items-center gap-3 w-full">
             {!hideAttachments && (
