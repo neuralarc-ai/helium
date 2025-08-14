@@ -1,11 +1,12 @@
 import React, { forwardRef, useEffect, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Square, Loader2, ArrowUp } from 'lucide-react';
+import { Square, Loader2, ArrowUp, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UploadedFile } from './chat-input';
 import { FileUploadHandler } from './file-upload-handler';
 import { VoiceRecorder } from './voice-recorder';
+import { VoiceVisualizer } from './voice-visualizer';
 import { ModelSelector } from './model-selector';
 import { AgentSelector } from './agent-selector';
 import { canAccessModel, SubscriptionStatus } from './_use-model-selection';
@@ -16,7 +17,6 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip';
 import { BillingModal } from '@/components/billing/billing-modal';
 import ChatDropdown from './chat-dropdown';
-import { handleFiles } from './file-upload-handler';
 
 interface MessageInputProps {
   value: string;
@@ -51,7 +51,6 @@ interface MessageInputProps {
   onAgentSelect?: (agentId: string | undefined) => void;
   enableAdvancedConfig?: boolean;
   hideAgentSelection?: boolean;
-  isSunaAgent?: boolean;
 }
 
 export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
@@ -90,7 +89,6 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
       onAgentSelect,
       enableAdvancedConfig = false,
       hideAgentSelection = false,
-      isSunaAgent,
     },
     ref,
   ) => {
@@ -102,16 +100,17 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
       if (!textarea.current) return;
 
       const adjustHeight = () => {
-        const el = textarea.current;
-        if (!el) return;
-        el.style.height = 'auto';
-        el.style.maxHeight = '200px';
-        el.style.overflowY = el.scrollHeight > 200 ? 'auto' : 'hidden';
-
-        const newHeight = Math.min(el.scrollHeight, 200);
-        el.style.height = `${newHeight}px`;
+        textarea.current!.style.height = 'auto';
+        const newHeight = Math.min(
+          Math.max(textarea.current!.scrollHeight, 24),
+          200,
+        );
+        textarea.current!.style.height = `${newHeight}px`;
       };
 
+      adjustHeight();
+
+      // Call it twice to ensure proper height calculation
       adjustHeight();
 
       window.addEventListener('resize', adjustHeight);
@@ -131,72 +130,17 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
       }
     };
 
-    const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      if (!e.clipboardData) return;
-      const items = Array.from(e.clipboardData.items);
-      const imageFiles: File[] = [];
-      for (const item of items) {
-        if (item.kind === 'file' && item.type.startsWith('image/')) {
-          const file = item.getAsFile();
-          if (file) imageFiles.push(file);
-        }
-      }
-      if (imageFiles.length > 0) {
-        e.preventDefault();
-        handleFiles(
-          imageFiles,
-          sandboxId,
-          setPendingFiles,
-          setUploadedFiles,
-          setIsUploading,
-          messages,
-        );
-      }
-    };
-
-    const renderDropdown = () => {
-      if (isLoggedIn) {
-        const showAdvancedFeatures = enableAdvancedConfig || (customAgentsEnabled && !flagsLoading);
-
-        return (
-          <div className="flex items-center gap-2">
-            {showAdvancedFeatures && !hideAgentSelection && (
-              <AgentSelector
-                selectedAgentId={selectedAgentId}
-                onAgentSelect={onAgentSelect}
-                disabled={loading || (disabled && !isAgentRunning)}
-                isSunaAgent={isSunaAgent}
-              />
-            )}
-            <ModelSelector
-              selectedModel={selectedModel}
-              onModelChange={onModelChange}
-              modelOptions={modelOptions}
-              subscriptionStatus={subscriptionStatus}
-              canAccessModel={canAccessModel}
-              refreshCustomModels={refreshCustomModels}
-              billingModalOpen={billingModalOpen}
-              setBillingModalOpen={setBillingModalOpen}
-            />
-          </div>
-        );
-      }
-      return <ChatDropdown />;
-    }
-
     return (
-      <div className="relative flex flex-col w-full h-full gap-2 justify-between">
-
-        <div className="flex flex-col gap-1 px-2">
+      <div className="relative flex flex-col w-full h-full gap-10 justify-between">
+        <div className="flex flex-col px-2 flex-grow">
           <Textarea
             ref={ref}
             value={value}
             onChange={onChange}
             onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
             placeholder={placeholder}
             className={cn(
-              'w-full bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 px-1 pb-6 pt-4 min-h-[96px] max-h-[200px] overflow-y-auto resize-none md:text-base md:placeholder:text-base',
+              'w-full bg-transparent dark:bg-transparent z-20 border-none shadow-none focus-visible:ring-0 px-1 pb-6 pt-4 min-h-[96px] max-h-[200px] overflow-y-auto scrollbar-hide resize-none md:text-base md:placeholder:text-base',
               isDraggingOver ? 'opacity-40' : '',
             )}
             disabled={loading || (disabled && !isAgentRunning)}
@@ -204,9 +148,11 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
           />
         </div>
 
-
-        <div className="flex items-center justify-between mt-0 mb-2 px-2">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between mt-0 mb-1 px-2 flex-shrink-0">
+          <div className='flex items-center gap-2 w-full'>
+            {/* Attach button */}
+        <div className="flex items-center justify-between mt-0 mb-2 px-2 flex-shrink-0">
+          <div className="flex items-center gap-3 w-full">
             {!hideAttachments && (
               <FileUploadHandler
                 ref={fileInputRef}
@@ -223,38 +169,45 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               />
             )}
 
-          </div>
+            {/* Spacer to push the rest of the buttons to the right */}
+            <div className='flex-1' />
 
-          {/* {subscriptionStatus === 'no_subscription' && !isLocalMode() &&
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <p role='button' className='text-sm text-amber-500 hidden sm:block cursor-pointer' onClick={() => setBillingModalOpen(true)}>Upgrade for more usage</p>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>The free tier is severely limited by the amount of usage. Upgrade to experience the full power of Suna.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          } */}
+            {/* Show model selector inline if custom agents are disabled, otherwise show settings dropdown */}
+            <ModelSelector
+              selectedModel={selectedModel}
+              onModelChange={onModelChange}
+              modelOptions={modelOptions}
+              subscriptionStatus={subscriptionStatus}
+              canAccessModel={canAccessModel}
+              refreshCustomModels={refreshCustomModels}
+              billingModalOpen={billingModalOpen}
+              setBillingModalOpen={setBillingModalOpen}
+            />
 
-          <div className='flex items-center gap-2'>
-            {renderDropdown()}
+            {/* Billing Modal */}
             <BillingModal
               open={billingModalOpen}
               onOpenChange={setBillingModalOpen}
               returnUrl={typeof window !== 'undefined' ? window.location.href : '/'}
             />
 
+            {/* Voice Recorder Button */}
             {isLoggedIn && <VoiceRecorder
               onTranscription={onTranscription}
               disabled={loading || (disabled && !isAgentRunning)}
             />}
 
+            {/* Voice Visualizer Button */}
+            {isLoggedIn && (
+              <VoiceVisualizer
+                disabled={loading || (disabled && !isAgentRunning)}
+              />
+            )}
+
             <Button
               type="submit"
               onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
-              size="sm"
+              size="icon"
               className={cn(
                 'w-8 h-8 flex-shrink-0 self-end rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
                 (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
@@ -278,14 +231,26 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               )}
             </Button>
           </div>
+          {subscriptionStatus === 'no_subscription' && !isLocalMode() &&
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <p role='button' className='text-sm text-amber-500 hidden sm:block cursor-pointer' onClick={() => setBillingModalOpen(true)}></p>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>The free tier is severely limited by the amount of usage. Upgrade to experience the full power of Helium AI.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          }
         </div>
-        {/* {subscriptionStatus === 'no_subscription' && !isLocalMode() &&
+        {subscriptionStatus === 'no_subscription' && !isLocalMode() &&
           <div className='sm:hidden absolute -bottom-8 left-0 right-0 flex justify-center'>
             <p className='text-xs text-amber-500 px-2 py-1'>
               Upgrade for better performance
             </p>
           </div>
-        } */}
+        }
       </div>
     );
   },

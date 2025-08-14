@@ -562,7 +562,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                   className="h-fit p-2.5 bg-transparent border-0 rounded-full aspect-square text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-2 cursor-pointer"
                 >
                   <div className="relative flex items-center justify-center">
-                    <Cpu className="h-4 w-4" />
+                    <Cpu className="h-5 w-5" />
                     {MODELS[selectedModel]?.lowQuality && (
                       <AlertTriangle className="h-2.5 w-2.5 text-amber-500 absolute -top-1 -right-1" />
                     )}
