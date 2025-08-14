@@ -20,6 +20,7 @@ export type FileType =
     | 'audio' | 'video' | 'spreadsheet'
     | 'archive' | 'database' | 'markdown'
     | 'csv'
+    | 'document'
     | 'other';
 
 // Simple extension-based file type detection
@@ -36,6 +37,7 @@ function getFileType(filename: string): FileType {
     if (['csv', 'tsv'].includes(ext)) return 'csv';
     if (['xls', 'xlsx'].includes(ext)) return 'spreadsheet';
     if (['zip', 'rar', 'tar', 'gz'].includes(ext)) return 'archive';
+    if (['doc', 'docx'].includes(ext)) return 'document';
     if (['db', 'sqlite', 'sql'].includes(ext)) return 'database';
 
     return 'other';
@@ -49,6 +51,7 @@ function getFileIcon(type: FileType): React.ElementType {
         text: FileText,
         markdown: FileText,
         pdf: FileType,
+        document: FileText,
         audio: FileAudio,
         video: FileVideo,
         spreadsheet: FileSpreadsheet,
@@ -79,6 +82,7 @@ function getTypeLabel(type: FileType, extension?: string): string {
         csv: 'CSV',
         archive: 'Archive',
         database: 'Database',
+        document: 'Document',
         other: 'File'
     };
 
@@ -103,6 +107,7 @@ function getFileSize(filepath: string, type: FileType): string {
         csv: 2.0,
         archive: 5.0,
         database: 4.0,
+        document: 2.0,
         other: 1.0
     };
 

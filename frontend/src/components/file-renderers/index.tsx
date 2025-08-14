@@ -5,12 +5,14 @@ import { cn } from '@/lib/utils';
 import { MarkdownRenderer } from './markdown-renderer';
 import { CodeRenderer } from './code-renderer';
 import { PdfRenderer } from './pdf-renderer';
+import DocxRenderer from './docx-renderer';
 import { ImageRenderer } from './image-renderer';
 import { BinaryRenderer } from './binary-renderer';
 import { HtmlRenderer } from './html-renderer';
 import { constructHtmlPreviewUrl } from '@/lib/utils/url';
 import { CsvRenderer } from './csv-renderer';
 import { XlsxRenderer } from './xlsx-renderer';
+import { useAuth } from '@/components/AuthProvider';
 
 export type FileType =
   | 'markdown'
@@ -20,7 +22,8 @@ export type FileType =
   | 'text'
   | 'binary'
   | 'csv'
-  | 'xlsx';
+  | 'xlsx'
+  | 'docx';
 
 interface FileRendererProps {
   content: string | null;
@@ -95,6 +98,7 @@ export function getFileTypeFromExtension(fileName: string): FileType {
   const csvExtensions = ['csv', 'tsv'];
   const xlsxExtensions = ['xlsx', 'xls'];
   const textExtensions = ['txt', 'log', 'env', 'ini'];
+  const docxExtensions = ['docx'];
 
   if (markdownExtensions.includes(extension)) {
     return 'markdown';
@@ -110,6 +114,8 @@ export function getFileTypeFromExtension(fileName: string): FileType {
     return 'xlsx';
   } else if (textExtensions.includes(extension)) {
     return 'text';
+  } else if (docxExtensions.includes(extension)) {
+    return 'docx';
   } else {
     return 'binary';
   }
@@ -160,6 +166,7 @@ export function FileRenderer({
   onDownload,
   isDownloading,
 }: FileRendererProps) {
+  const { session } = useAuth();
   const fileType = getFileTypeFromExtension(fileName);
   const language = getLanguageFromExtension(fileName);
   const isHtmlFile = fileName.toLowerCase().endsWith('.html');
@@ -196,6 +203,8 @@ export function FileRenderer({
         <ImageRenderer url={binaryUrl} />
       ) : fileType === 'pdf' && binaryUrl ? (
         <PdfRenderer url={binaryUrl} />
+      ) : fileType === 'docx' && binaryUrl ? (
+        <DocxRenderer url={binaryUrl} accessToken={session?.access_token} />
       ) : fileType === 'markdown' ? (
         <MarkdownRenderer content={content || ''} ref={markdownRef} />
       ) : fileType === 'csv' ? (
