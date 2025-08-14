@@ -28,7 +28,8 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
         transcript,
         response,
         startConversation,
-        stopConversation
+        stopConversation,
+        continueListening
     } = useDeepgramVoiceAgent({
         onTranscript: (text) => {
             console.log('Transcript:', text);
@@ -76,7 +77,21 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
             return;
         }
 
-        // Open the voice mode popup
+        // If already recording, stop the conversation
+        if (isRecording) {
+            stopConversation();
+            setLocalIsActive(false);
+            return;
+        }
+
+        // If was previously recording but stopped, continue listening
+        if (transcript && !isRecording && !isSpeaking) {
+            continueListening();
+            setLocalIsActive(true);
+            return;
+        }
+
+        // Open the voice mode popup for new conversation
         setIsPopupOpen(true);
     };
 
@@ -99,11 +114,16 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
                 className={cn(
                     'w-10 h-10 rounded-[10px] z-20 flex cursor-pointer items-center justify-center bg-black hover:bg-gray-900 border border-gray-800 transition-all duration-200',
                     isCurrentlyActive && 'bg-gray-900 border-gray-700 hover:bg-gray-800',
+                    transcript && !isRecording && !isSpeaking && 'bg-blue-600 border-blue-500 hover:bg-blue-700',
                     disabled && 'opacity-50 cursor-not-allowed'
                 )}
                 disabled={disabled}
                 onClick={handleClick}
-                title={isCurrentlyActive ? 'Click to stop voice assistant' : 'Click to start voice assistant'}
+                title={
+                    isRecording ? 'Click to stop voice assistant' : 
+                    transcript && !isRecording && !isSpeaking ? 'Click to continue voice conversation' :
+                    'Click to start voice assistant'
+                }
             >
                 <div className="w-5 h-5 flex items-center justify-center">
                     <div className="flex items-center justify-center space-x-0.5 h-5">

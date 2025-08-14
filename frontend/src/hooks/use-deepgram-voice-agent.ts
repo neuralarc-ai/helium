@@ -89,6 +89,29 @@ export const useDeepgramVoiceAgent = ({
     }
   };
 
+  // Continue listening for next input
+  const continueListening = async () => {
+    if (voiceAgentRef.current && isInitialized) {
+      try {
+        setIsRecording(true);
+        await voiceAgentRef.current.continueListening(
+          (text: string) => {
+            setTranscript(text);
+            onTranscript?.(text);
+          },
+          (text: string) => {
+            setResponse(text);
+            onResponse?.(text);
+          }
+        );
+      } catch (error) {
+        console.error('Failed to continue listening:', error);
+        toast.error('Failed to continue listening');
+        setIsRecording(false);
+      }
+    }
+  };
+
   // Check if currently recording
   const isCurrentlyRecording = () => {
     return voiceAgentRef.current?.isCurrentlyRecording() || false;
@@ -117,6 +140,7 @@ export const useDeepgramVoiceAgent = ({
     response,
     startConversation,
     stopConversation,
+    continueListening,
     isCurrentlyRecording,
     isCurrentlySpeaking
   };

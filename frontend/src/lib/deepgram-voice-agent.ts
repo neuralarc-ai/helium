@@ -36,6 +36,12 @@ export class DeepgramVoiceAgent {
   private isSpeaking = false;
   private stopped = false; // Flag to check if conversation was stopped
   private currentAudio: HTMLAudioElement | null = null;
+  // Microphone analysis for barge-in detection
+  private micStream: MediaStream | null = null;
+  private micAnalyser: AnalyserNode | null = null;
+  private micSource: MediaStreamAudioSourceNode | null = null;
+  private micDataArray: Uint8Array | null = null;
+  private micLevel: number = 0;
 
   constructor(config: DeepgramVoiceAgentConfig = {}) {
     // Get API key from environment variable or config
@@ -85,7 +91,7 @@ export class DeepgramVoiceAgent {
 
       console.log('API key found, requesting microphone access...');
 
-      // Get microphone access
+      // Get microphone access (keep stream to analyze ambient/user voice while TTS is playing)
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -93,13 +99,22 @@ export class DeepgramVoiceAgent {
           autoGainControl: true
         }
       });
+      this.micStream = stream;
+      // create analyser for barge-in detection
+      if (this.audioContext) {
+        this.micAnalyser = this.audioContext.createAnalyser();
+        this.micAnalyser.fftSize = 256;
+        this.micSource = this.audioContext.createMediaStreamSource(stream);
+        this.micSource.connect(this.micAnalyser);
+        this.micDataArray = new Uint8Array(this.micAnalyser.frequencyBinCount);
+      }
 
       console.log('Microphone access granted, speaking starter message...');
 
       // Speak starter message first
       await this.speakStarterMessage();
       
-      // Start listening for speech
+      // Start listening for speech immediately and keep it running (continuous)
       console.log('Starting speech recognition...');
       await this.startListening(onTranscript, onResponse);
 
@@ -574,6 +589,11 @@ export class DeepgramVoiceAgent {
     try {
       this.isSpeaking = true;
       console.log('Calling Deepgram TTS API...');
+      // Temporarily lower mic sensitivity during TTS to reduce self-pickup
+      const previousGain = this.micLevel;
+      if (this.micAnalyser && this.micDataArray) {
+        // no-op placeholder; we will use barge-in below
+      }
       
       // Call Deepgram TTS API
       const audioResponse = await fetch('https://api.deepgram.com/v1/speak', {
@@ -694,6 +714,20 @@ export class DeepgramVoiceAgent {
   }
 
   /**
+   * Continue listening for the next user input
+   * This allows users to control when to continue the conversation
+   */
+  async continueListening(onTranscript: (text: string) => void, onResponse: (text: string) => void): Promise<void> {
+    if (this.stopped) {
+      console.log('Conversation was stopped. Starting new conversation...');
+      await this.startConversation(onTranscript, onResponse);
+    } else {
+      console.log('Continuing to listen for user input...');
+      await this.startListening(onTranscript, onResponse);
+    }
+  }
+
+  /**
    * Check if currently recording
    */
   isCurrentlyRecording(): boolean {
@@ -728,6 +762,7 @@ export class DeepgramVoiceAgent {
     const startRecognition = () => {
       try {
         recognition = new SpeechRecognition();
+        // Keep recognition always on so user can speak anytime
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
@@ -750,6 +785,25 @@ export class DeepgramVoiceAgent {
             }
           }
 
+          // If AI is speaking, ignore recognition unless we detect strong mic input (barge-in)
+          if (this.isSpeaking) {
+            if (this.micAnalyser && this.micDataArray) {
+              this.micAnalyser.getByteFrequencyData(this.micDataArray);
+              const avg = this.micDataArray.reduce((a, b) => a + b, 0) / this.micDataArray.length;
+              this.micLevel = avg;
+              if (avg > 30) {
+                // User likely started speaking over TTS -> stop TTS and continue handling input
+                this.stopCurrentAudio();
+              } else {
+                // AI voice likely being picked up; ignore this result
+                return;
+              }
+            } else {
+              // No analyser available; conservatively ignore while speaking
+              return;
+            }
+          }
+
           // Show interim results
           if (interimTranscript) {
             onTranscript(interimTranscript);
@@ -767,8 +821,7 @@ export class DeepgramVoiceAgent {
             isProcessing = true;
             console.log('Final transcript received:', finalTranscript);
             
-            // Stop current recognition
-            recognition.stop();
+            // Do not stop recognition; keep it running to continuously listen
             
             // Process with AI search
             const response = await this.processWithDeepSeek(finalTranscript);
@@ -781,16 +834,8 @@ export class DeepgramVoiceAgent {
             // Reset for next input
             finalTranscript = '';
             isProcessing = false;
-            
-            // Restart listening after speaking is done
-            if (!this.stopped) {
-              console.log('Restarting speech recognition after response...');
-              setTimeout(() => {
-                if (!this.stopped) {
-                  startRecognition();
-                }
-              }, 1500); // Wait 1.5 seconds after speaking
-            }
+
+            // No restart needed since recognition remains active
           }
         };
 
@@ -799,14 +844,14 @@ export class DeepgramVoiceAgent {
           this.isRecording = false;
           toast.error(`Speech recognition error: ${event.error}`);
           
-          // Restart on error if not stopped
+          // Try to restart to maintain always-listening behavior
           if (!this.stopped) {
+            try {
+              recognition.abort();
+            } catch {}
             setTimeout(() => {
-              if (!this.stopped) {
-                console.log('Restarting speech recognition after error...');
-                startRecognition();
-              }
-            }, 2000);
+              if (!this.stopped) startRecognition();
+            }, 1000);
           }
         };
 
@@ -814,7 +859,7 @@ export class DeepgramVoiceAgent {
           console.log('Speech recognition ended');
           this.isRecording = false;
           
-          // Restart if not stopped manually and not currently processing
+          // Auto-restart to keep listening continuously
           if (!this.stopped && !isProcessing) {
             setTimeout(() => {
               if (!this.stopped && !isProcessing) {
@@ -830,16 +875,13 @@ export class DeepgramVoiceAgent {
       } catch (error) {
         console.error('Failed to start speech recognition:', error);
         if (!this.stopped) {
-          setTimeout(() => {
-            if (!this.stopped) {
-              startRecognition();
-            }
-          }, 2000);
+          console.log('Failed to start speech recognition. User can click voice button to retry.');
+          toast.info('Failed to start speech recognition. Click the voice button to retry.');
         }
       }
     };
 
-    // Start the first recognition session
+    // Start the first recognition session (continuous)
     startRecognition();
   }
 

@@ -207,3 +207,4 @@ dump.rdb
 .cwc/
 
 /node_modules
+.cursor/

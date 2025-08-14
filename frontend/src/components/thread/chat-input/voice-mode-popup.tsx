@@ -342,8 +342,11 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
     isInitialized,
     isRecording,
     isSpeaking,
+    transcript,
+    response,
     startConversation,
-    stopConversation
+    stopConversation,
+    continueListening
   } = useDeepgramVoiceAgent({
     onTranscript: () => {},
     onResponse: () => {}
@@ -432,6 +435,8 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
             handleStartConversation();
           } else if (voiceState === 'listening') {
             handleStopConversation();
+          } else if (transcript && !isRecording && !isSpeaking) {
+            handleStartConversation(); // This will use continueListening
           }
           break;
         case 'Escape':
@@ -458,8 +463,15 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
     try {
       setError(null);
       setVoiceState('initializing');
-      toast.info('Starting voice assistant...');
-      await startConversation();
+      
+      // If we have a previous transcript, continue listening instead of starting new
+      if (transcript && !isRecording && !isSpeaking) {
+        toast.info('Continuing voice conversation...');
+        await continueListening();
+      } else {
+        toast.info('Starting voice assistant...');
+        await startConversation();
+      }
     } catch (error) {
       console.error('Failed to start conversation:', error);
       setError('Failed to start voice conversation');
@@ -533,7 +545,11 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
 
       {/* Controls - bottom center, glassmorphic, circular */}
       <div className="absolute bottom-12 left-0 right-0 z-[200] flex items-center justify-center gap-8">
-        <Tooltip text={voiceState === 'listening' ? "Stop Listening (Space)" : "Start Listening (Space)"} position="top">
+        <Tooltip text={
+          voiceState === 'listening' ? "Stop Listening (Space)" : 
+          transcript && !isRecording && !isSpeaking ? "Continue Conversation (Space)" :
+          "Start Listening (Space)"
+        } position="top">
           <button
             onClick={voiceState === 'listening' ? handleStopConversation : handleStartConversation}
             disabled={voiceState === 'initializing' || voiceState === 'processing'}
