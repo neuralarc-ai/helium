@@ -140,7 +140,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             className={cn(
-              'w-full bg-transparent dark:bg-transparent z-20 border-none shadow-none focus-visible:ring-0 px-0.5 pb-6 pt-4 min-h-[86px] max-h-[200px] overflow-y-auto resize-none scrollbar-hide placeholder:text-lg md:text-lg',
+              'w-full bg-transparent dark:bg-transparent z-20 border-none shadow-none focus-visible:ring-0 px-1 pb-6 pt-4 min-h-[96px] max-h-[200px] overflow-y-auto scrollbar-hide resize-none md:text-base md:placeholder:text-base',
               isDraggingOver ? 'opacity-40' : '',
             )}
             disabled={loading || (disabled && !isAgentRunning)}
@@ -151,6 +151,8 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
         <div className="flex items-center justify-between mt-0 mb-1 px-2 flex-shrink-0">
           <div className='flex items-center gap-2 w-full'>
             {/* Attach button */}
+        <div className="flex items-center justify-between mt-0 mb-2 px-2 flex-shrink-0">
+          <div className="flex items-center gap-3 w-full">
             {!hideAttachments && (
               <FileUploadHandler
                 ref={fileInputRef}
@@ -207,7 +209,12 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
               onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
               size="icon"
               className={cn(
-                'w-10 h-10 rounded-[10px] z-20 flex cursor-pointer items-center justify-center bg-[#59472B] hover:bg-[#59472B]/80',
+                'w-8 h-8 flex-shrink-0 self-end rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
+                (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
+                  loading ||
+                  (disabled && !isAgentRunning)
+                  ? 'opacity-50'
+                  : '',
               )}
               disabled={
                 (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
@@ -215,32 +222,13 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                 (disabled && !isAgentRunning)
               }
             >
-              {/* Wrap the ternary in a fragment to fix linter error */}
-              <>
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-white" />
-                ) : isAgentRunning ? (
-                  <div className="min-h-[14px] min-w-[14px] w-4 h-4 rounded-sm bg-white" />
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-5 w-5"
-                  >
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                    <path d="M12 5l0 14" />
-                    <path d="M16 9l-4 -4" />
-                    <path d="M8 9l4 -4" />
-                  </svg>
-                )}
-              </>
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : isAgentRunning ? (
+                <div className="w-3 h-3 aspect-square rounded-xs bg-current" />
+              ) : (
+                <ArrowUp className="h-5 w-5" />
+              )}
             </Button>
           </div>
           {subscriptionStatus === 'no_subscription' && !isLocalMode() &&

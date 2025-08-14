@@ -172,7 +172,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                         onClick={handleClick}
                         onContextMenu={handleRightClick}
                         disabled={disabled || state === 'processing'}
-                        className={`w-10 h-10 rounded-[10px] bg-transparent border-0 text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors cursor-pointer ${getButtonClass()}`}
+                        className={`h-fit p-2 bg-transparent border-0 rounded-full aspect-square text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-2 transition-colors cursor-pointer ${getButtonClass()}`}
                     >
                         {getIcon()}
                     </Button>

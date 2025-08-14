@@ -26,13 +26,104 @@ class FileProcessor:
         '.pdf', '.docx'
     }
     
-    MAX_FILE_SIZE = 50 * 1024 * 1024
+    MAX_FILE_SIZE = 100 * 1024 * 1024
     MAX_ZIP_ENTRIES = 1000
     MAX_CONTENT_LENGTH = 100000
     
     def __init__(self):
         self.db = DBConnection()
     
+    async def process_thread_file_upload(
+        self,
+        thread_id: str,
+        account_id: str,
+        file_content: bytes,
+        filename: str,
+        mime_type: str,
+    ) -> Dict[str, Any]:
+        """Process file upload for thread knowledge base (creates entry in knowledge_base_entries)."""
+        try:
+            file_size = len(file_content)
+            if file_size > self.MAX_FILE_SIZE:
+                raise ValueError(
+                    f"File too large: {file_size} bytes (max: {self.MAX_FILE_SIZE})"
+                )
+
+            file_extension = Path(filename).suffix.lower()
+            extraction_method = self._get_extraction_method(file_extension, mime_type)
+
+            # Extract content or handle ZIP specially in future if needed
+            content = await self._extract_file_content(
+                file_content, filename, mime_type
+            )
+
+            if not content or not content.strip():
+                raise ValueError(f"No extractable content found in {filename}")
+
+            client = await self.db.client
+
+            # Sanitize and clamp content size
+            sanitized_content = self._sanitize_content(
+                content[: self.MAX_CONTENT_LENGTH]
+            )
+
+            # knowledge_base_entries has a slimmer schema than agent/global tables
+            entry_data = {
+                'thread_id': thread_id,
+                'account_id': account_id,
+                'name': f"📄 {filename}",
+                'description': f"Content extracted from uploaded file: {filename}",
+                'content': sanitized_content,
+                'usage_context': 'always',
+                'is_active': True,
+            }
+
+            # Deduplicate: if an entry with same thread, name, and identical content exists, reuse it
+            try:
+                existing = await client.table('knowledge_base_entries') \
+                    .select('entry_id, content') \
+                    .eq('thread_id', thread_id) \
+                    .eq('name', entry_data['name']) \
+                    .order('created_at', desc=True) \
+                    .limit(1) \
+                    .execute()
+                if existing.data:
+                    existing_row = existing.data[0]
+                    if existing_row.get('content') == entry_data['content']:
+                        logger.info("Duplicate knowledge base upload detected; returning existing entry_id")
+                        return {
+                            'success': True,
+                            'entry_id': existing_row['entry_id'],
+                            'filename': filename,
+                            'content_length': len(sanitized_content),
+                            'extraction_method': extraction_method,
+                        }
+            except Exception as dedup_err:
+                logger.warning(f"Dedup check failed: {dedup_err}")
+
+            result = (
+                await client.table('knowledge_base_entries').insert(entry_data).execute()
+            )
+
+            if not result.data:
+                raise Exception("Failed to create thread knowledge base entry")
+
+            return {
+                'success': True,
+                'entry_id': result.data[0]['entry_id'],
+                'filename': filename,
+                'content_length': len(sanitized_content),
+                'extraction_method': extraction_method,
+            }
+
+        except Exception as e:
+            logger.error(f"Error processing thread file {filename}: {str(e)}")
+            return {
+                'success': False,
+                'filename': filename,
+                'error': str(e),
+            }
+
     async def process_file_upload(
         self, 
         agent_id: str, 
@@ -103,7 +194,8 @@ class FileProcessor:
         account_id: str, 
         file_content: bytes, 
         filename: str, 
-        mime_type: str
+        mime_type: str,
+        custom_name: str = None
     ) -> Dict[str, Any]:
         """Process file upload for global knowledge base (no agent_id required)"""
         try:
@@ -118,7 +210,7 @@ class FileProcessor:
 
             if file_extension == '.zip':
                 logger.info("Processing ZIP file")
-                return await self._process_global_zip_file(account_id, file_content, filename)
+                return await self._process_global_zip_file(account_id, file_content, filename, custom_name)
             
             logger.info("Extracting file content")
             content = await self._extract_file_content(file_content, filename, mime_type)
@@ -135,9 +227,47 @@ class FileProcessor:
             sanitized_content = self._sanitize_content(content[:self.MAX_CONTENT_LENGTH])
             logger.info(f"Content sanitized, final length: {len(sanitized_content)} characters")
             
+            # Use custom name if provided, otherwise use filename
+            display_name = custom_name if custom_name else filename
+
+            # Deduplicate: avoid inserting duplicates for same account
+            try:
+                logger.info("Checking for existing global KB entries to avoid duplicates")
+                existing_query = (
+                    await client.table('global_knowledge_base_entries')
+                    .select('entry_id, name, content, source_metadata')
+                    .eq('account_id', account_id)
+                    .eq('name', display_name)
+                    .order('created_at', desc=True)
+                    .limit(5)
+                    .execute()
+                )
+
+                if existing_query.data:
+                    for row in existing_query.data:
+                        try:
+                            existing_filename = (row.get('source_metadata') or {}).get('filename')
+                        except Exception:
+                            existing_filename = None
+
+                        if (row.get('content') == sanitized_content) or (
+                            isinstance(existing_filename, str) and existing_filename == filename
+                        ):
+                            logger.info("Duplicate detected; reusing existing entry_id")
+                            return {
+                                'success': True,
+                                'entry_id': row['entry_id'],
+                                'filename': filename,
+                                'content_length': len(sanitized_content),
+                                'extraction_method': self._get_extraction_method(file_extension, mime_type),
+                                'deduplicated': True,
+                            }
+            except Exception as dedup_err:
+                logger.warning(f"Global KB dedup check failed: {dedup_err}")
+
             entry_data = {
                 'account_id': account_id,
-                'name': f"📄 {filename}",
+                'name': display_name,
                 'description': f"Content extracted from uploaded file: {filename}",
                 'content': sanitized_content,
                 'source_type': 'file',
@@ -196,15 +326,19 @@ class FileProcessor:
         self, 
         account_id: str, 
         zip_content: bytes, 
-        zip_filename: str
+        zip_filename: str,
+        custom_name: str = None
     ) -> Dict[str, Any]:
         """Process ZIP file for global knowledge base"""
         try:
             client = await self.db.client
             
+            # Use custom name if provided, otherwise use filename with emoji
+            display_name = custom_name if custom_name else f"📦 {zip_filename}"
+            
             zip_entry_data = {
                 'account_id': account_id,
-                'name': f"📦 {zip_filename}",
+                'name': display_name,
                 'description': f"ZIP archive: {zip_filename}",
                 'content': f"ZIP archive containing multiple files. Extracted files will appear as separate entries.",
                 'source_type': 'file',
@@ -665,36 +799,86 @@ class FileProcessor:
             return f"Error extracting CSV content: {str(e)}"
     
     def _extract_pdf_content(self, file_content: bytes) -> str:
+        """Extract text from a PDF using PyMuPDF first, then fall back to pdfminer if needed."""
+        # 1) Primary: PyMuPDF (fitz)
         try:
-            logger.info("Starting PDF content extraction")
+            import fitz  # PyMuPDF
+            logger.info("Starting PDF content extraction with PyMuPDF")
+            text_chunks = []
+            with fitz.open(stream=file_content, filetype="pdf") as doc:
+                logger.info(f"PyMuPDF opened PDF with {doc.page_count} pages")
+                for i, page in enumerate(doc):
+                    try:
+                        # 'text' gives layout-aware text; if empty try 'raw'
+                        txt = page.get_text("text") or ""
+                        if not txt.strip():
+                            txt = page.get_text("raw") or ""
+                        if txt.strip():
+                            text_chunks.append(txt)
+                            if i < 3:
+                                logger.info(f"PyMuPDF extracted text from page {i+1}, length: {len(txt)}")
+                        else:
+                            logger.debug(f"PyMuPDF empty text on page {i+1}")
+                    except Exception as p_err:
+                        logger.warning(f"PyMuPDF page {i+1} extraction error: {p_err}")
+            raw_text = "\n\n".join(text_chunks)
+            if raw_text.strip():
+                logger.info(f"PyMuPDF extraction completed, total text length: {len(raw_text)}")
+                return self._sanitize_content(raw_text)
+            else:
+                logger.warning("PyMuPDF produced no text; attempting pdfminer fallback")
+        except Exception as fitz_err:
+            logger.warning(f"PyMuPDF not available or failed: {fitz_err}")
+
+        # 2) Fallback: pdfminer.six
+        try:
+            from pdfminer.high_level import extract_text as pdfminer_extract_text
+            logger.info("Attempting PDF extraction with pdfminer.six")
+            try:
+                text2 = pdfminer_extract_text(io.BytesIO(file_content))
+            except TypeError:
+                with tempfile.NamedTemporaryFile(suffix='.pdf', delete=True) as tmp:
+                    tmp.write(file_content)
+                    tmp.flush()
+                    text2 = pdfminer_extract_text(tmp.name)
+            if text2 and text2.strip():
+                logger.info(f"pdfminer fallback extracted text successfully, length: {len(text2)}")
+                return self._sanitize_content(text2)
+            else:
+                logger.warning("pdfminer produced no text; attempting PyPDF2 fallback")
+        except Exception as pm_err:
+            logger.warning(f"pdfminer fallback failed: {pm_err}")
+
+        # 3) Final fallback: PyPDF2
+        try:
+            logger.info("Attempting PDF extraction with PyPDF2")
             pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_content))
-            logger.info(f"PDF reader created, pages: {len(pdf_reader.pages)}")
+            text_chunks = []
             
-            text_content = []
             for i, page in enumerate(pdf_reader.pages):
                 try:
-                    page_text = page.extract_text()
-                    if page_text:
-                        text_content.append(page_text)
-                        logger.info(f"Extracted text from page {i+1}, length: {len(page_text)}")
+                    text = page.extract_text()
+                    if text.strip():
+                        text_chunks.append(text)
+                        if i < 3:
+                            logger.info(f"PyPDF2 extracted text from page {i+1}, length: {len(text)}")
                     else:
-                        logger.warning(f"No text extracted from page {i+1}")
-                except Exception as page_error:
-                    logger.error(f"Error extracting text from page {i+1}: {str(page_error)}")
-                    text_content.append(f"[Error extracting page {i+1}: {str(page_error)}]")
+                        logger.debug(f"PyPDF2 empty text on page {i+1}")
+                except Exception as page_err:
+                    logger.warning(f"PyPDF2 page {i+1} extraction error: {page_err}")
             
-            raw_text = '\n\n'.join(text_content)
-            logger.info(f"PDF extraction completed, total text length: {len(raw_text)}")
-            
-            if not raw_text.strip():
-                logger.warning("No text content extracted from PDF")
-                return "No text content could be extracted from this PDF file."
-            
-            return self._sanitize_content(raw_text)
-            
-        except Exception as e:
-            logger.error(f"Error in PDF content extraction: {str(e)}", exc_info=True)
-            return f"Error extracting PDF content: {str(e)}"
+            raw_text = "\n\n".join(text_chunks)
+            if raw_text.strip():
+                logger.info(f"PyPDF2 extraction completed, total text length: {len(raw_text)}")
+                return self._sanitize_content(raw_text)
+            else:
+                logger.warning("PyPDF2 produced no text")
+        except Exception as pypdf2_err:
+            logger.warning(f"PyPDF2 fallback failed: {pypdf2_err}")
+
+        # If all methods fail, provide detailed error message
+        logger.error("All PDF extraction methods failed")
+        return "No text content could be extracted from this PDF file. This may be because the PDF contains only images, is encrypted, or is corrupted."
     
     def _extract_docx_content(self, file_content: bytes) -> str:
         doc = docx.Document(io.BytesIO(file_content))

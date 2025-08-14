@@ -7,9 +7,9 @@ import { useAvailableModels } from '@/hooks/react-query/subscriptions/use-model'
 
 export const STORAGE_KEY_MODEL = 'suna-preferred-model-v3';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
-export const DEFAULT_PREMIUM_MODEL_ID = 'openrouter/deepseek/deepseek-chat-v3-0324:free';
+export const DEFAULT_PREMIUM_MODEL_ID = 'openrouter/z-ai/glm-4.5-air:free';
 // export const DEFAULT_FREE_MODEL_ID = 'moonshotai/kimi-k2';
-export const DEFAULT_FREE_MODEL_ID = 'openrouter/deepseek/deepseek-chat-v3-0324:free';
+export const DEFAULT_FREE_MODEL_ID = 'openrouter/z-ai/glm-4.5-air:free';
 
 export type SubscriptionStatus = 'no_subscription' | 'active';
 
@@ -51,21 +51,27 @@ export const MODELS = {
   // },
 
   // Premium/Paid tier models (require subscription) - except specific free models
-  'openrouter/moonshotai/kimi-k2:free': { 
+  'moonshot/moonshot-v1-8k': { 
     tier: 'free', 
     priority: 99,
+    recommended: false,
+    lowQuality: false
+  },
+  'moonshot/kimi-k2-0711-preview': { 
+    tier: 'free', 
+    priority: 98,
+    recommended: false,
+    lowQuality: false
+  },
+  'moonshot/kimi-k2-turbo-preview': { 
+    tier: 'free', 
+    priority: 97,
     recommended: false,
     lowQuality: false
   },
   'openrouter/z-ai/glm-4.5-air:free': { 
     tier: 'free', 
     priority: 97,
-    recommended: false,
-    lowQuality: false
-  },
-  'openrouter/agentica-org/deepcoder-14b-preview:free': { 
-    tier: 'free', 
-    priority: 96,
     recommended: false,
     lowQuality: false
   },
@@ -146,10 +152,59 @@ export const MODELS = {
   // },
   'openrouter/deepseek/deepseek-chat-v3-0324:free': { 
     tier: 'free', 
-    priority: 75,
+    priority: 96,
     recommended: false,
     lowQuality: false
   },
+  
+  // Z.AI GLM Models from OpenRouter
+  'openrouter/z-ai/glm-4.5v': { 
+    tier: 'free', 
+    priority: 95,
+    recommended: false,
+    lowQuality: false,
+    features: ['vision', 'multimodal', 'reasoning']
+  },
+  'openrouter/z-ai/glm-4.5': { 
+    tier: 'free', 
+    priority: 96,
+    recommended: false,
+    lowQuality: false,
+    features: ['reasoning', 'code-generation', '128k-context']
+  },
+  'openrouter/z-ai/glm-4.5-air': { 
+    tier: 'free', 
+    priority: 94,
+    recommended: false,
+    lowQuality: false,
+    features: ['lightweight', 'real-time', 'cost-effective']
+  },
+  'openrouter/z-ai/glm-4-32b': { 
+    tier: 'free', 
+    priority: 92,
+    recommended: false,
+    lowQuality: false,
+    features: ['cost-effective', 'tool-use']
+  },
+  
+  // Mistral Models from OpenRouter
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': { 
+    tier: 'free', 
+    priority: 93,
+    recommended: false,
+    lowQuality: false,
+    features: ['instruction-following', 'function-calling', 'coding', 'stem', 'vision', 'structured-output', '131k-context']
+  }
+};
+
+// Add model descriptions for better user experience
+export const MODEL_DESCRIPTIONS = {
+  'openrouter/z-ai/glm-4.5v': 'Vision-language model with multimodal capabilities, perfect for image analysis and complex reasoning tasks',
+  'openrouter/z-ai/glm-4.5': 'Flagship model optimized for agent applications with 128K context and advanced reasoning',
+  'openrouter/z-ai/glm-4.5-air': 'Lightweight variant offering fast responses and cost-effective reasoning capabilities',
+  'openrouter/z-ai/glm-4-32b': 'Cost-effective model with strong tool use and code generation abilities',
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': 'High-performance 24B model with strong coding, STEM, and vision capabilities, optimized for instruction following and function calling',
+  // ... other models ...
 };
 
 // Production-only models for Helio branding
@@ -163,24 +218,84 @@ export const PRODUCTION_MODELS = {
     recommended: false,
     lowQuality: false
   },
-  'helio-o1-lite': {
-    id: 'bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0',
-    label: 'Helio o1 Lite',
-    description: 'Fast and efficient for everyday tasks',
+  'helio-g1': {
+    id: 'openrouter/z-ai/glm-4.5',
+    label: 'Helio g1',
+    description: 'Great for coding and dashboard',
     tier: 'free',
     priority: 90,
     recommended: false,
     lowQuality: false
   },
-  'helio-g1': {
-    id: 'bedrock/meta.llama3-3-70b-instruct-v1:0',
-    label: 'Helio g1',
-    description: 'Great for coding and analysis',
+  'helio-k1': {
+    id: 'moonshot/kimi-k2-turbo-preview',
+    label: 'Helio k1',
+    description: 'Great for deep analysis',
     tier: 'free',
     priority: 80,
     recommended: false,
     lowQuality: false
-  }
+  },
+  'helio-m1': {
+    id: 'openrouter/mistralai/mistral-small-3.2-24b-instruct',
+    label: 'Helio m1',
+    description: 'High-performance model with strong coding, STEM, and vision capabilities',
+    tier: 'free',
+    priority: 70,
+    recommended: false,
+    lowQuality: false
+  },
+  'helio-t1': {
+    id: 'openrouter/qwen/qwen3-235b-a22b:free',
+    label: 'Helio t1',
+    description: 'Our thinking model',
+    tier: 'free',
+    priority: 60,
+    recommended: false,
+    lowQuality: false
+  },
+  
+  // Add Z.AI models as premium options
+  // 'helio-vision': {
+  //   id: 'openrouter/z-ai/glm-4.5v',
+  //   label: 'Helio Vision',
+  //   description: 'Multimodal AI with vision capabilities for image analysis and complex reasoning',
+  //   tier: 'free',
+  //   priority: 95,
+  //   recommended: true,
+  //   lowQuality: false
+  // },
+  // 'helio-reasoning': {
+  //   id: 'openrouter/z-ai/glm-4.5',
+  //   label: 'Helio Reasoning',
+  //   description: 'Advanced reasoning model with 128K context for complex agent tasks',
+  //   tier: 'free',
+  //   priority: 96,
+  //   recommended: true,
+  //   lowQuality: false
+  // },
+  // 'helio-fast': {
+  //   id: 'openrouter/z-ai/glm-4.5-air',
+  //   label: 'Helio Fast',
+  //   description: 'Lightweight model for quick responses and cost-effective reasoning',
+  //   tier: 'free',
+  //   priority: 94,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
+  
+  // Add Mistral model as premium option
+  
+};
+
+// Model tags for categorization and search
+export const MODEL_TAGS = {
+  'openrouter/z-ai/glm-4.5v': ['vision', 'multimodal', 'reasoning', 'agent-focused', 'z-ai'],
+  'openrouter/z-ai/glm-4.5': ['reasoning', 'code-generation', 'agent-alignment', '128k-context', 'z-ai'],
+  'openrouter/z-ai/glm-4.5-air': ['lightweight', 'reasoning', 'real-time', 'cost-effective', 'z-ai'],
+  'openrouter/z-ai/glm-4-32b': ['cost-effective', 'tool-use', 'online-search', 'code-tasks', 'z-ai'],
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': ['instruction-following', 'function-calling', 'coding', 'stem', 'vision', 'structured-output', '131k-context', 'mistral'],
+  // ... other models ...
 };
 
 // Helper to check if a user can access a model based on subscription status
@@ -290,14 +405,14 @@ export const useModelSelection = () => {
         models = [
           { 
             id: DEFAULT_FREE_MODEL_ID, 
-            label: 'DeepSeek', 
+            label: 'GLM 4.5', 
             requiresSubscription: false,
             priority: MODELS[DEFAULT_FREE_MODEL_ID]?.priority || 50
           },
           { 
             id: DEFAULT_PREMIUM_MODEL_ID, 
             label: 'Sonnet 4', 
-            requiresSubscription: true, 
+            requiresSubscription: false, 
             priority: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.priority || 100
           },
         ];

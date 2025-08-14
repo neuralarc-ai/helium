@@ -92,16 +92,40 @@ MODELS = {
         },
         "tier_availability": ["free", "paid"]
     },
-    "openrouter/moonshotai/kimi-k2:free": {
-        "aliases": ["moonshotai/kimi-k2:free"],
+    "moonshot/moonshot-v1-8k": {
+        "aliases": ["moonshot-v1-8k", "kimi-k2", "moonshotai/kimi-k2:free", "moonshotai/kimi-k2"],
         "pricing": {
             "input_cost_per_million_tokens": 0.0,
             "output_cost_per_million_tokens": 0.0
         },
         "tier_availability": ["free", "paid"]
     },
-    "openrouter/moonshotai/kimi-k2": {
-        "aliases": ["moonshotai/kimi-k2"],
+    "moonshot/moonshot-v1-32k": {
+        "aliases": ["moonshot-v1-32k", "kimi-k2-32k"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.0,
+            "output_cost_per_million_tokens": 0.0
+        },
+        "tier_availability": ["free", "paid"]
+    },
+    "moonshot/moonshot-v1-128k": {
+        "aliases": ["moonshot-v1-128k", "kimi-k2-128k"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.0,
+            "output_cost_per_million_tokens": 0.0
+        },
+        "tier_availability": ["free", "paid"]
+    },
+    "moonshot/kimi-k2-0711-preview": {
+        "aliases": ["kimi-k2-0711-preview", "kimi-k2-0711"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.0,
+            "output_cost_per_million_tokens": 0.0
+        },
+        "tier_availability": ["free", "paid"]
+    },
+    "moonshot/kimi-k2-turbo-preview": {
+        "aliases": ["kimi-k2-turbo-preview", "kimi-k2-turbo"],
         "pricing": {
             "input_cost_per_million_tokens": 0.0,
             "output_cost_per_million_tokens": 0.0
@@ -164,6 +188,55 @@ MODELS = {
     #     },
     #     "tier_availability": ["paid"]
     # },   
+    
+    # Z.AI GLM Models from OpenRouter
+    "openrouter/z-ai/glm-4.5v": {
+        "aliases": ["glm-4.5v", "z-ai-glm-4.5v"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.60,
+            "output_cost_per_million_tokens": 1.80
+        },
+        "tier_availability": ["free"],
+        "features": ["vision", "multimodal", "reasoning", "agent-focused"]
+    },
+    "openrouter/z-ai/glm-4.5": {
+        "aliases": ["glm-4.5", "z-ai-glm-4.5"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.60,
+            "output_cost_per_million_tokens": 2.20
+        },
+        "tier_availability": ["free"],
+        "features": ["reasoning", "code-generation", "agent-alignment", "128k-context"]
+    },
+    "openrouter/z-ai/glm-4.5-air": {
+        "aliases": ["glm-4.5-air", "z-ai-glm-4.5-air"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.20,
+            "output_cost_per_million_tokens": 1.10
+        },
+        "tier_availability": ["free"],
+        "features": ["lightweight", "reasoning", "real-time", "cost-effective"]
+    },
+    "openrouter/z-ai/glm-4-32b": {
+        "aliases": ["glm-4-32b", "z-ai-glm-4-32b"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.10,
+            "output_cost_per_million_tokens": 0.10
+        },
+        "tier_availability": ["free"],
+        "features": ["cost-effective", "tool-use", "online-search", "code-tasks"]
+    },
+    
+    # Mistral Models from OpenRouter
+    "openrouter/mistralai/mistral-small-3.2-24b-instruct": {
+        "aliases": ["mistral-small-3.2", "mistral-small-3.2-24b", "mistral-small"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.02,
+            "output_cost_per_million_tokens": 0.08
+        },
+        "tier_availability": ["free"],
+        "features": ["instruction-following", "function-calling", "coding", "stem", "vision", "structured-output", "131k-context"]
+    }
 }
 
 # Derived structures (auto-generated from MODELS)

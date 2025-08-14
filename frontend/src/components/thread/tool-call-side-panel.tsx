@@ -12,6 +12,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { ToolView } from './tool-views/wrapper';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import { useMediumScreen } from '@/hooks/react-query/se-medium-screen';
+import { useCustomBreakpoint } from '@/hooks/use-custom-breakpoint';
 
 export interface ToolCallInput {
   assistantCall: {
@@ -51,6 +54,12 @@ interface ToolCallSidePanelProps {
   disableInitialAnimation?: boolean;
   // When the left sidebar is expanded, slightly reduce the panel width to free up space
   isLeftSidebarExpanded?: boolean;
+  // Reset accumulated time when starting a new thread
+  resetAccumulatedTime?: boolean;
+  // Thread ID for fetching runtime from database
+  threadId?: string;
+  // Agent run ID for current execution
+  agentRunId?: string;
 }
 
 interface ToolCallSnapshot {
@@ -78,21 +87,53 @@ export function ToolCallSidePanel({
   onFileClick,
   disableInitialAnimation,
   isLeftSidebarExpanded = false,
+  resetAccumulatedTime = false,
+  threadId,
+  agentRunId,
 }: ToolCallSidePanelProps) {
   const [dots, setDots] = React.useState('');
   const [internalIndex, setInternalIndex] = React.useState(0);
   const [navigationMode, setNavigationMode] = React.useState<'live' | 'manual'>('live');
   const [toolCallSnapshots, setToolCallSnapshots] = React.useState<ToolCallSnapshot[]>([]);
   const [isInitialized, setIsInitialized] = React.useState(false);
+  const [agentStartTime, setAgentStartTime] = React.useState<number | null>(null);
+  const [elapsedTime, setElapsedTime] = React.useState(0);
+  const [finalRuntime, setFinalRuntime] = React.useState<number | null>(null);
+  const [accumulatedTime, setAccumulatedTime] = React.useState(0);
+  const [databaseRuntime, setDatabaseRuntime] = React.useState<number>(0);
+  const [isLoadingRuntime, setIsLoadingRuntime] = React.useState(false);
+  const [generatedAgentRunId, setGeneratedAgentRunId] = React.useState<string | null>(null);
 
   const isMobile = useIsMobile();
+  const [isFullScreen, setIsFullScreen] = React.useState(false);
+  const isMediumScreen = useMediumScreen();
+  const isCustomBreakpoint = useCustomBreakpoint();
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const mediaQuery = window.matchMedia('(max-width: 1023px)');
+      const handleChange = (event: MediaQueryListEvent) => {
+        setIsFullScreen(event.matches);
+      };
+
+      // Initial check
+      setIsFullScreen(mediaQuery.matches);
+
+      mediaQuery.addEventListener('change', handleChange);
+
+      return () => {
+        mediaQuery.removeEventListener('change', handleChange);
+      };
+    }
+  }, []);
 
   // Compute responsive width class; shrink a bit when the left sidebar is expanded
   const widthClass = React.useMemo(() => {
-    if (isMobile) return 'left-2';
+    if (isFullScreen) return 'left-2';
+    if (isCustomBreakpoint && isLeftSidebarExpanded) return 'left-2';
+    if (isMediumScreen) return 'w-[calc(100vw-32px)]';
     const base = isLeftSidebarExpanded ? 'w-[45vw]' : 'w-[50vw]';
     return `${base} sm:${base} md:${base} lg:${base} xl:${base}`;
-  }, [isMobile, isLeftSidebarExpanded]);
+  }, [isFullScreen, isLeftSidebarExpanded, isMediumScreen, isCustomBreakpoint]);
 
   const handleClose = React.useCallback(() => {
     onClose();
@@ -245,6 +286,21 @@ export function ToolCallSidePanel({
     }
   }, [internalIndex, totalCalls, onNavigate]);
 
+  // Helper function to format elapsed time
+  const formatElapsedTime = (milliseconds: number): string => {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${seconds % 60}s`;
+    } else {
+      return `${seconds}s`;
+    }
+  };
+
   const isLiveMode = navigationMode === 'live';
   const showJumpToLive = navigationMode === 'manual' && agentStatus === 'running';
   const showJumpToLatest = navigationMode === 'manual' && agentStatus !== 'running';
@@ -291,6 +347,106 @@ export function ToolCallSidePanel({
     setNavigationMode('manual');
     internalNavigate(totalCalls - 1, 'user_explicit');
   }, [totalCalls, internalNavigate]);
+
+  const resetTimer = React.useCallback(() => {
+    setAccumulatedTime(0);
+    setFinalRuntime(null);
+    setAgentStartTime(null);
+    setElapsedTime(0);
+    setDatabaseRuntime(0);
+    setGeneratedAgentRunId(null);
+  }, []);
+
+  const fetchDatabaseRuntime = React.useCallback(async () => {
+    if (!threadId) return;
+    
+    try {
+      setIsLoadingRuntime(true);
+      const response = await fetch(`/api/runtime/thread/${threadId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setDatabaseRuntime(data.total_runtime_ms || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch runtime from database:', error);
+    } finally {
+      setIsLoadingRuntime(false);
+    }
+  }, [threadId]);
+
+  const createAgentRun = React.useCallback(async (runId: string, threadId: string) => {
+    try {
+      console.log('API: Creating agent run:', { runId, threadId });
+      const response = await fetch(`/api/runtime/agent-run/${runId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ thread_id: threadId }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to create agent run:', response.status, response.statusText, errorText);
+      } else {
+        const result = await response.json();
+        console.log('Successfully created agent run:', result);
+      }
+    } catch (error) {
+      console.error('Error creating agent run:', error);
+    }
+  }, []);
+
+  const completeAgentRun = React.useCallback(async (runId: string, totalRuntime: number) => {
+    try {
+      console.log('API: Completing agent run:', { runId, totalRuntime });
+      const response = await fetch(`/api/runtime/agent-run/${runId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          status: 'completed',
+          total_runtime_ms: totalRuntime 
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to complete agent run:', response.status, response.statusText, errorText);
+      } else {
+        const result = await response.json();
+        console.log('Successfully completed agent run:', result);
+        // Refresh runtime from database after completion
+        if (threadId) {
+          fetchDatabaseRuntime();
+        }
+      }
+    } catch (error) {
+      console.error('Error completing agent run:', error);
+    }
+  }, [threadId, fetchDatabaseRuntime]);
+
+  const updateHeartbeat = React.useCallback(async (runId: string) => {
+    try {
+      const response = await fetch(`/api/runtime/agent-run/${runId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          status: 'running',
+          total_runtime_ms: Date.now() - (agentStartTime || Date.now())
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to update heartbeat:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error updating heartbeat:', error);
+    }
+  }, [agentStartTime]);
 
   const renderStatusButton = React.useCallback(() => {
     const baseClasses = "flex items-center justify-center gap-1.5 px-2 py-0.5 rounded-full w-[116px]";
@@ -382,6 +538,107 @@ export function ToolCallSidePanel({
     }
   }, [externalNavigateToIndex, totalCalls, internalNavigate]);
 
+  // Reset accumulated time when starting a new thread
+  React.useEffect(() => {
+    if (resetAccumulatedTime) {
+      setAccumulatedTime(0);
+      setFinalRuntime(null);
+      setAgentStartTime(null);
+      setElapsedTime(0);
+      setDatabaseRuntime(0);
+    }
+  }, [resetAccumulatedTime]);
+
+  // Fetch runtime from database when threadId changes or component mounts
+  React.useEffect(() => {
+    if (threadId) {
+      fetchDatabaseRuntime();
+    }
+  }, [threadId, fetchDatabaseRuntime]);
+
+  // Also fetch runtime when component mounts to load persisted data
+  React.useEffect(() => {
+    if (threadId && isOpen) {
+      fetchDatabaseRuntime();
+    }
+  }, [threadId, isOpen, fetchDatabaseRuntime]);
+
+  // Timer effect for agent runtime
+  React.useEffect(() => {
+    if (agentStatus === 'running' && !agentStartTime) {
+      // Agent just started running - this is now handled by the other effects
+      return;
+    } else if (agentStatus !== 'running' && agentStartTime) {
+      // Agent stopped running - accumulate the runtime
+      const totalRuntime = Date.now() - agentStartTime;
+      setAccumulatedTime(prev => prev + totalRuntime);
+      // Show total accumulated time including database runtime
+      setFinalRuntime(databaseRuntime + accumulatedTime + totalRuntime);
+      setAgentStartTime(null);
+      setElapsedTime(0);
+      
+      // Complete agent run in database - use generated agentRunId if prop one is not available
+      const runIdToUse = agentRunId || generatedAgentRunId;
+      if (runIdToUse) {
+        console.log('Completing agent run:', { runIdToUse, totalRuntime });
+        completeAgentRun(runIdToUse, totalRuntime);
+      } else {
+        console.log('Missing agentRunId for completion');
+      }
+    }
+  }, [agentStatus, agentStartTime, accumulatedTime, databaseRuntime, threadId, agentRunId, generatedAgentRunId, createAgentRun, completeAgentRun]);
+
+  // Effect to handle agentRunId changes (when agent starts)
+  React.useEffect(() => {
+    if (agentRunId && agentStatus === 'running' && !agentStartTime) {
+      // We have an agentRunId and agent is running, but we haven't started tracking yet
+      console.log('AgentRunId available, starting runtime tracking:', { agentRunId, threadId });
+      setAgentStartTime(Date.now());
+      setElapsedTime(0);
+      setFinalRuntime(null);
+      
+      // Create the agent run record
+      if (threadId) {
+        createAgentRun(agentRunId, threadId);
+      }
+    }
+  }, [agentRunId, agentStatus, agentStartTime, threadId, createAgentRun]);
+
+  // Generate agentRunId if not provided when agent starts running
+  React.useEffect(() => {
+    if (agentStatus === 'running' && !agentRunId && !agentStartTime) {
+      // Generate a new agentRunId if we don't have one
+      const newAgentRunId = crypto.randomUUID();
+      console.log('Generated new agentRunId:', newAgentRunId);
+      setGeneratedAgentRunId(newAgentRunId);
+      
+      // Create the agent run record immediately
+      if (threadId) {
+        createAgentRun(newAgentRunId, threadId);
+        setAgentStartTime(Date.now());
+        setElapsedTime(0);
+        setFinalRuntime(null);
+      }
+    }
+  }, [agentStatus, agentRunId, agentStartTime, threadId, createAgentRun]);
+
+  // Timer effect for updating elapsed time
+  React.useEffect(() => {
+    if (!agentStartTime || agentStatus !== 'running') return;
+
+    const interval = setInterval(() => {
+      setElapsedTime(Date.now() - agentStartTime);
+      
+      // Update heartbeat in database every 5 seconds
+      const runIdToUse = agentRunId || generatedAgentRunId;
+      if (runIdToUse && Date.now() % 5000 < 1000) {
+        updateHeartbeat(runIdToUse);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [agentStartTime, agentStatus, agentRunId, generatedAgentRunId, updateHeartbeat]);
+
   React.useEffect(() => {
     if (!isStreaming) return;
     const interval = setInterval(() => {
@@ -404,7 +661,7 @@ export function ToolCallSidePanel({
         <div className="p-4 h-full flex items-stretch justify-end pointer-events-auto">
           <div
             className={cn(
-              'border rounded-2xl flex flex-col shadow-2xl bg-background transition-[width] duration-200 ease-in-out will-change-[width]',
+              'border rounded-xl flex flex-col bg-white transition-[width] duration-200 ease-in-out will-change-[width]',
               isMobile ? 'w-full' : widthClass,
             )}
           >
@@ -413,10 +670,32 @@ export function ToolCallSidePanel({
                 <div className="pt-4 pl-4 pr-4">
                   <div className="flex items-center justify-between">
                     <div className="ml-2 flex items-center gap-2">
-                      <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                      <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 prose prose-sm dark:prose-inver">
                         {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                         Helium's Core
                       </h2>
+                                          {(agentStatus === 'running' || finalRuntime !== null || databaseRuntime > 0) && (
+                      <div className={cn(
+                        "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+                        agentStatus === 'running' 
+                          ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+                          : "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                      )}>
+                        {agentStatus === 'running' ? (
+                          <>
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                            <span>
+                              {formatElapsedTime(databaseRuntime + accumulatedTime + elapsedTime)}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                            <span>Total: {formatElapsedTime(databaseRuntime + (finalRuntime || 0))}</span>
+                          </>
+                        )}
+                      </div>
+                    )}
                     </div>
                     <Button
                       variant="ghost"
@@ -452,10 +731,30 @@ export function ToolCallSidePanel({
           <div className="pt-4 pl-4 pr-4">
             <div className="flex items-center justify-between">
               <div className="ml-2 flex items-center gap-2">
-                <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
                   {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                   Helium's Core
                 </h2>
+                {(agentStatus === 'running' || finalRuntime !== null || databaseRuntime > 0) && (
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+                    agentStatus === 'running' 
+                      ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+                      : "bg-blue-50 text-blue-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+                  )}>
+                    {agentStatus === 'running' ? (
+                      <>
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                        <span>{formatElapsedTime(databaseRuntime + accumulatedTime + elapsedTime)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span>Total: {formatElapsedTime(databaseRuntime + (finalRuntime || 0))}</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <Button
                 variant="ghost"
@@ -468,22 +767,16 @@ export function ToolCallSidePanel({
             </div>
           </div>
           <div className="flex flex-col items-center justify-center flex-1 p-8">
-            <div className="flex flex-col items-center space-y-4 max-w-sm text-center">
-              <div className="relative">
-                <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center">
-                  <Computer className="h-8 w-8 text-zinc-400 dark:text-zinc-500" />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-zinc-200 dark:bg-zinc-700 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-zinc-400 dark:text-zinc-500 rounded-full"></div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
-                  No tool activity
-                </h3>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
-                  Tool calls and computer interactions will appear here when they're being executed.
-                </p>
+            <div className="flex flex-col items-center justify-center w-full h-full">
+              <div className="relative w-40 h-40 flex items-center justify-center">
+                <Image 
+                  src="/helium-brain/brain-inactive.png" 
+                  alt="Helium Brain Inactive" 
+                  width={160}
+                  height={160}
+                  className="w-full h-full object-contain"
+                  priority
+                />
               </div>
             </div>
           </div>
@@ -503,6 +796,26 @@ export function ToolCallSidePanel({
                     {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                     Helium's Core
                   </h2>
+                  {(agentStatus === 'running' || finalRuntime !== null || databaseRuntime > 0) && (
+                    <div className={cn(
+                      "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+                      agentStatus === 'running' 
+                        ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+                        : "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                    )}>
+                      {agentStatus === 'running' ? (
+                        <>
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                          <span>{formatElapsedTime(databaseRuntime + accumulatedTime + elapsedTime)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                          <span>Total: {formatElapsedTime(databaseRuntime + (finalRuntime || 0))}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 flex items-center gap-1.5">
@@ -546,10 +859,30 @@ export function ToolCallSidePanel({
           <div className="pt-4 pl-4 pr-4">
             <div className="flex items-center justify-between">
               <div className="ml-2 flex items-center gap-2">
-                <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 prose prose-sm dark:prose-invert">
                   {/* {agentName ? `${agentName}'s Computer` : 'Suna\'s Computer'} */}
                   Helium's Core
                 </h2>
+                {(agentStatus === 'running' || finalRuntime !== null || databaseRuntime > 0) && (
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+                    agentStatus === 'running' 
+                      ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+                      : "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                  )}>
+                    {agentStatus === 'running' ? (
+                      <>
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                        <span>{formatElapsedTime(databaseRuntime + accumulatedTime + elapsedTime)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span>Total: {formatElapsedTime(databaseRuntime + (finalRuntime || 0))}</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <Button
                 variant="ghost"
@@ -597,10 +930,30 @@ export function ToolCallSidePanel({
         >
           <div className="flex items-center justify-between">
             <motion.div layoutId="tool-icon" className="ml-2 flex items-center gap-2">
-              <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+              <h2 className="text-xl font-bold tracking-tight text-black dark:text-zinc-100 prose prose-sm dark:prose-invert">
                 {/* {agentName ? `${agentName}'s Computer` : 'Helium\'s Brain'} */}
                 Helium's Core
               </h2>
+              {(agentStatus === 'running' || finalRuntime !== null || databaseRuntime > 0) && (
+                <div className={cn(
+                  "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border",
+                  agentStatus === 'running' 
+                    ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border-green-200 dark:border-green-800"
+                    : "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 border-blue-200 dark:border-blue-800"
+                )}>
+                  {agentStatus === 'running' ? (
+                    <>
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                      <span>{formatElapsedTime(databaseRuntime + accumulatedTime + elapsedTime)}</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      <span>Total: {formatElapsedTime(databaseRuntime + (finalRuntime || 0))}</span>
+                    </>
+                  )}
+                </div>
+              )}
             </motion.div>
 
             {displayToolCall.toolResult?.content && !isStreaming && (
@@ -674,7 +1027,7 @@ export function ToolCallSidePanel({
             }
           }}
           className={cn(
-            'fixed top-2 right-2 bottom-4 border rounded-3xl flex flex-col z-30 transition-[width] duration-200 ease-in-out will-change-[width]',
+            'fixed top-3 right-2 bottom-4 shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] border border-black/10 rounded-3xl flex flex-col z-30 transition-[width] duration-200 ease-in-out will-change-[width]',
             widthClass,
           )}
           style={{
@@ -755,7 +1108,7 @@ export function ToolCallSidePanel({
                       step={1}
                       value={[displayIndex]}
                       onValueChange={handleSliderChange}
-                      className="w-full [&>span:first-child]:h-1.5 [&>span:first-child]:bg-zinc-200 dark:[&>span:first-child]:bg-zinc-800 [&>span:first-child>span]:bg-zinc-500 dark:[&>span:first-child>span]:bg-zinc-400 [&>span:first-child>span]:h-1.5"
+                      className="w-full [&>span:first-child]:h-1.2 [&>span:first-child]:bg-zinc-200 dark:[&>span:first-child]:bg-zinc-800 [&>span:first-child>span]:bg-[#4E97D5] [&>span:first-child>span]:h-1.5"
                     />
                   </div>
 

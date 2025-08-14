@@ -1,17 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Document, Page, pdfjs } from 'react-pdf';
+import type { PDFPageProxy } from 'pdfjs-dist';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-// Import styles for annotations and text layer
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
+  import.meta.url
 ).toString();
 
 interface PdfRendererProps {
@@ -22,40 +22,88 @@ interface PdfRendererProps {
 export function PdfRenderer({ url, className }: PdfRendererProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.0);
+  const [scale, setScale] = useState(1.0);
+  const [pageDimensions, setPageDimensions] = useState({ width: 0, height: 0 });
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [dynamicHeight, setDynamicHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const screenWidth = window.innerWidth;
+      setIsSmallScreen(screenWidth >= 300 && screenWidth <= 560);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const observer = new ResizeObserver(entries => {
+      const entry = entries[0];
+      if (entry) {
+        setContainerSize({ 
+          width: entry.contentRect.width,
+          height: entry.contentRect.height
+        });
+      }
+    });
+
+    const currentContainer = containerRef.current;
+    if (currentContainer) {
+      observer.observe(currentContainer);
+    }
+
+    return () => {
+      if (currentContainer) {
+        observer.unobserve(currentContainer);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (pageDimensions.width > 0 && containerSize.width > 0) {
+      const scaleByWidth = containerSize.width / pageDimensions.width;
+
+      if (isSmallScreen) {
+        setScale(scaleByWidth);
+        setDynamicHeight(pageDimensions.height * scaleByWidth);
+      } else if (containerSize.height > 0) {
+        const scaleByHeight = containerSize.height / pageDimensions.height;
+        setScale(Math.min(scaleByWidth, scaleByHeight));
+        setDynamicHeight(null);
+      }
+    }
+  }, [pageDimensions, containerSize, isSmallScreen]);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }): void {
     setNumPages(numPages);
   }
 
+  function onPageLoadSuccess(page: PDFPageProxy): void {
+    const viewport = page.getViewport({ scale: 1 });
+    setPageDimensions({ width: viewport.width, height: viewport.height });
+  }
+
   function changePage(offset: number) {
-    setPageNumber((prevPageNumber) => {
-      const newPageNumber = prevPageNumber + offset;
-      return newPageNumber >= 1 && newPageNumber <= (numPages || 1)
-        ? newPageNumber
-        : prevPageNumber;
+    setPageNumber((prev) => {
+      const next = prev + offset;
+      return next >= 1 && next <= (numPages || 1) ? next : prev;
     });
-  }
-
-  function previousPage() {
-    changePage(-1);
-  }
-
-  function nextPage() {
-    changePage(1);
-  }
-
-  function zoomIn() {
-    setScale((prevScale) => Math.min(prevScale + 0.2, 3.0));
-  }
-
-  function zoomOut() {
-    setScale((prevScale) => Math.max(prevScale - 0.2, 0.5));
   }
 
   return (
     <div className={cn('flex flex-col w-full h-full', className)}>
-      <div className="flex-1 overflow-auto rounded-md">
+      <div 
+        ref={containerRef} 
+        className={cn(
+          'flex justify-center overflow-hidden rounded-md p-2',
+          isSmallScreen ? 'items-start' : 'flex-1 items-center'
+        )}
+        style={{ height: dynamicHeight ? `${dynamicHeight}px` : undefined }}
+      >
         <Document
           file={url}
           onLoadSuccess={onDocumentLoadSuccess}
@@ -64,6 +112,7 @@ export function PdfRenderer({ url, className }: PdfRendererProps) {
           <Page
             pageNumber={pageNumber}
             scale={scale}
+            onLoadSuccess={onPageLoadSuccess}
             renderTextLayer={true}
             renderAnnotationLayer={true}
           />
@@ -71,42 +120,24 @@ export function PdfRenderer({ url, className }: PdfRendererProps) {
       </div>
 
       {numPages && (
-        <div className="flex items-center justify-between p-2 bg-background border-t">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center justify-end p-2 bg-background border-t">
+          <div className="flex items-center gap-1">
             <button
-              onClick={zoomOut}
-              className="px-2 py-1 bg-muted rounded hover:bg-muted/80"
-              disabled={scale <= 0.5}
-            >
-              -
-            </button>
-            <span>{Math.round(scale * 100)}%</span>
-            <button
-              onClick={zoomIn}
-              className="px-2 py-1 bg-muted rounded hover:bg-muted/80"
-              disabled={scale >= 3.0}
-            >
-              +
-            </button>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={previousPage}
-              className="px-2 py-1 bg-muted rounded hover:bg-muted/80"
+              onClick={() => changePage(-1)}
+              className="p-1 bg-muted rounded-md hover:bg-muted/80 transition-colors"
               disabled={pageNumber <= 1}
             >
-              Previous
+              <ChevronLeft className="h-3 w-3" />
             </button>
-            <span>
+            <span className="text-xs font-medium px-1">
               Page {pageNumber} of {numPages}
             </span>
             <button
-              onClick={nextPage}
-              className="px-2 py-1 bg-muted rounded hover:bg-muted/80"
+              onClick={() => changePage(1)}
+              className="p-1 bg-muted rounded-md hover:bg-muted/80 transition-colors"
               disabled={pageNumber >= numPages}
             >
-              Next
+              <ChevronRight className="h-3 w-3" />
             </button>
           </div>
         </div>

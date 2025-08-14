@@ -41,7 +41,7 @@ class LLMRetryError(LLMError):
 
 def setup_api_keys() -> None:
     """Set up API keys from environment variables."""
-    providers = ['OPENAI', 'ANTHROPIC', 'GROQ', 'OPENROUTER', 'XAI', 'MORPH', 'GEMINI']
+    providers = ['OPENAI', 'ANTHROPIC', 'GROQ', 'OPENROUTER', 'XAI', 'MORPH', 'GEMINI', 'MOONSHOT']
     for provider in providers:
         key = getattr(config, f'{provider}_API_KEY')
         if key:
@@ -56,12 +56,24 @@ def setup_api_keys() -> None:
         os.environ['OPENROUTER_API_BASE'] = config.OPENROUTER_API_BASE
         logger.info(f"Set OPENROUTER_API_BASE to {config.OPENROUTER_API_BASE}")
     
+    # Set up Moonshot AI API base if not already set
+    if config.MOONSHOT_API_KEY and config.MOONSHOT_API_BASE:
+        os.environ['MOONSHOT_API_BASE'] = config.MOONSHOT_API_BASE
+        logger.info(f"Set MOONSHOT_API_BASE to {config.MOONSHOT_API_BASE}")
+    
     # Debug: Check if OpenRouter API key is available in environment
     openrouter_key = os.environ.get('OPENROUTER_API_KEY')
     if openrouter_key:
         logger.info(f"OpenRouter API key found in environment (length: {len(openrouter_key)}, starts with: {openrouter_key[:10]}...)")
     else:
         logger.error("OpenRouter API key NOT found in environment variables!")
+        
+    # Debug: Check if Moonshot AI API key is available in environment
+    moonshot_key = os.environ.get('MOONSHOT_API_KEY')
+    if moonshot_key:
+        logger.info(f"Moonshot AI API key found in environment (length: {len(moonshot_key)}, starts with: {moonshot_key[:10]}...)")
+    else:
+        logger.warning("Moonshot AI API key NOT found in environment variables!")
 
     # Set up AWS Bedrock credentials
     aws_access_key = config.AWS_ACCESS_KEY_ID
@@ -110,9 +122,15 @@ def get_openrouter_fallback(model_name: str) -> Optional[str]:
     
     # Map models to their OpenRouter equivalents
     fallback_mapping = {
-        "deepseek/deepseek-chat-v3-0324:free": "openrouter/deepseek/deepseek-chat-v3-0324:free",
         "z-ai/glm-4.5-air:free": "openrouter/z-ai/glm-4.5-air:free",
-        "agentica-org/deepcoder-14b-preview:free": "openrouter/agentica-org/deepcoder-14b-preview:free",
+        "deepseek/deepseek-chat-v3-0324:free": "openrouter/deepseek/deepseek-chat-v3-0324:free",
+        "mistralai/mistral-small-3.2-24b-instruct": "openrouter/mistralai/mistral-small-3.2-24b-instruct",
+        
+        # Add Z.AI GLM models
+        "z-ai/glm-4.5v": "openrouter/z-ai/glm-4.5v",
+        "z-ai/glm-4.5": "openrouter/z-ai/glm-4.5",
+        "z-ai/glm-4.5-air": "openrouter/z-ai/glm-4.5-air",
+        "z-ai/glm-4-32b": "openrouter/z-ai/glm-4-32b",
     }
     
     # Check for exact match first
@@ -366,6 +384,16 @@ def prepare_params(
     if model_name.startswith("xai/"):
         logger.debug(f"Preparing xAI parameters for model: {model_name}")
         # xAI models support standard parameters, no special handling needed beyond reasoning_effort
+
+    # Add Z.AI-specific reasoning support
+    is_zai_glm = "z-ai/glm" in model_name.lower() or "glm-4" in model_name.lower()
+    
+    if is_zai_glm and enable_thinking:
+        # Z.AI models support reasoning through the reasoning parameter
+        effort_level = reasoning_effort if reasoning_effort else 'low'
+        params["reasoning"] = True  # Enable reasoning mode
+        params["include_reasoning"] = True  # Include reasoning in response
+        logger.info(f"Z.AI GLM reasoning enabled for model: {model_name}")
 
     return params
 

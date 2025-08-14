@@ -39,6 +39,7 @@ import { Button } from "@/components/ui/button"
 import { ThreadWithProject } from '@/hooks/react-query/sidebar/use-sidebar';
 import { processThreadsWithProjects, useDeleteMultipleThreads, useDeleteThread, useProjects, useThreads } from '@/hooks/react-query/sidebar/use-sidebar';
 import { projectKeys, threadKeys } from '@/hooks/react-query/sidebar/keys';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 export function NavAgents() {
   const { isMobile, state, openMobile } = useSidebar()
@@ -128,7 +129,25 @@ export function NavAgents() {
   useEffect(() => {
     isNavigatingRef.current = false;
     document.body.style.pointerEvents = 'auto';
+    
+    // Clear loading state when pathname changes
+    setLoadingThreadId(null);
+    
+    // Reset any pending operations
+    if (isPerformingActionRef.current) {
+      isPerformingActionRef.current = false;
+    }
   }, [pathname]);
+
+  // Cleanup effect when component unmounts
+  useEffect(() => {
+    return () => {
+      // Ensure we clean up any leftover styles and states
+      document.body.style.pointerEvents = 'auto';
+      isNavigatingRef.current = false;
+      isPerformingActionRef.current = false;
+    };
+  }, []);
 
   // Function to handle thread click with loading state
   const handleThreadClick = (e: React.MouseEvent<HTMLAnchorElement>, threadId: string, url: string) => {
@@ -140,6 +159,11 @@ export function NavAgents() {
 
     e.preventDefault()
     setLoadingThreadId(threadId)
+    
+    // Clear any existing navigation state
+    isNavigatingRef.current = false;
+    document.body.style.pointerEvents = 'auto';
+    
     router.push(url)
   }
 
@@ -228,33 +252,81 @@ export function NavAgents() {
         sandboxId
       });
 
-      // Use the centralized deletion system with completion callback
-      await performDelete(
-        threadId,
-        isActive,
-        async () => {
-          // Delete the thread using the mutation with sandbox ID
+      try {
+        // If this is the active thread, navigate away first to prevent conflicts
+        if (isActive) {
+          console.log('DELETION - Active thread detected, navigating away first');
+          console.log('DELETION - Current pathname:', pathname);
+          isNavigatingRef.current = true;
+          document.body.style.pointerEvents = 'none';
+          
+          // Check if we're already on dashboard to avoid unnecessary navigation
+          if (pathname !== '/dashboard') {
+            console.log('DELETION - Navigating to dashboard from:', pathname);
+            // Navigate to dashboard immediately using replace to prevent page refresh
+            router.replace('/dashboard');
+            
+            // Wait for navigation to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
+            console.log('DELETION - Navigation to dashboard completed');
+          } else {
+            console.log('DELETION - Already on dashboard, waiting for pending operations');
+            // Already on dashboard, just wait a bit for any pending operations
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+
+        console.log('DELETION - Starting thread deletion for:', threadId);
+        // Now delete the thread using the mutation with sandbox ID
+        await new Promise<void>((resolve, reject) => {
           deleteThreadMutation(
             { threadId, sandboxId },
             {
               onSuccess: () => {
-                // Invalidate queries to refresh the list
-                queryClient.invalidateQueries({ queryKey: threadKeys.lists() });
-                toast.success('Conversation deleted successfully');
+                console.log('DELETION - Thread deleted successfully:', threadId);
+                // Invalidate queries to refresh the list and wait for it to complete
+                queryClient.invalidateQueries({ queryKey: threadKeys.lists() }).then(() => {
+                  console.log('DELETION - Queries invalidated successfully');
+                  toast.success('Conversation deleted successfully');
+                  resolve();
+                }).catch((error) => {
+                  console.error('DELETION - Query invalidation failed:', error);
+                  // Still resolve since deletion was successful
+                  toast.success('Conversation deleted successfully');
+                  resolve();
+                });
+              },
+              onError: (error) => {
+                console.error('DELETION - Thread deletion failed:', threadId, error);
+                toast.error('Failed to delete conversation');
+                reject(error);
               },
               onSettled: () => {
+                console.log('DELETION - Thread deletion settled:', threadId);
                 setThreadToDelete(null);
                 isPerformingActionRef.current = false;
               }
             }
           );
-        },
-        // Completion callback to reset local state
-        () => {
-          setThreadToDelete(null);
-          isPerformingActionRef.current = false;
-        },
-      );
+        });
+
+        console.log('DELETION - Thread deletion process completed successfully');
+
+        // Final cleanup after successful deletion
+        isPerformingActionRef.current = false;
+        document.body.style.pointerEvents = 'auto';
+        isNavigatingRef.current = false;
+
+      } catch (error) {
+        console.error('DELETION - Error in deletion process:', error);
+        toast.error('Error deleting conversation');
+        
+        // Reset states on error
+        setThreadToDelete(null);
+        isPerformingActionRef.current = false;
+        document.body.style.pointerEvents = 'auto';
+        isNavigatingRef.current = false;
+      }
     } else {
       // Multi-thread deletion
       const threadIdsToDelete = Array.from(selectedThreads);
@@ -266,60 +338,103 @@ export function NavAgents() {
       try {
         // If the active thread is included, handle navigation first
         if (isActiveThreadIncluded) {
-          // Navigate to dashboard before deleting
+          console.log('DELETION - Active thread included in bulk deletion, navigating away first');
+          console.log('DELETION - Current pathname:', pathname);
+          // Navigate to dashboard before deleting using replace to prevent page refresh
           isNavigatingRef.current = true;
           document.body.style.pointerEvents = 'none';
-          router.push('/dashboard');
-
-          // Wait a moment for navigation to start
-          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Check if we're already on dashboard to avoid unnecessary navigation
+          if (pathname !== '/dashboard') {
+            console.log('DELETION - Navigating to dashboard from:', pathname);
+            router.replace('/dashboard');
+            // Wait a moment for navigation to start
+            await new Promise(resolve => setTimeout(resolve, 200));
+            console.log('DELETION - Navigation to dashboard completed');
+          } else {
+            console.log('DELETION - Already on dashboard, waiting for pending operations');
+            // Already on dashboard, just wait a bit for any pending operations
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
         }
 
+        console.log('DELETION - Starting bulk deletion for threads:', threadIdsToDelete);
         // Use the mutation for bulk deletion
-        deleteMultipleThreadsMutation(
-          {
-            threadIds: threadIdsToDelete,
-            threadSandboxMap: Object.fromEntries(
-              threadIdsToDelete.map(threadId => {
-                const thread = combinedThreads.find(t => t.threadId === threadId);
-                const project = projects.find(p => p.id === thread?.projectId);
-                return [threadId, project?.sandbox?.id || ''];
-              }).filter(([, sandboxId]) => sandboxId)
-            ),
-            onProgress: handleDeletionProgress
-          },
-          {
-            onSuccess: (data) => {
-              // Invalidate queries to refresh the list
-              queryClient.invalidateQueries({ queryKey: threadKeys.lists() });
+        await new Promise<void>((resolve, reject) => {
+          deleteMultipleThreadsMutation(
+            {
+              threadIds: threadIdsToDelete,
+              threadSandboxMap: Object.fromEntries(
+                threadIdsToDelete.map(threadId => {
+                  const thread = combinedThreads.find(t => t.threadId === threadId);
+                  const project = projects.find(p => p.id === thread?.projectId);
+                  return [threadId, project?.sandbox?.id || ''];
+                }).filter(([, sandboxId]) => sandboxId)
+              ),
+              onProgress: handleDeletionProgress
+            },
+            {
+              onSuccess: (data) => {
+                console.log('DELETION - Bulk deletion completed successfully');
+                console.log('DELETION - Successfully deleted:', data.successful);
+                console.log('DELETION - Failed to delete:', data.failed);
+                // Invalidate queries to refresh the list and wait for it to complete
+                queryClient.invalidateQueries({ queryKey: threadKeys.lists() }).then(() => {
+                  console.log('DELETION - Queries invalidated successfully for bulk deletion');
+                  
+                  // Show success message
+                  toast.success(`Successfully deleted ${data.successful.length} conversations`);
 
-              // Show success message
-              toast.success(`Successfully deleted ${data.successful.length} conversations`);
+                  // If some deletions failed, show warning
+                  if (data.failed.length > 0) {
+                    toast.warning(`Failed to delete ${data.failed.length} conversations`);
+                  }
 
-              // If some deletions failed, show warning
-              if (data.failed.length > 0) {
-                toast.warning(`Failed to delete ${data.failed.length} conversations`);
+                  // Reset states
+                  setSelectedThreads(new Set());
+                  setDeleteProgress(0);
+                  setTotalToDelete(0);
+                  resolve();
+                }).catch((error) => {
+                  console.error('DELETION - Query invalidation failed for bulk deletion:', error);
+                  // Still resolve since deletion was successful
+                  toast.success(`Successfully deleted ${data.successful.length} conversations`);
+                  
+                  if (data.failed.length > 0) {
+                    toast.warning(`Failed to delete ${data.failed.length} conversations`);
+                  }
+
+                  setSelectedThreads(new Set());
+                  setDeleteProgress(0);
+                  setTotalToDelete(0);
+                  resolve();
+                });
+              },
+              onError: (error) => {
+                console.error('DELETION - Error in bulk deletion:', error);
+                toast.error('Error deleting conversations');
+                reject(error);
+              },
+              onSettled: () => {
+                console.log('DELETION - Bulk deletion settled');
+                setThreadToDelete(null);
+                isPerformingActionRef.current = false;
+                setDeleteProgress(0);
+                setTotalToDelete(0);
               }
-
-              // Reset states
-              setSelectedThreads(new Set());
-              setDeleteProgress(0);
-              setTotalToDelete(0);
-            },
-            onError: (error) => {
-              console.error('Error in bulk deletion:', error);
-              toast.error('Error deleting conversations');
-            },
-            onSettled: () => {
-              setThreadToDelete(null);
-              isPerformingActionRef.current = false;
-              setDeleteProgress(0);
-              setTotalToDelete(0);
             }
-          }
-        );
+          );
+        });
+
+        console.log('DELETION - Bulk deletion process completed successfully');
+
+        // Final cleanup after successful bulk deletion
+        isPerformingActionRef.current = false;
+        document.body.style.pointerEvents = 'auto';
+        isNavigatingRef.current = false;
+
       } catch (err) {
-        console.error('Error initiating bulk deletion:', err);
+        console.error('DELETION - Error initiating bulk deletion:', err);
         toast.error('Error initiating deletion process');
 
         // Reset states
@@ -328,6 +443,8 @@ export function NavAgents() {
         isPerformingActionRef.current = false;
         setDeleteProgress(0);
         setTotalToDelete(0);
+        document.body.style.pointerEvents = 'auto';
+        isNavigatingRef.current = false;
       }
     }
   };
@@ -349,35 +466,56 @@ export function NavAgents() {
               <History className="h-5 w-5 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">Chat History</span>
             </div>
-            {state !== 'collapsed' ? (
+            {(state !== 'collapsed' || (isMobile && openMobile)) ? (
               <div className="flex items-center space-x-1">
                 {selectedThreads.size > 0 ? (
                   <>
+                   <Tooltip>
+                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={deselectAllThreads}
-                      className="h-7 w-7"
+                      className="h-5 w-7 cursor-pointer"
                     >
                       <X className="h-4 w-4" />
                     </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Clear selection</p>
+                    </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                    <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={selectAllThreads}
                       disabled={selectedThreads.size === combinedThreads.length}
-                      className="h-7 w-7"
+                      className="h-5 w-7 cursor-pointer"
                     >
                       <Check className="h-4 w-4" />
                     </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Select all</p>
+                    </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                    <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={handleMultiDelete}
-                      className="h-7 w-7 text-destructive"
+                      className="h-5 w-5 text-destructive cursor-pointer"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Delete</p>
+                    </TooltipContent>
+                    </Tooltip>
                   </>
                 ) : null}
               </div>
@@ -390,7 +528,7 @@ export function NavAgents() {
       <SidebarMenu className="overflow-y-auto max-h-[calc(100vh-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
 
 
-        {state !== 'collapsed' && (
+        {(state !== 'collapsed' || (isMobile && openMobile)) && (
           <>
             {isLoading ? (
               // Show skeleton loaders while loading

@@ -61,19 +61,50 @@ const INITIAL_COMPONENTS: Partial<Components> = {
   },
   ul: function UnorderedList({ children, ...props }: any) {
     return (
-      <ul className="list-disc pl-5 my-2 ml-1" {...props}>
+      <ul className="list-disc my-2" {...props}>
         {children}
       </ul>
     );
   },
   ol: function OrderedList({ children, ...props }: any) {
     return (
-      <ol className="list-decimal pl-5 my-2 ml-4" {...props}>
+      <ol className="list-decimal my-2" {...props}>
         {children}
       </ol>
     );
   },
   li: function ListItem({ children, ...props }: any) {
+    // Check if this is a task list item (contains [x] or [ ])
+    const content = children as string;
+    const isTaskList = typeof content === 'string' && /^\[[ x]\]\s/.test(content);
+    
+    if (isTaskList) {
+      const isCompleted = content.startsWith('[x]');
+      const taskText = content.replace(/^\[[ x]\]\s/, '');
+      
+      return (
+        <li className="flex items-start gap-3 my-2" {...props}>
+          <div className="flex-shrink-0 mt-0.5">
+            {isCompleted ? (
+              <div className="w-4 h-4 rounded border-2 border-green-500 bg-green-500 flex items-center justify-center">
+                <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+            ) : (
+              <div className="w-4 h-4 rounded border-2 border-zinc-400 dark:border-zinc-600 bg-transparent" />
+            )}
+          </div>
+          <span className={cn(
+            "flex-1",
+            isCompleted && "text-green-700 dark:text-green-300 line-through"
+          )}>
+            {taskText}
+          </span>
+        </li>
+      );
+    }
+    
     return (
       <li className="my-1" {...props}>
         {children}
@@ -82,7 +113,7 @@ const INITIAL_COMPONENTS: Partial<Components> = {
   },
   h1: function H1({ children, ...props }: any) {
     return (
-      <h1 className="text-2xl font-bold my-3" {...props}>
+      <h1 className="text-2xl font-bold my-3 libre-baskerville-bold" {...props}>
         {children}
       </h1>
     );

@@ -47,6 +47,7 @@ import {
 } from '@/hooks/react-query/files';
 import JSZip from 'jszip';
 import { normalizeFilenameToNFC } from '@/lib/utils/unicode';
+import { cn } from '@/lib/utils';
 
 // Define API_URL
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
@@ -1190,8 +1191,14 @@ export function FileViewerModal({
   // --- Render --- //
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[90vw] md:max-w-[1200px] w-[95vw] h-[90vh] max-h-[900px] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-4 py-2 border-b flex-shrink-0 flex flex-row gap-4 items-center">
+<DialogContent 
+  className={cn(
+    "sm:max-w-[90vw] md:max-w-[1200px] w-[95vw] h-[90vh] max-h-[900px] flex flex-col p-0 gap-0 overflow-hidden",
+    // Add conditional styles for PDF viewing on small screens
+    selectedFilePath && selectedFilePath.toLowerCase().endsWith('.pdf') && 
+    "max-[560px]:max-h-[100%] max-[560px]:h-auto"
+  )}
+>        <DialogHeader className="px-4 py-2 border-b flex-shrink-0 flex flex-row gap-4 items-center">
           <DialogTitle className="text-lg font-semibold">
             Workspace Files
           </DialogTitle>

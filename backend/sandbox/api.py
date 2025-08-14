@@ -259,11 +259,23 @@ async def read_file(
         filename = os.path.basename(path)
         logger.info(f"Successfully read file {filename} from sandbox {sandbox_id}")
         
+        # List of extensions that can be previewed inline
+        PREVIEWABLE_EXTENSIONS = {
+            'txt', 'md', 'rtf', 'pdf', 'csv', 'json', 'xml', 'html', 'css', 'js',
+            'py', 'java', 'c', 'cpp', 'h', 'hpp', 'sql', 'sh', 'bat', 'ps1',
+            'yml', 'yaml', 'toml', 'ini', 'conf', 'log', 'env', 'gitignore',
+            'dockerfile', 'docx', 'jpeg', 'jpg', 'png', 'gif', 'svg', 'webp'
+        }
+
+        # Determine if the file should be previewed or downloaded
+        extension = os.path.splitext(filename)[1][1:].lower()
+        disposition_type = 'inline' if extension in PREVIEWABLE_EXTENSIONS else 'attachment'
+
         # Ensure proper encoding by explicitly using UTF-8 for the filename in Content-Disposition header
         # This applies RFC 5987 encoding for the filename to support non-ASCII characters
         encoded_filename = filename.encode('utf-8').decode('latin-1')
-        content_disposition = f"attachment; filename*=UTF-8''{encoded_filename}"
-        
+        content_disposition = f"{disposition_type}; filename*=UTF-8''{encoded_filename}"
+
         return Response(
             content=content,
             media_type="application/octet-stream",

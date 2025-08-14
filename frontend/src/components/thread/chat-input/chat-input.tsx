@@ -18,9 +18,6 @@ import { useFileDelete } from '@/hooks/react-query/files';
 import { useQueryClient } from '@tanstack/react-query';
 import { ToolCallInput } from './floating-tool-preview';
 import { ChatSnack } from './chat-snack';
-import { Brain, Zap, Workflow, Database } from 'lucide-react';
-import { FaGoogle, FaDiscord } from 'react-icons/fa';
-import { SiNotion } from 'react-icons/si';
 import { AgentConfigModal } from '@/components/agents/agent-config-modal';
 import { PipedreamRegistry } from '@/components/agents/pipedream/pipedream-registry';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -211,27 +208,16 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
           const savedAgentId = localStorage.getItem('lastSelectedAgentId');
           if (savedAgentId) {
             if (savedAgentId === 'o1') {
-              const defaultSunaAgent = agents.find(agent => agent.metadata?.is_suna_default);
-              if (defaultSunaAgent) {
-                onAgentSelect(defaultSunaAgent.agent_id);
-              } else {
-                onAgentSelect(undefined);
-              }
+              // When saved agent is 'o1', default to undefined (which shows o1 in the UI)
+              console.log('Saved agent is o1, defaulting to undefined');
+              onAgentSelect(undefined);
             } else {
               onAgentSelect(savedAgentId);
             }
           } else {
-            const defaultSunaAgent = agents.find(agent => agent.metadata?.is_suna_default);
-            if (defaultSunaAgent) {
-              console.log('Auto-selecting default Suna agent:', defaultSunaAgent.agent_id);
-              onAgentSelect(defaultSunaAgent.agent_id);
-            } else if (agents.length > 0) {
-              console.log('No default Suna agent found, selecting first available agent:', agents[0].agent_id);
-              onAgentSelect(agents[0].agent_id);
-            } else {
-              console.log('No agents available, keeping undefined');
-              onAgentSelect(undefined);
-            }
+            // Default to o1 (undefined) when no agent is selected
+            console.log('No saved agent preference, defaulting to o1');
+            onAgentSelect(undefined);
           }
         } else {
           console.log('Skipping localStorage load:', {
@@ -391,7 +377,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             isVisible={showToolPreview || !!showSnackbar}
           />
           <Card
-            className={`-mb-2 p-0 mt-6 shadow-none w-full max-w-4xl mx-auto bg-transparent border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? '' : 'rounded-3xl'} relative`}
+            className={`-mb-2 p-0 mt-4 shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] w-full max-w-4xl mx-auto bg-transparent border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-4xl' : 'rounded-4xl'} relative`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={(e) => {
@@ -413,10 +399,10 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             }}
           >
             <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
-              <CardContent className={`w-full shadow-sm p-1.5 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${bgColor} border-0 ${enableAdvancedConfig && selectedAgentId ? 'rounded-t-2xl' : 'rounded-2xl'} overflow-hidden relative`}>
-              <div className="absolute inset-0 rounded-[inherit] overflow-hidden">
-                <BorderBeam duration={4} borderWidth={1.5} size={200} className="from-transparent via-helium-teal to-transparent"/>
-                <BorderBeam duration={4} borderWidth={1.5} delay={2} size={200} className="from-transparent via-helium-pink to-transparent"/>
+              <CardContent className={`w-full border border-black/10 p-2 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${bgColor} border-0 ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl' : 'rounded-3xl'} overflow-hidden relative`}>
+              <div className="absolute inset-0 rounded-[inherit] border border-black/10 overflow-hidden">
+                <BorderBeam duration={3} borderWidth={1.5} size={200} className="from-transparent via-helium-teal to-transparent"/>
+                <BorderBeam duration={3} borderWidth={1.5} delay={1.5} size={200} className="from-transparent via-helium-pink to-transparent"/>
               </div>
                 <AttachmentGroup
                   files={uploadedFiles || []}
@@ -463,7 +449,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                 />
               </CardContent>
 
-              {enableAdvancedConfig && selectedAgentId && (
+              {/* {enableAdvancedConfig && selectedAgentId && (
               <div className="w-full border-t bg-muted/20 px-4 py-1.5 rounded-b-3xl border-l border-r border-b border-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none">
@@ -527,7 +513,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
             </div>
           </Card>
           <AgentConfigModal

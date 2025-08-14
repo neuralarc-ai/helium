@@ -601,6 +601,7 @@ export default function ThreadPage({
         isMobile={isMobile}
         initialLoadCompleted={initialLoadCompleted}
         agentName={agent && agent.name}
+        agentRunId={agentRunId}
       >
         <ThreadError error={error} />
       </ThreadLayout>
@@ -645,6 +646,7 @@ export default function ThreadPage({
         initialLoadCompleted={initialLoadCompleted}
         agentName={agent && agent.name}
         disableInitialAnimation={!initialLoadCompleted && toolCalls.length > 0}
+        agentRunId={agentRunId}
       >
         {/* {workflowId && (
           <div className="px-4 pt-4">
@@ -667,20 +669,27 @@ export default function ThreadPage({
           agentName={agent && agent.name}
           agentAvatar={agent && agent.avatar}
           isSidePanelOpen={isSidePanelOpen}
+          isFloatingToolPreviewVisible={!isSidePanelOpen && toolCalls.length > 0}
+          onSubmit={handleSubmitMessage}
         />
 
         <div
           className={cn(
-            "fixed bottom-0 z-10 bg-gradient-to-t from-background via-background/90 to-transparent px-4 pt-16 pb-6",
+            "fixed bottom-0 z-10 bg-gradient-to-t from-background via-background/90 to-transparent pt-16 pb-6",
             "transition-[left,right] duration-200 ease-in-out will-change-[left,right]",
-            leftSidebarState === 'expanded' ? 'left-[72px] md:left-[256px]' : 'left-[72px]',
-            isSidePanelOpen ? (isLeftSidebarExpanded ? 'right-[45vw]' : 'right-[50vw]') : 'right-0',
+            leftSidebarState === 'expanded' ? 'left-[72px] md:left-[256px]' : (isSidePanelOpen ? 'left-[56px]' : 'left-[50px]'),
+            isSidePanelOpen ? (isLeftSidebarExpanded ? 'right-[45.5vw]' : 'right-[51vw]') : 'right-0',
             isMobile ? 'left-0 right-0 pb-6' : ''
           )}>
           <div className={cn(
-            isSidePanelOpen ? "mr-auto ml-0" : "mx-auto",
-            isMobile ? "w-full" : isSidePanelOpen ? "max-w-2xl" : "max-w-3xl"
+            "flex justify-center px-0",
+            !isMobile && "px-8"
           )}>
+            <div className={cn(
+              "w-full",
+              isSidePanelOpen ? "max-w-2xl" : "max-w-3xl"
+            )}>
+          
             <ChatInput
               value={newMessage}
               onChange={setNewMessage}
@@ -706,6 +715,7 @@ export default function ThreadPage({
               }}
               defaultShowSnackbar="tokens"
             />
+            </div>
           </div>
         </div>
       </ThreadLayout>

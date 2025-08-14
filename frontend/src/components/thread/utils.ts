@@ -23,6 +23,7 @@ import {
   Table2,
   ListTodo,
   List,
+  Brain,
 } from 'lucide-react';
 
 // Flag to control whether tool result messages are rendered
@@ -166,6 +167,10 @@ export const getToolIcon = (toolName: string): ElementType => {
     // User interaction
     case 'ask':
       return MessageCircleQuestion;
+
+    // Thinking and reasoning
+    case 'think':
+      return Brain;
 
     // Task completion
     case 'complete':
@@ -345,6 +350,7 @@ const TOOL_DISPLAY_NAMES = new Map([
   ['deploy', 'Deploying'],
   ['ask', 'Ask'],
   ['complete', 'Completing Task'],
+  ['think', 'Thinking'],
   ['crawl-webpage', 'Crawling Website'],
   ['expose-port', 'Exposing Port'],
   ['scrape-webpage', 'Scraping Website'],
@@ -403,6 +409,7 @@ const TOOL_DISPLAY_NAMES = new Map([
   ['deploy', 'Deploying'],
   ['ask', 'Ask'],
   ['complete', 'Completing Task'],
+  ['think', 'Thinking'],
   ['crawl_webpage', 'Crawling Website'],
   ['expose_port', 'Exposing Port'],
   ['scrape_webpage', 'Scraping Website'],

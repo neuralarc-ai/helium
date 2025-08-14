@@ -260,7 +260,7 @@
     transform: rotate(-5deg) scale(0.9);}}}
 
 :root {
-  --background: oklch(0.9581 0 0);
+  --background: oklch(0.9789 0.0013 106.42);
   --foreground: oklch(0.2277 0.0034 67.65);
   --card: oklch(98.46% 0.002 247.84);
   --card-foreground: oklch(0.145 0 0);
@@ -285,7 +285,7 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --sidebar: oklch(0.9741 0 129.63);
+  --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -386,9 +386,35 @@
   }
 }
 
+/* Libre Baskerville font classes */
+.libre-baskerville-regular {
+  font-family: "Libre Baskerville", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.libre-baskerville-bold {
+  font-family: "Libre Baskerville", serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.libre-baskerville-regular-italic {
+  font-family: "Libre Baskerville", serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
 /* Custom styles for Markdown chat content */
 .prose.chat-markdown {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  
+  /* Override h1 to use Libre Baskerville */
+  & h1 {
+    font-family: "Libre Baskerville", serif !important;
+    font-weight: 700 !important;
+    font-size: 1.875rem !important;
+  }
   
   /* Ensure reasonable spacing */
   & > * + * {
@@ -397,7 +423,7 @@
 
   /* Fix headings to be more compact in chat context */
   & h1 {
-    font-size: 1.5rem;
+    font-size: 1.875rem;
     font-weight: 700;
     margin-top: 1em;
     margin-bottom: 0.5em;
@@ -405,7 +431,7 @@
   }
 
   & h2 {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 600;
     margin-top: 0.8em;
     margin-bottom: 0.4em;
@@ -592,6 +618,18 @@
     & .hljs-strong {
       font-weight: bold;
     }
+  }
+}
+
+/* Tool call sidepanel markdown styling */
+.prose.chat-markdown .markdown {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  
+  /* Override h1 to use Libre Baskerville */
+  & h1 {
+    font-family: "Libre Baskerville", serif !important;
+    font-weight: 700 !important;
+    font-size: 1.875rem !important;
   }
 }
 
@@ -852,6 +890,24 @@
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   padding: 0.8px;
+}
+
+.strategic-service-btn {
+  pointer-events: none;
+  z-index: 11;
+  -webkit-mask-composite: xor;
+  background: linear-gradient(150deg, #e93ba4b3 30%, #0000 45% 75%, #ffffffb3 100%);
+  padding: .8px;
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+  -webkit-mask-position: 0 0, 0 0;
+  -webkit-mask-size: auto, auto;
+  -webkit-mask-repeat: repeat, repeat;
+  -webkit-mask-clip: content-box, border-box;
+  -webkit-mask-origin: content-box, border-box;
+  mask-composite: exclude;
+  mask-mode: match-source, match-source;
 }
 .liquid-glass:before {
   content: '';

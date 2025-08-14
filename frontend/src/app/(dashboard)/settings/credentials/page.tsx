@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { 
-  Zap
+  Boxes,
 } from 'lucide-react';
 import { PipedreamConnectionsSection } from '../../../../components/agents/pipedream/pipedream-connections-section';
 import { useRouter } from 'next/navigation';
@@ -48,8 +48,8 @@ export default function AppProfilesPage() {
   return (
     <div className="container mx-auto max-w-4xl px-6 py-6">
       <div className="space-y-6">
-        <PageHeader icon={Zap}>
-          <span className="text-primary">App Credentials</span>
+        <PageHeader icon={Boxes} backgroundImage="/header-2.png">
+          <span className="text-white">Integrations</span>
         </PageHeader>
         
         <PipedreamConnectionsSection onConnectNewApp={handleAppSelection} />

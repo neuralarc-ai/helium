@@ -56,7 +56,7 @@ class ExpandMessageTool(Tool):
             message_id: The ID of the message to expand
 
         Returns:
-            ToolResult indicating the message was successfully expanded
+            ToolResult with the expanded message content
         """
         try:
             client = await self.thread_manager.db.client
@@ -78,7 +78,11 @@ class ExpandMessageTool(Tool):
                 except json.JSONDecodeError:
                     pass
 
-            return self.success_response({"status": "Message expanded successfully.", "message": final_content})
+            # Return the message content directly in the result field
+            return self.success_response(
+                result=final_content,
+                message=f"Message expanded successfully. Content length: {len(str(final_content))} characters"
+            )
         except Exception as e:
             return self.fail_response(f"Error expanding message: {str(e)}")
 
@@ -86,12 +90,9 @@ if __name__ == "__main__":
     import asyncio
 
     async def test_expand_message_tool():
-        expand_message_tool = ExpandMessageTool()
+        # Note: This is just a placeholder test - you'll need to provide actual thread_id and thread_manager
+        # For production use, this tool should be instantiated with proper dependencies
+        print("ExpandMessageTool test - this tool requires thread_id and thread_manager to be instantiated")
+        print("Tool schema:", ExpandMessageTool.__doc__)
 
-        # Test expand message
-        expand_message_result = await expand_message_tool.expand_message(
-            message_id="004ab969-ef9a-4656-8aba-e392345227cd"
-        )
-        print("Expand message result:", expand_message_result)
-
-    asyncio.run(test_expand_message_tool())
+    # Uncomment the line below to run the test (requires proper setup)

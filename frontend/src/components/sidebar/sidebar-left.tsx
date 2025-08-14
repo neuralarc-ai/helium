@@ -2,7 +2,15 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Bot, Menu, Plus, Plug, ChevronRight, Lightbulb } from 'lucide-react';
+import {
+  Bot,
+  Menu,
+  Plus,
+  Plug,
+  ChevronRight,
+  Lightbulb,
+  X,
+} from 'lucide-react';
 import Image from 'next/image';
 
 import { NavAgents } from '@/components/sidebar/nav-agents';
@@ -56,6 +64,12 @@ import { useRouter } from 'next/navigation';
 import { KnowledgeBaseDialog } from '@/components/thread/knowledge-based/knowledge-base-dialog';
 import { GlobalKnowledgeBaseDialog } from '@/components/thread/knowledge-based/global-knowledge-base-dialog';
 
+// Helper function to check if we're in production mode
+const isProductionMode = (): boolean => {
+  const envMode = process.env.NEXT_PUBLIC_ENV_MODE?.toLowerCase();
+  return envMode === 'production';
+};
+
 // Helper function to extract threadId from pathname
 const extractThreadIdFromPathname = (pathname: string): string | null => {
   // Match patterns like /projects/{projectId}/thread/{threadId}
@@ -63,13 +77,13 @@ const extractThreadIdFromPathname = (pathname: string): string | null => {
   if (threadMatch) {
     return threadMatch[1];
   }
-  
+
   // Match patterns like /share/{threadId}
   const shareMatch = pathname.match(/\/share\/([^\/]+)/);
   if (shareMatch) {
     return shareMatch[1];
   }
-  
+
   return null;
 };
 
@@ -93,7 +107,11 @@ export function SidebarLeft({
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { flags, loading: flagsLoading } = useFeatureFlags(['custom_agents', 'agent_marketplace', 'knowledge_base']);
+  const { flags, loading: flagsLoading } = useFeatureFlags([
+    'custom_agents',
+    'agent_marketplace',
+    'knowledge_base',
+  ]);
   const customAgentsEnabled = flags.custom_agents;
   const marketplaceEnabled = flags.agent_marketplace;
   const knowledgeBaseEnabled = flags.knowledge_base;
@@ -107,11 +125,14 @@ export function SidebarLeft({
     setShowKnowledgeBase(true);
   };
 
-  const handleUserUpdate = (updatedUser: { name: string; email: string; avatar: string }) => {
+  const handleUserUpdate = (updatedUser: {
+    name: string;
+    email: string;
+    avatar: string;
+  }) => {
     setUser(updatedUser);
   };
 
-  
   useEffect(() => {
     const fetchUserData = async () => {
       const supabase = createClient();
@@ -149,7 +170,6 @@ export function SidebarLeft({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [state, setOpen]);
 
-
   const handleCreateNewAgent = () => {
     createNewAgentMutation.mutate();
   };
@@ -157,20 +177,24 @@ export function SidebarLeft({
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r-0 bg-background/95 backdrop-blur-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+      className="border-r-0 backdrop-blur-sm [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
       {...props}
     >
       <SidebarHeader className="px-2 py-2">
         <div className="flex h-[40px] items-center px-1 relative">
           <Link href="/dashboard">
-            <Image src="/helium-logo.png" alt="Helium Logo" width={30} height={30} />
+            <Image
+              src="/helium-logo.png"
+              alt="Helium Logo"
+              width={30}
+              height={30}
+            />
           </Link>
           {state !== 'collapsed' && (
-            <div className="ml-2 transition-all duration-200 ease-in-out whitespace-nowrap">
-            </div>
+            <div className="ml-2 transition-all duration-200 ease-in-out whitespace-nowrap"></div>
           )}
           <div className="ml-auto flex items-center gap-2">
-            {state !== 'collapsed' && (
+            {!isMobile && state !== 'collapsed' && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <SidebarTrigger className="h-8 w-8" />
@@ -178,45 +202,52 @@ export function SidebarLeft({
                 <TooltipContent>Toggle sidebar (CMD+B)</TooltipContent>
               </Tooltip>
             )}
+
             {isMobile && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => setOpenMobile(true)}
-                    className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-accent"
+                    onClick={() => setOpenMobile(false)}
+                    className="h-6 cursor-pointer w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 flex items-center justify-center rounded-md hover:bg-accent transition-all duration-300 ease-in-out"
                   >
-                    <Menu className="h-4 w-4" />
+                    <X className="h-5 w-5 sm:h-5 sm:w-5 md:h-4 md:w-4 transition-all duration-300 ease-in-out" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Open menu</TooltipContent>
+                <TooltipContent>Close sidebar</TooltipContent>
               </Tooltip>
             )}
           </div>
         </div>
       </SidebarHeader>
       <SidebarContent className="[&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-        <SidebarGroup>
+        <SidebarGroup className="gap-1">
           <Link href="/dashboard">
-            <SidebarMenuButton className={cn({
-              'bg-accent text-accent-foreground font-medium': pathname === '/dashboard',
-            })}>
+            <SidebarMenuButton
+              className={cn({
+                'bg-accent text-accent-foreground font-medium':
+                  pathname === '/dashboard',
+              })}
+            >
               <Plus className="h-4 w-4 mr-1 cursor-pointer" />
               <span className="flex items-center justify-between w-full">
                 New Task
               </span>
             </SidebarMenuButton>
           </Link>
-          {state === 'collapsed' && (
-            <div className="mt-2 flex justify-center">
+          {!isMobile && state === 'collapsed' && (
+            <div className=" flex justify-center">
               <Tooltip>
-                <TooltipTrigger asChild>
+                <TooltipTrigger asChild className="rounded-md">
                   <SidebarTrigger className="h-8 w-8 hover:bg-accent hover:text-accent-foreground cursor-pointer" />
                 </TooltipTrigger>
-                <TooltipContent side="right">Expand sidebar (CMD+B)</TooltipContent>
+                <TooltipContent side="right">
+                  Expand sidebar (CMD+B)
+                </TooltipContent>
               </Tooltip>
             </div>
           )}
-          {!flagsLoading && customAgentsEnabled && (
+
+          {!flagsLoading && customAgentsEnabled && !isProductionMode() && (
             <SidebarMenu>
               <Collapsible
                 defaultOpen={pathname?.includes('/agents')}
@@ -226,6 +257,7 @@ export function SidebarLeft({
                   <CollapsibleTrigger asChild>
                     <SidebarMenuButton
                       tooltip="Agents"
+                      className="cursor-pointer"
                     >
                       <Bot className="h-4 w-4 mr-1" />
                       <span>Agents</span>
@@ -235,25 +267,36 @@ export function SidebarLeft({
                   <CollapsibleContent>
                     <SidebarMenuSub>
                       <SidebarMenuSubItem>
-                        <SidebarMenuSubButton className={cn('pl-3', {
-                          'bg-accent text-accent-foreground font-medium': pathname === '/agents' && searchParams.get('tab') === 'marketplace',
-                        })} asChild>
+                        <SidebarMenuSubButton
+                          className={cn('pl-3', {
+                            'bg-accent text-accent-foreground font-medium':
+                              pathname === '/agents' &&
+                              searchParams.get('tab') === 'marketplace',
+                          })}
+                          asChild
+                        >
                           <Link href="/agents?tab=marketplace">
                             <span>Explore</span>
                           </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                       <SidebarMenuSubItem>
-                        <SidebarMenuSubButton className={cn('pl-3', {
-                          'bg-accent text-accent-foreground font-medium': pathname === '/agents' && (searchParams.get('tab') === 'my-agents' || searchParams.get('tab') === null),
-                        })} asChild>
+                        <SidebarMenuSubButton
+                          className={cn('pl-3', {
+                            'bg-accent text-accent-foreground font-medium':
+                              pathname === '/agents' &&
+                              (searchParams.get('tab') === 'my-agents' ||
+                                searchParams.get('tab') === null),
+                          })}
+                          asChild
+                        >
                           <Link href="/agents?tab=my-agents">
                             <span>My Agents</span>
                           </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                       <SidebarMenuSubItem>
-                        <SidebarMenuSubButton 
+                        <SidebarMenuSubButton
                           onClick={() => setShowNewAgentDialog(true)}
                           className="cursor-pointer pl-3"
                         >
@@ -266,58 +309,116 @@ export function SidebarLeft({
               </Collapsible>
             </SidebarMenu>
           )}
-          {!flagsLoading && customAgentsEnabled && (
-            <Link href="/settings/credentials">
-              <SidebarMenuButton className={cn({
-                'bg-accent text-accent-foreground font-medium': pathname === '/settings/credentials',
-              })}>
-                <Plug className="h-4 w-4 mr-1" />
-                <span className="flex items-center justify-between w-full">
-                  Integrations
-                </span>
-              </SidebarMenuButton>
-            </Link>
-          )}
         </SidebarGroup>
         <NavAgents />
       </SidebarContent>
       <SidebarFooter>
-        <div className={state === 'collapsed' ? 'w-full flex flex-col items-center' : 'w-full flex flex-col items-start'}>
+        <div
+          className={
+            state === 'collapsed' && !isMobile
+              ? 'w-full flex flex-col items-center'
+              : 'w-full flex flex-col items-start'
+          }
+        >
+          {/* Integrations button: show if custom agents feature is enabled */}
+          {!flagsLoading && customAgentsEnabled && (
+            <Tooltip>
+              <TooltipTrigger asChild className={state === 'collapsed' && !isMobile ? '' : 'w-full'}>
+                <Link href="/settings/credentials">
+                  <button
+                    className={cn(
+                      'h-fit cursor-pointer flex items-center rounded-md flex-shrink-0 transition-colors my-4',
+                      {
+                        // Collapsed state styling
+                        'w-8 h-8 justify-center hover:bg-accent hover:text-accent-foreground my-1': 
+                          state === 'collapsed' && !isMobile,
+                        // Expanded state styling
+                        'w-full py-1 px-3 hover:bg-accent justify-start': 
+                          state !== 'collapsed' || isMobile,
+                      }
+                    )}
+                    type="button"
+                    tabIndex={0}
+                    aria-label="Integrations"
+                  >
+                    <Plug className={cn(
+                      'w-4 h-4',
+                      {
+                        'mr-0': state === 'collapsed' && !isMobile,
+                        'mr-2': state !== 'collapsed' || isMobile,
+                      }
+                    )} />
+                    {(isMobile || state !== 'collapsed') && (
+                      <span className="text-sm font-medium whitespace-nowrap">
+                        Integrations
+                      </span>
+                    )}
+                  </button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                Integrations
+              </TooltipContent>
+            </Tooltip>
+          )}
+          
           {/* Knowledge Base button: always show if feature is enabled */}
           {!flagsLoading && knowledgeBaseEnabled && (
             <Tooltip>
-              <TooltipTrigger asChild className='w-full'>
+              <TooltipTrigger asChild className={state === 'collapsed' && !isMobile ? '' : 'w-full'}>
                 <button
-                  className={`h-5 w-full cursor-pointer flex items-center${state === 'collapsed' ? ' justify-center my-3' : ' my-4 mx-3'} rounded-sm flex-shrink-0 transition-colors ${state === 'collapsed' ? 'hover:bg-card' : ''}`}
+                  className={cn(
+                    'h-fit cursor-pointer flex items-center rounded-md flex-shrink-0 transition-colors',
+                    {
+                      // Collapsed state styling
+                      'w-8 h-8 justify-center hover:bg-accent hover:text-accent-foreground my-1': 
+                        state === 'collapsed' && !isMobile,
+                      // Expanded state styling
+                      'w-full py-1 px-3 hover:bg-accent justify-start': 
+                        state !== 'collapsed' || isMobile,
+                    }
+                  )}
                   type="button"
                   tabIndex={0}
                   aria-label="Knowledge Base"
                   onClick={() => {
                     setOpen(true);
-                    setTimeout(() => { setShowKnowledgeBase(true); }, 100); // Show knowledge base after expanding
+                    setTimeout(() => {
+                      setShowKnowledgeBase(true);
+                    }, 100); // Show knowledge base after expanding
                   }}
                 >
-                  <Lightbulb className="w-5 h-5" />
-                  {state !== 'collapsed' && (
-                    <span className="ml-2 text-sm font-medium whitespace-nowrap">Knowledge Base</span>
+                  <Lightbulb className={cn(
+                    'w-4 h-4',
+                    {
+                      'mr-0': state === 'collapsed' && !isMobile,
+                      'mr-2': state !== 'collapsed' || isMobile,
+                    }
+                  )} />
+                  {(isMobile || state !== 'collapsed') && (
+                    <span className="text-sm font-medium whitespace-nowrap">
+                      Knowledge Base
+                    </span>
                   )}
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                {currentThreadId 
-                  ? "Knowledge Base" 
-                  : "Knowledge Base"
-                }
+                Knowledge Base
               </TooltipContent>
             </Tooltip>
           )}
           {/* Divider above NavUserWithTeams only when expanded */}
-          {state !== 'collapsed' && <div className="w-full h-px bg-border my-2" />}
+          {(state !== 'collapsed' || isMobile) && (
+            <div className="w-full h-px bg-border my-2" />
+          )}
           <NavUserWithTeams user={user} />
         </div>
       </SidebarFooter>
       <SidebarRail />
-      <AlertDialog open={showNewAgentDialog} onOpenChange={setShowNewAgentDialog}>
+      <AlertDialog
+        open={showNewAgentDialog}
+        onOpenChange={setShowNewAgentDialog}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Create New Agent</AlertDialogTitle>
@@ -327,7 +428,9 @@ export function SidebarLeft({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCreateNewAgent}>Create</AlertDialogAction>
+            <AlertDialogAction onClick={handleCreateNewAgent}>
+              Create
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

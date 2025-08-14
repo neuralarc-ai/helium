@@ -74,7 +74,7 @@ export default function ThreadPage({
   const [agentStatus, setAgentStatus] = useState<
     'idle' | 'running' | 'connecting' | 'error'
   >('idle');
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(true); // default to true
   const [toolCalls, setToolCalls] = useState<ToolCallInput[]>([]);
   const [currentToolIndex, setCurrentToolIndex] = useState<number>(0);
   const [autoOpenedPanel, setAutoOpenedPanel] = useState(false);
@@ -113,13 +113,52 @@ export default function ThreadPage({
     setIsSidePanelOpen(false);
   }, []);
 
+  // Calculate current tool index based on playback progress
+  const calculateCurrentToolIndex = useCallback(() => {
+    if (!isPlaying || currentMessageIndex <= 0 || toolCalls.length === 0) {
+      return 0; // Always start at first step when not playing or at beginning
+    }
+
+    // Count how many tool calls should be visible based on current message index
+    const visibleMessages = messages.slice(0, currentMessageIndex);
+    let toolCallCount = 0;
+
+    for (const msg of visibleMessages) {
+      if (msg.type === 'tool' && msg.metadata) {
+        try {
+          const metadata = safeJsonParse<ParsedMetadata>(msg.metadata, {});
+          if (metadata.assistant_message_id) {
+            toolCallCount++;
+          }
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      }
+    }
+
+    // Return the index of the last completed tool call, or 0 if none
+    return Math.min(toolCallCount - 1, toolCalls.length - 1);
+  }, [isPlaying, currentMessageIndex, messages, toolCalls]);
+
   const toggleSidePanel = useCallback(() => {
-    setIsSidePanelOpen((prev) => !prev);
-  }, []);
+    setIsSidePanelOpen((prev) => {
+      const newState = !prev;
+      if (newState && toolCalls.length > 0) {
+        // When opening the panel, always start at the first step (index 0)
+        setCurrentToolIndex(0);
+      }
+      return newState;
+    });
+  }, [toolCalls.length]);
 
   const handleSidePanelNavigate = useCallback((newIndex: number) => {
     setCurrentToolIndex(newIndex);
     console.log(`Tool panel manually set to index ${newIndex}`);
+  }, []);
+
+  const handleToolCallReplay = useCallback(() => {
+    // This function will be called by the ToolCallSidePanel to start/stop replay
+    console.log('Tool call replay triggered');
   }, []);
 
   const handleNewMessageFromStream = useCallback((message: UnifiedMessage) => {
@@ -220,24 +259,19 @@ export default function ThreadPage({
         toolName.includes('file') ||
         toolName === 'create-file' ||
         toolName === 'delete-file' ||
-        toolName === 'full-file-rewrite' ||
-        toolName === 'edit-file'
+        toolName === 'full-file-rewrite'
       ) {
         // For file operations, check if toolArguments contains a file path
         // If it's just a raw file path, format it properly
-        const fileOpTags = ['create-file', 'delete-file', 'full-file-rewrite', 'edit-file'];
+        const fileOpTags = ['create-file', 'delete-file', 'full-file-rewrite'];
         const matchingTag = fileOpTags.find((tag) => toolName === tag);
         if (matchingTag) {
           // Check if arguments already have the proper XML format
-          if (!toolArguments.includes(`<${matchingTag}>`) && !toolArguments.includes('file_path=') && !toolArguments.includes('target_file=')) {
+          if (!toolArguments.includes(`<${matchingTag}>`) && !toolArguments.includes('file_path=')) {
             // If toolArguments looks like a raw file path, format it properly
             const filePath = toolArguments.trim();
             if (filePath && !filePath.startsWith('<')) {
-              if (matchingTag === 'edit-file') {
-                formattedContent = `<${matchingTag} target_file="${filePath}">`;
-              } else {
               formattedContent = `<${matchingTag} file_path="${filePath}">`;
-              }
             } else {
               formattedContent = `<${matchingTag}>${toolArguments}</${matchingTag}>`;
             }
@@ -278,8 +312,10 @@ export default function ThreadPage({
         return [newToolCall];
       });
 
-      setCurrentToolIndex(0);
+      setCurrentToolIndex(0); // Always start at first step for streaming
       setIsSidePanelOpen(true);
+      // Close the file viewer modal when opening tool side panel
+      setFileViewerOpen(false);
     },
     [],
   );
@@ -395,31 +431,18 @@ export default function ThreadPage({
 
           const unifiedMessages = (messagesData || [])
             .filter((msg) => msg.type !== 'status')
-            .map((msg: ApiMessageType) => {
-              let finalContent: string | object = msg.content || '';
-              if (msg.metadata) {
-                try {
-                  const metadata = JSON.parse(msg.metadata);
-                  if (metadata.frontend_content) {
-                    finalContent = metadata.frontend_content;
-                  }
-                } catch (e) {
-                  // ignore
-                }
-              }
-              return {
-                message_id: msg.message_id || null,
-                thread_id: msg.thread_id || threadId,
-                type: (msg.type || 'system') as UnifiedMessage['type'],
-                is_llm_message: Boolean(msg.is_llm_message),
-                content: typeof finalContent === 'string' ? finalContent : JSON.stringify(finalContent),
-                metadata: msg.metadata || '{}',
-                created_at: msg.created_at || new Date().toISOString(),
-                updated_at: msg.updated_at || new Date().toISOString(),
-                agent_id: (msg as any).agent_id,
-                agents: (msg as any).agents,
-              };
-            });
+            .map((msg: ApiMessageType) => ({
+              message_id: msg.message_id || null,
+              thread_id: msg.thread_id || threadId,
+              type: (msg.type || 'system') as UnifiedMessage['type'],
+              is_llm_message: Boolean(msg.is_llm_message),
+              content: msg.content || '',
+              metadata: msg.metadata || '{}',
+              created_at: msg.created_at || new Date().toISOString(),
+              updated_at: msg.updated_at || new Date().toISOString(),
+              agent_id: (msg as any).agent_id,
+              agents: (msg as any).agents,
+            }));
 
           setMessages(unifiedMessages);
           const historicalToolPairs: ToolCallInput[] = [];
@@ -513,6 +536,8 @@ export default function ThreadPage({
           });
 
           setToolCalls(historicalToolPairs);
+          // Always start at the first step when tool calls are loaded
+          setCurrentToolIndex(0);
           initialLoadCompleted.current = true;
         }
       } catch (err) {
@@ -591,6 +616,8 @@ export default function ThreadPage({
         setExternalNavIndex(toolIndex);
         setCurrentToolIndex(toolIndex);
         setIsSidePanelOpen(true);
+        // Close the file viewer modal when opening tool side panel
+        setFileViewerOpen(false);
 
         setTimeout(() => setExternalNavIndex(undefined), 100);
       } else {
@@ -610,7 +637,10 @@ export default function ThreadPage({
       setFileToView(null);
     }
     setFileViewerOpen(true);
-  }, []);
+    // Close the tool side panel when file modal is opened
+    setIsSidePanelOpen(false);
+    userClosedPanelRef.current = true;
+  }, [setIsSidePanelOpen, userClosedPanelRef]);
 
   const playbackController: PlaybackController = PlaybackControls({
     messages,
@@ -620,6 +650,37 @@ export default function ThreadPage({
     setCurrentToolIndex,
     onFileViewerOpen: handleOpenFileViewer,
     projectName: projectName || 'Shared Conversation',
+    onBackNavigation: () => router.back(),
+    onCloseSidePanel: () => {
+      setIsSidePanelOpen(false);
+      userClosedPanelRef.current = true;
+    },
+    onStartToolCallReplay: () => {
+      // Reset tool call index to start from beginning
+      setCurrentToolIndex(0);
+      // Ensure side panel is open
+      setIsSidePanelOpen(true);
+      userClosedPanelRef.current = false;
+      // Trigger the replay in the ToolCallSidePanel
+      if (toolCalls.length > 0) {
+        // The ToolCallSidePanel will automatically start replay when isReplayMode becomes true
+        console.log('Starting tool call replay from playback controls');
+      }
+    },
+    onStepSync: (stepIndex: number, toolName: string) => {
+      // Synchronize the step in Helium's core with the playback progress
+      console.log(`[STEP SYNC] Syncing to step ${stepIndex}: ${toolName}`);
+      setCurrentToolIndex(stepIndex);
+      
+      // Ensure the side panel is open to show the current step
+      if (!isSidePanelOpen) {
+        setIsSidePanelOpen(true);
+      }
+      
+      // Highlight the current step in the tool side panel
+      setExternalNavIndex(stepIndex);
+      setTimeout(() => setExternalNavIndex(undefined), 100);
+    },
   });
 
   const {
@@ -712,6 +773,21 @@ export default function ThreadPage({
     }
   }, [currentMessageIndex, isPlaying, messages, toolCalls]);
 
+  // Update current tool index when playback progresses
+  useEffect(() => {
+    if (isPlaying) {
+      const newToolIndex = calculateCurrentToolIndex();
+      setCurrentToolIndex(Math.max(0, newToolIndex));
+    }
+  }, [isPlaying, currentMessageIndex, calculateCurrentToolIndex]);
+
+  // Reset tool index when playback resets
+  useEffect(() => {
+    if (!isPlaying && currentMessageIndex === 0) {
+      setCurrentToolIndex(0);
+    }
+  }, [isPlaying, currentMessageIndex]);
+
   useEffect(() => {
     if (!isPlaying || messages.length === 0 || currentMessageIndex <= 0) return;
     const currentMessages = messages.slice(0, currentMessageIndex);
@@ -743,6 +819,12 @@ export default function ThreadPage({
     }
   }, [currentMessageIndex, isPlaying, messages, toolCalls]);
 
+  useEffect(() => {
+    if (isPlaying) {
+      setIsSidePanelOpen(true);
+    }
+  }, [isPlaying]);
+
   if (isLoading && !initialLoadCompleted.current) {
     return (
       <ThreadSkeleton isSidePanelOpen={isSidePanelOpen} showHeader={true} />
@@ -753,7 +835,7 @@ export default function ThreadPage({
     return (
       <div className="flex h-screen">
         <div
-          className={`flex flex-col flex-1 overflow-hidden transition-all duration-200 ease-in-out ${isSidePanelOpen ? 'mr-[90%] sm:mr-[450px] md:mr-[500px] lg:mr-[550px] xl:mr-[650px]' : ''}`}
+          className={`flex flex-col overflow-hidden transition-all duration-200 ease-in-out ${isSidePanelOpen ? 'w-1/2 -ml-2' : 'w-full'}`}
         >
           <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 relative z-[100]">
             <div className="flex h-14 items-center gap-4 px-4">
@@ -784,7 +866,7 @@ export default function ThreadPage({
   return (
     <div className="flex h-screen">
       <div
-        className={`flex flex-col flex-1 overflow-hidden transition-[margin] duration-200 ease-in-out will-change-[margin] ${isSidePanelOpen ? 'mr-[50vw]' : ''}`}
+        className={`flex flex-col overflow-hidden transition-all duration-200 ease-in-out ${isSidePanelOpen ? 'w-1/2 -ml-2' : 'w-full'}`}
       >
         {renderHeader()}
         <ThreadContent
@@ -799,29 +881,33 @@ export default function ThreadPage({
           currentToolCall={playbackState.currentToolCall}
           sandboxId={sandboxId || ''}
           project={project}
-          isSidePanelOpen={isSidePanelOpen}
+          emptyStateComponent={<div />}
         />
         {renderWelcomeOverlay()}
         {renderFloatingControls()}
       </div>
 
-      <ToolCallSidePanel
-        isOpen={isSidePanelOpen}
-        onClose={() => {
-          setIsSidePanelOpen(false);
-          userClosedPanelRef.current = true;
-        }}
-        toolCalls={toolCalls}
-        messages={messages as ApiMessageType[]}
-        agentStatus="idle"
-        currentIndex={currentToolIndex}
-        onNavigate={handleSidePanelNavigate}
-        externalNavigateToIndex={externalNavIndex}
-        project={project}
-        onFileClick={handleOpenFileViewer}
-        // No sidebar on share page, but keep API consistent
-        isLeftSidebarExpanded={false}
-      />
+      {isSidePanelOpen && (
+        <div className="w-1/2 h-full bg-background  overflow-hidden">
+          <ToolCallSidePanel
+            isOpen={isSidePanelOpen}
+            onClose={() => {
+              if (!isPlaying) {
+                setIsSidePanelOpen(false);
+                userClosedPanelRef.current = true;
+              }
+            }}
+            toolCalls={toolCalls}
+            messages={messages as ApiMessageType[]}
+            agentStatus="idle"
+            currentIndex={currentToolIndex}
+            onNavigate={handleSidePanelNavigate}
+            externalNavigateToIndex={externalNavIndex}
+            project={project}
+            onFileClick={handleOpenFileViewer}
+          />
+        </div>
+      )}
 
       <FileViewerModal
         open={fileViewerOpen}
