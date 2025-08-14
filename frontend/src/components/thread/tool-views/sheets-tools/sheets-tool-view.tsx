@@ -158,16 +158,16 @@ export function SheetsToolView({
       <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 rounded-xl mx-2 mt-2 mb-1 flex flex-row items-center justify-between">
         <div className="flex items-center gap-2 mt-4">
           <Table2 className="w-5 h-5 text-white" />
-          <CardTitle className="text-base font-medium text-white">
+          <CardTitle className="text-base font-medium text-white update-text">
             {sheetTitle}
           </CardTitle>
         </div>
         <div className="flex items-center gap-2 mt-4">
           {primaryXlsx && (
             <div className="flex items-center gap-2">
-              <Label>CSV</Label>
+              <Label className="update-text">CSV</Label>
               <Switch checked={showFormatted} onCheckedChange={setShowFormatted} />
-              <Label>XLSX</Label>
+              <Label className="update-text">XLSX</Label>
             </div>
           )}
           <DropdownMenu>

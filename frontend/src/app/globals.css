@@ -1017,3 +1017,11 @@
     font-size: 10px!important;
   }
 }
+
+@media (max-width: 390px) and (min-width: 300px) {
+  .update-text,
+  .csv-text,
+  .xlsx-text {
+    font-size: 10px !important;
+  }
+}

@@ -17,17 +17,62 @@ function parseCSV(content: string) {
     if (!content) return { data: [], headers: [] };
 
     try {
-        const results = Papa.parse(content, {
-            header: true,
-            skipEmptyLines: true
+        // Preview first two rows to guess header
+        const preview = Papa.parse(content, {
+            header: false,
+            skipEmptyLines: true,
+            preview: 2,
+            dynamicTyping: true,
         });
 
-        let headers: string[] = [];
-        if (results.meta && results.meta.fields) {
-            headers = results.meta.fields || [];
+        if (!preview.data || preview.data.length === 0) {
+            return { data: [], headers: [] };
         }
 
-        return { headers, data: results.data };
+        const firstRow = preview.data[0] as any[];
+        const secondRow = preview.data.length > 1 ? preview.data[1] as any[] : null;
+
+        let detectedHeader = false;
+        if (secondRow) {
+            const firstRowIsString = firstRow.every(cell => typeof cell === 'string' && isNaN(Number(cell)));
+            const secondRowHasNumber = secondRow.some(cell => typeof cell === 'number' && !isNaN(cell));
+
+            if (firstRowIsString && secondRowHasNumber) {
+                detectedHeader = true;
+            } else {
+                // Fallback for when types are not perfectly detected, e.g., all strings
+                const firstRowLooksLikeHeader = firstRow.every(cell => isNaN(Number(cell)));
+                const secondRowLooksLikeData = secondRow.some(cell => !isNaN(Number(cell)));
+                if (firstRowLooksLikeHeader && secondRowLooksLikeData) {
+                    detectedHeader = true;
+                }
+            }
+        }
+
+        // Full parse with correct header setting
+        const results = Papa.parse(content, {
+            header: detectedHeader,
+            skipEmptyLines: true,
+            dynamicTyping: true,
+        });
+
+        let headers = results.meta.fields || [];
+        if (!detectedHeader || headers.length === 0) {
+            headers = (results.data[0] ? Object.keys(results.data[0]) : []).map((_, i) => `Column ${i + 1}`);
+        }
+
+        let data = results.data;
+        if (!detectedHeader) {
+             data = results.data.map((row: any) => {
+                const newRow: { [key: string]: any } = {};
+                headers.forEach((header, i) => {
+                    newRow[header] = row[i];
+                });
+                return newRow;
+            });
+        }
+
+        return { headers, data };
     } catch (error) {
         console.error("Error parsing CSV:", error);
         return { headers: [], data: [] };
