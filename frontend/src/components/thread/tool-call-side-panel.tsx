@@ -6,7 +6,7 @@ import React from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiMessageType } from '@/components/thread/types';
-import { CircleDashed, X, ChevronLeft, ChevronRight, Computer, Radio, Maximize2, Minimize2 } from 'lucide-react';
+import { CircleDashed, X, ChevronLeft, ChevronRight, Minimize2, SkipForward, SkipBack } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -768,12 +768,12 @@ export function ToolCallSidePanel({
           </div>
           <div className="flex flex-col items-center justify-center flex-1 p-8">
             <div className="flex flex-col items-center justify-center w-full h-full">
-              <div className="relative w-40 h-40 flex items-center justify-center">
+              <div className="relative w-[30%] h-[30%] flex items-center justify-center">
                 <Image 
                   src="/helium-brain/brain-inactive.png" 
                   alt="Helium Brain Inactive" 
-                  width={160}
-                  height={160}
+                  width={400}
+                  height={400}
                   className="w-full h-full object-contain"
                   priority
                 />
@@ -1002,7 +1002,7 @@ export function ToolCallSidePanel({
           </div>
         </motion.div>
 
-        <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent">
+        <div className="flex-1 p-4 pt-0 overflow-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent">
           {toolView}
         </div>
       </div>
@@ -1053,7 +1053,7 @@ export function ToolCallSidePanel({
                     disabled={displayIndex <= 0}
                     className="h-8 px-2.5 text-xs"
                   >
-                    <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+                    <SkipBack className="h-3.5 w-3.5 mr-1" />
                     <span>Prev</span>
                   </Button>
 
@@ -1072,20 +1072,20 @@ export function ToolCallSidePanel({
                     className="h-8 px-2.5 text-xs"
                   >
                     <span>Next</span>
-                    <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                    <SkipForward className="h-3.5 w-3.5 ml-1" />
                   </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={navigateToPrevious}
                       disabled={displayIndex <= 0}
-                      className="h-7 w-7 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                      className="h-7 w-7 text-zinc-500 cursor-pointer hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                     >
-                      <ChevronLeft className="h-4 w-4" />
+                      <SkipBack className="h-4 w-4" />
                     </Button>
                     <span className="text-xs text-zinc-600 dark:text-zinc-400 font-medium tabular-nums px-1 min-w-[44px] text-center">
                       {displayIndex + 1}/{displayTotalCalls}
@@ -1095,9 +1095,9 @@ export function ToolCallSidePanel({
                       size="icon"
                       onClick={navigateToNext}
                       disabled={displayIndex >= displayTotalCalls - 1}
-                      className="h-7 w-7 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                      className="h-7 w-7 text-zinc-500 cursor-pointer hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                     >
-                      <ChevronRight className="h-4 w-4" />
+                      <SkipForward className="h-4 w-4" />
                     </Button>
                   </div>
 
@@ -1108,7 +1108,7 @@ export function ToolCallSidePanel({
                       step={1}
                       value={[displayIndex]}
                       onValueChange={handleSliderChange}
-                      className="w-full [&>span:first-child]:h-1.2 [&>span:first-child]:bg-zinc-200 dark:[&>span:first-child]:bg-zinc-800 [&>span:first-child>span]:bg-[#4E97D5] [&>span:first-child>span]:h-1.5"
+                      className="w-full [&>span:first-child]:h-1 [&>span:first-child]:bg-zinc-200 dark:[&>span:first-child]:bg-zinc-800 [&>span:first-child>span]:bg-[#0081F2] [&>span:first-child>span]:h-1.5"
                     />
                   </div>
 

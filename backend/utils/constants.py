@@ -92,6 +92,14 @@ MODELS = {
         },
         "tier_availability": ["free", "paid"]
     },
+    "openrouter/qwen/qwen3-235b-a22b:free": {
+        "aliases": ["qwen/qwen3-235b-a22b:free", "Helio T1"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.0,
+            "output_cost_per_million_tokens": 0.0
+        },
+        "tier_availability": ["free", "paid"]
+    },
     "moonshot/moonshot-v1-8k": {
         "aliases": ["moonshot-v1-8k", "kimi-k2", "moonshotai/kimi-k2:free", "moonshotai/kimi-k2"],
         "pricing": {
@@ -243,6 +251,10 @@ MODELS = {
 def _generate_model_structures():
     """Generate all model structures from the master MODELS dictionary."""
     
+    # Check environment directly to avoid circular imports
+    import os
+    env_mode = os.getenv("ENV_MODE", "local").lower()
+    
     # Generate tier lists
     free_models = []
     paid_models = []
@@ -253,37 +265,43 @@ def _generate_model_structures():
     # Generate pricing
     pricing = {}
     
-    for model_name, config in MODELS.items():
+    for model_name, config_data in MODELS.items():
         # Add to tier lists
-        if "free" in config["tier_availability"]:
+        if "free" in config_data["tier_availability"]:
             free_models.append(model_name)
-        if "paid" in config["tier_availability"]:
+        if "paid" in config_data["tier_availability"]:
             paid_models.append(model_name)
         
-        # Add aliases
-        for alias in config["aliases"]:
-            aliases[alias] = model_name
+        # Add aliases with environment-specific logic
+        for alias in config_data["aliases"]:
+            # Special handling for "Helio T1" - only add in production
+            if alias == "Helio T1":
+                if env_mode == "production":
+                    aliases[alias] = model_name
+            else:
+                # Add all other aliases normally
+                aliases[alias] = model_name
         
         # Add pricing
-        pricing[model_name] = config["pricing"]
+        pricing[model_name] = config_data["pricing"]
         
         # Also add pricing for legacy model name variations
         if model_name.startswith("openrouter/deepseek/"):
             legacy_name = model_name.replace("openrouter/", "")
-            pricing[legacy_name] = config["pricing"]
+            pricing[legacy_name] = config_data["pricing"]
         elif model_name.startswith("openrouter/qwen/"):
             legacy_name = model_name.replace("openrouter/", "")
-            pricing[legacy_name] = config["pricing"]
+            pricing[legacy_name] = config_data["pricing"]
         elif model_name.startswith("gemini/"):
             legacy_name = model_name.replace("gemini/", "")
-            pricing[legacy_name] = config["pricing"]
+            pricing[legacy_name] = config_data["pricing"]
         elif model_name.startswith("anthropic/"):
             # Legacy pricing mapping removed - using Bedrock models now
             pass
         elif model_name.startswith("xai/"):
             # Add pricing for OpenRouter x-ai models
             openrouter_name = model_name.replace("xai/", "openrouter/x-ai/")
-            pricing[openrouter_name] = config["pricing"]
+            pricing[openrouter_name] = config_data["pricing"]
     
     return free_models, paid_models, aliases, pricing
 

@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import datetime
 from typing import Optional, Dict, List, Any, AsyncGenerator
 from dataclasses import dataclass
 
@@ -33,9 +34,11 @@ from agentpress.tool import SchemaType
 from utils.account_utils import normalize_account_id, get_account_id_variants
 from utils.knowledge_base_manager import global_kb_manager
 from agent.tools.sb_sheets_tool import SandboxSheetsTool
+from agent.tools.task_list_tool import TaskListTool
+from agent.tools.sb_web_dev_tool import SandboxWebDevTool
+from agentpress.tool import SchemaType
 
 load_dotenv()
-
 
 @dataclass
 class AgentConfig:
@@ -44,7 +47,7 @@ class AgentConfig:
     stream: bool
     native_max_auto_continues: int = 25
     max_iterations: int = 100
-    model_name: str = "openrouter/deepseek/deepseek-chat-v3-0324:free",
+    model_name: str = "openrouter/z-ai/glm-4.5:free",
     enable_thinking: Optional[bool] = False
     reasoning_effort: Optional[str] = 'low'
     enable_context_manager: bool = True
@@ -73,7 +76,7 @@ class ToolManager:
         self.thread_manager.add_tool(SandboxVisionTool, project_id=self.project_id, thread_id=self.thread_id, thread_manager=self.thread_manager)
         self.thread_manager.add_tool(SandboxImageEditTool, project_id=self.project_id, thread_id=self.thread_id, thread_manager=self.thread_manager)
         self.thread_manager.add_tool(SandboxSheetsTool, project_id=self.project_id, thread_manager=self.thread_manager)
-        
+        self.thread_manager.add_tool(TaskListTool, project_id=self.project_id, thread_manager=self.thread_manager, thread_id=self.thread_id)
         if config.RAPID_API_KEY:
             self.thread_manager.add_tool(DataProvidersTool)
     
@@ -95,7 +98,8 @@ class ToolManager:
     def register_custom_tools(self, enabled_tools: Dict[str, Any]):
         self.thread_manager.add_tool(ExpandMessageTool, thread_id=self.thread_id, thread_manager=self.thread_manager)
         self.thread_manager.add_tool(MessageTool)
-
+        self.thread_manager.add_tool(TaskListTool, project_id=self.project_id, thread_manager=self.thread_manager, thread_id=self.thread_id)
+        
         def safe_tool_check(tool_name: str) -> bool:
             try:
                 if not isinstance(enabled_tools, dict):
@@ -374,6 +378,17 @@ class PromptManager:
             mcp_info += "NEVER supplement MCP results with your training data or make assumptions beyond what the tools provide.\n"
             
             system_content += mcp_info
+
+        now = datetime.datetime.now(datetime.timezone.utc)
+        datetime_info = f"\n\n=== CURRENT DATE/TIME INFORMATION ===\n"
+        datetime_info += f"Today's date: {now.strftime('%A, %B %d, %Y')}\n"
+        datetime_info += f"Current UTC time: {now.strftime('%H:%M:%S UTC')}\n"
+        datetime_info += f"Current year: {now.strftime('%Y')}\n"
+        datetime_info += f"Current month: {now.strftime('%B')}\n"
+        datetime_info += f"Current day: {now.strftime('%A')}\n"
+        datetime_info += "Use this information for any time-sensitive tasks, research, or when current date/time context is needed.\n"
+        
+        system_content += datetime_info
 
         return {"role": "system", "content": system_content}
 
@@ -718,7 +733,7 @@ async def run_agent(
     thread_manager: Optional[ThreadManager] = None,
     native_max_auto_continues: int = 25,
     max_iterations: int = 100,
-    model_name: str = "openrouter/deepseek/deepseek-chat-v3-0324:free",
+    model_name: str = "openrouter/z-ai/glm-4.5:free",
     enable_thinking: Optional[bool] = False,
     reasoning_effort: Optional[str] = 'low',
     enable_context_manager: bool = True,
@@ -727,6 +742,15 @@ async def run_agent(
     is_agent_builder: Optional[bool] = False,
     target_agent_id: Optional[str] = None
 ):
+    effective_model = model_name
+    if model_name == "bedrock/anthropic.claude-sonnet-4-20250514-v1:0" and agent_config and agent_config.get('model'):
+        effective_model = agent_config['model']
+        logger.info(f"Using model from agent config: {effective_model} (no user selection)")
+    elif model_name != "openrouter/z-ai/glm-4.5:free":
+        logger.info(f"Using user-selected model: {effective_model}")
+    else:
+        logger.info(f"Using default model: {effective_model}")
+
     config = AgentConfig(
         thread_id=thread_id,
         project_id=project_id,

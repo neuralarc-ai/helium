@@ -51,12 +51,12 @@ export const MODELS = {
   // },
 
   // Premium/Paid tier models (require subscription) - except specific free models
-  'moonshot/moonshot-v1-8k': { 
-    tier: 'free', 
-    priority: 99,
-    recommended: false,
-    lowQuality: false
-  },
+  // 'moonshot/moonshot-v1-8k': { 
+  //   tier: 'free', 
+  //   priority: 99,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
   'moonshot/kimi-k2-0711-preview': { 
     tier: 'free', 
     priority: 98,
@@ -71,36 +71,42 @@ export const MODELS = {
   },
   'openrouter/z-ai/glm-4.5-air:free': { 
     tier: 'free', 
-    priority: 97,
+    priority: 96,
+    recommended: false,
+    lowQuality: false
+  },
+  'openrouter/qwen/qwen3-235b-a22b:free': { 
+    tier: 'free', 
+    priority: 95,
     recommended: false,
     lowQuality: false
   },
   
-  // AWS Bedrock Models
-  'bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0': { 
-    tier: 'free', 
-    priority: 95,
-    recommended: true,
-    lowQuality: false
-  },
-  'bedrock/anthropic.claude-sonnet-4-20250514-v1:0': { 
-    tier: 'free', 
-    priority: 96,
-    recommended: true,
-    lowQuality: false
-  },
-  'bedrock/meta.llama4-scout-17b-instruct-v1:0': { 
-    tier: 'free', 
-    priority: 90,
-    recommended: false,
-    lowQuality: false
-  },
-  'bedrock/meta.llama4-maverick-17b-instruct-v1:0': { 
-    tier: 'free', 
-    priority: 92,
-    recommended: false,
-    lowQuality: false
-  },
+  // // AWS Bedrock Models
+  // 'bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0': { 
+  //   tier: 'free', 
+  //   priority: 95,
+  //   recommended: true,
+  //   lowQuality: false
+  // },
+  // 'bedrock/anthropic.claude-sonnet-4-20250514-v1:0': { 
+  //   tier: 'free', 
+  //   priority: 96,
+  //   recommended: true,
+  //   lowQuality: false
+  // },
+  // 'bedrock/meta.llama4-scout-17b-instruct-v1:0': { 
+  //   tier: 'free', 
+  //   priority: 90,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
+  // 'bedrock/meta.llama4-maverick-17b-instruct-v1:0': { 
+  //   tier: 'free', 
+  //   priority: 92,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
   'bedrock/deepseek.r1-v1:0': { 
     tier: 'free', 
     priority: 88,

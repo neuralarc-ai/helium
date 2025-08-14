@@ -34,14 +34,32 @@ class SunaAgentRepository:
     async def find_all_suna_agents(self) -> List[SunaAgentRecord]:
         try:
             client = await self.db.client
-            result = await client.table('agents').select(
-                'agent_id, account_id, name, metadata'
-            ).eq('metadata->>is_suna_default', 'true').execute()
+            all_agents = []
+            page_size = 1000
+            offset = 0
             
-            return [SunaAgentRecord.from_db_row(row) for row in result.data]
+            while True:
+                result = await client.table('agents').select(
+                    'agent_id, account_id, name, metadata'
+                ).eq('metadata->>is_suna_default', 'true').range(offset, offset + page_size - 1).execute()
+                
+                if not result.data:
+                    break
+                
+                batch_agents = [SunaAgentRecord.from_db_row(row) for row in result.data]
+                all_agents.extend(batch_agents)
+                
+                # If we got less than page_size, we've reached the end
+                if len(result.data) < page_size:
+                    break
+                
+                offset += page_size
+            
+            logger.info(f"Found {len(all_agents)} existing Helium agents")
+            return all_agents
             
         except Exception as e:
-            logger.error(f"Failed to find Suna agents: {e}")
+            logger.error(f"Failed to find Helium agents: {e}")
             raise
     
     async def find_suna_agents_needing_sync(self, target_version_tag: str) -> List[SunaAgentRecord]:
@@ -181,11 +199,12 @@ class SunaAgentRepository:
             
             if result.data:
                 agent_id = result.data[0]['agent_id']
-                logger.info(f"Created minimal Suna agent {agent_id} for {account_id}")
+                logger.info(f"Created minimal o1 agent {agent_id} for {account_id}")
                 await self._create_initial_version(
                     agent_id=agent_id,
                     account_id=account_id,
                     system_prompt="[MANAGED]",
+                    model=SunaConfig.DEFAULT_MODEL,
                     configured_mcps=SunaConfig.DEFAULT_MCPS,
                     custom_mcps=SunaConfig.DEFAULT_CUSTOM_MCPS,
                     agentpress_tools=SunaConfig.DEFAULT_TOOLS
@@ -195,7 +214,7 @@ class SunaAgentRepository:
             raise Exception("No data returned from insert")
             
         except Exception as e:
-            logger.error(f"Failed to create Suna agent for {account_id}: {e}")
+            logger.error(f"Failed to create o1 agent for {account_id}: {e}")
             raise
     
     async def update_agent_metadata(
@@ -234,14 +253,119 @@ class SunaAgentRepository:
             logger.error(f"Failed to delete agent {agent_id}: {e}")
             raise
     
+    async def find_orphaned_suna_agents(self) -> List[SunaAgentRecord]:
+        """
+        Find Helium agents that exist but don't have proper version records.
+        These are agents that were created but the version creation process failed.
+        """
+        try:
+            client = await self.db.client
+            
+            # Get all Suna agents
+            agents_result = await client.table('agents').select(
+                'agent_id, account_id, name, metadata'
+            ).eq('metadata->>is_suna_default', 'true').execute()
+            
+            if not agents_result.data:
+                return []
+            
+            # Get all agent_ids that have version records
+            versions_result = await client.table('agent_versions').select('agent_id').execute()
+            agents_with_versions = {row['agent_id'] for row in versions_result.data} if versions_result.data else set()
+            
+            # Find agents without version records
+            orphaned_agents = []
+            for row in agents_result.data:
+                if row['agent_id'] not in agents_with_versions:
+                    orphaned_agents.append(SunaAgentRecord.from_db_row(row))
+            
+            logger.info(f"Found {len(orphaned_agents)} orphaned Helium agents")
+            return orphaned_agents
+            
+        except Exception as e:
+            logger.error(f"Failed to find orphaned Helium agents: {e}")
+            raise
+    
+    async def create_version_record_for_existing_agent(
+        self,
+        agent_id: str,
+        account_id: str,
+        config_data: Dict[str, Any],
+        unified_config: Dict[str, Any],
+        version_tag: str
+    ) -> None:
+        """
+        Create a version record for an existing agent that lacks proper version records.
+        This is used to repair orphaned agents.
+        """
+        try:
+            from agent.versioning.version_service import get_version_service
+            from agent.suna.config import SunaConfig
+            
+            # Build configuration exclusively from SunaConfig and provided unified_config
+            system_prompt = SunaConfig.get_system_prompt()
+            model = SunaConfig.DEFAULT_MODEL
+            configured_mcps = SunaConfig.DEFAULT_MCPS
+            custom_mcps = SunaConfig.DEFAULT_CUSTOM_MCPS
+            agentpress_tools = unified_config.get('tools', {}).get('agentpress', {})
+            
+            # Create the version record using the version service
+            version_service = await get_version_service()
+            await version_service.create_version(
+                agent_id=agent_id,
+                user_id=account_id,
+                system_prompt=system_prompt,
+                configured_mcps=configured_mcps,
+                custom_mcps=custom_mcps,
+                agentpress_tools=agentpress_tools,
+                model=model,
+                version_name="v1-repair",
+                change_description=f"Repaired orphaned agent - created missing version record (config_version: {version_tag})"
+            )
+            
+            # Update the agent's metadata to mark it as repaired
+            client = await self.db.client
+            await client.table('agents').update({
+                'metadata': {
+                    **config_data.get('metadata', {})
+                }
+            }).eq('agent_id', agent_id).execute()
+            
+            logger.info(f"Created version record for orphaned agent {agent_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to create version record for orphaned agent {agent_id}: {e}")
+            raise
+    
     async def get_all_personal_accounts(self) -> List[str]:
         try:
             client = await self.db.client
-            result = await client.schema('basejump').table('accounts').select(
-                'id'
-            ).eq('personal_account', True).execute()
+            all_accounts = []
+            page_size = 1000
+            offset = 0
             
-            return [row['id'] for row in result.data]
+            logger.info("Fetching all personal accounts (paginated for large datasets)")
+            
+            while True:
+                result = await client.schema('basejump').table('accounts').select(
+                    'id'
+                ).eq('personal_account', True).range(offset, offset + page_size - 1).execute()
+                
+                if not result.data:
+                    break
+                
+                batch_accounts = [row['id'] for row in result.data]
+                all_accounts.extend(batch_accounts)
+                
+                logger.info(f"Fetched {len(batch_accounts)} accounts (total: {len(all_accounts)})")
+                
+                if len(result.data) < page_size:
+                    break
+                
+                offset += page_size
+            
+            logger.info(f"Total personal accounts found: {len(all_accounts)}")
+            return all_accounts
             
         except Exception as e:
             logger.error(f"Failed to get personal accounts: {e}")
@@ -252,6 +376,7 @@ class SunaAgentRepository:
         agent_id: str,
         account_id: str,
         system_prompt: str,
+        model: str,
         configured_mcps: List[Dict[str, Any]],
         custom_mcps: List[Dict[str, Any]],
         agentpress_tools: Dict[str, Any]
@@ -267,11 +392,13 @@ class SunaAgentRepository:
                 configured_mcps=configured_mcps,
                 custom_mcps=custom_mcps,
                 agentpress_tools=agentpress_tools,
+                model=model,
                 version_name="v1",
-                change_description="Initial Suna agent version"
+                change_description="Initial o1 agent version"
             )
             
-            logger.info(f"Created initial version for Suna agent {agent_id}")
+            logger.info(f"Created initial version for o1 agent {agent_id}")
             
         except Exception as e:
-            logger.error(f"Failed to create initial version for Suna agent {agent_id}: {e}")
+            logger.error(f"Failed to create initial version for o1 agent {agent_id}: {e}")
+            raise

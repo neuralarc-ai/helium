@@ -601,7 +601,6 @@ export default function ThreadPage({
         isMobile={isMobile}
         initialLoadCompleted={initialLoadCompleted}
         agentName={agent && agent.name}
-        agentRunId={agentRunId}
       >
         <ThreadError error={error} />
       </ThreadLayout>
@@ -646,13 +645,13 @@ export default function ThreadPage({
         initialLoadCompleted={initialLoadCompleted}
         agentName={agent && agent.name}
         disableInitialAnimation={!initialLoadCompleted && toolCalls.length > 0}
-        agentRunId={agentRunId}
       >
         {/* {workflowId && (
           <div className="px-4 pt-4">
             <WorkflowInfo workflowId={workflowId} />
           </div>
         )} */}
+        <div className="absolute bottom-0 left-0 right-0 h-[5%] md:h-[10%] lg:h-[20%] bg-gradient-to-t from-background to-transparent pointer-events-none z-20" />
 
         <ThreadContent
           messages={messages}
@@ -675,7 +674,7 @@ export default function ThreadPage({
 
         <div
           className={cn(
-            "fixed bottom-0 z-10 bg-gradient-to-t from-background via-background/90 to-transparent pt-16 pb-6",
+            "fixed bottom-0 z-20 bg-gradient-to-t from-background via-background/90 to-transparent pt-16 pb-6",
             "transition-[left,right] duration-200 ease-in-out will-change-[left,right]",
             leftSidebarState === 'expanded' ? 'left-[72px] md:left-[256px]' : (isSidePanelOpen ? 'left-[56px]' : 'left-[50px]'),
             isSidePanelOpen ? (isLeftSidebarExpanded ? 'right-[45.5vw]' : 'right-[51vw]') : 'right-0',
