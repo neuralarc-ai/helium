@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Loader2, AudioLines } from 'lucide-react';
+import { Mic, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useTranscription } from '@/hooks/react-query/transcription/use-transcription';
+import { cn } from '@/lib/utils';
 
 interface VoiceRecorderProps {
     onTranscription: (text: string) => void;
@@ -142,7 +143,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     const getButtonClass = () => {
         switch (state) {
             case 'recording':
-                return 'text-helium-pink/80 hover:bg-accent hover:text-helium-pink';
+                return 'text-red-500 hover:bg-red-50 hover:text-red-600';
             case 'processing':
                 return '';
             default:
@@ -153,11 +154,11 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     const getIcon = () => {
         switch (state) {
             case 'recording':
-                return <AudioLines className="h-5 w-5" />;
+                return <Square className="h-[22px] w-[22px]" style={{ width: 22, height: 22 }} />;
             case 'processing':
-                return <Loader2 className="h-5 w-5 animate-spin" />;
+                return <Loader2 className="h-[22px] w-[22px] animate-spin" style={{ width: 22, height: 22 }} />;
             default:
-                return <Mic className="h-5 w-5" />;
+                return <Mic className="h-[22px] w-[22px]" style={{ width: 22, height: 22 }} />;
         }
     };
 
@@ -172,12 +173,17 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                         onClick={handleClick}
                         onContextMenu={handleRightClick}
                         disabled={disabled || state === 'processing'}
-                        className={`h-fit p-2 bg-transparent border-0 rounded-full aspect-square text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-2 transition-colors cursor-pointer ${getButtonClass()}`}
+                        className={cn(`w-10 h-10 rounded-[10px] cursor-pointer flex items-center justify-center relative overflow-hidden transition-colors`, getButtonClass())}
                     >
-                        {getIcon()}
+
+                        <span className="flex items-center justify-center w-full h-full relative z-10">
+                          {state === 'recording' ? <Square className="h-5 w-5" style={{ width: 20, height: 20 }} /> :
+                           state === 'processing' ? <Loader2 className="h-5 w-5 animate-spin" style={{ width: 20, height: 20 }} /> :
+                           <Mic className="h-5 w-5" style={{ width: 18, height: 18 }} />}
+                        </span>
                     </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
+                <TooltipContent side="bottom" className="text-xs">
                     <p>
                         {state === 'recording' 
                             ? 'Click to stop recording' 

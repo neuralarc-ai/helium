@@ -1,0 +1,648 @@
+.voice-animation-container {
+  background: white;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.voice-animation-svg {
+  filter: drop-shadow(0 0 40px rgba(255, 255, 255, 0.15));
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-style: preserve-3d;
+}
+
+.wave {
+  transform-origin: center;
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity, stroke-width;
+}
+
+/* Enhanced states with smooth transitions */
+.wave-speaking.wave-1 {
+  animation: wave-speaking-1 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-speaking.wave-2 {
+  animation: wave-speaking-2 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-speaking.wave-3 {
+  animation: wave-speaking-3 1.0s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-speaking.wave-4 {
+  animation: wave-speaking-4 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-speaking.wave-5 {
+  animation: wave-speaking-5 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+/* Listening state - Responsive to audio input */
+.wave-listening.wave-1 {
+  animation: wave-listening-1 2.0s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-listening.wave-2 {
+  animation: wave-listening-2 2.3s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-listening.wave-3 {
+  animation: wave-listening-3 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-listening.wave-4 {
+  animation: wave-listening-4 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-listening.wave-5 {
+  animation: wave-listening-5 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+/* Processing state - Thoughtful, analytical */
+.wave-processing.wave-1 {
+  animation: wave-processing-1 3.0s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-processing.wave-2 {
+  animation: wave-processing-2 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-processing.wave-3 {
+  animation: wave-processing-3 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-processing.wave-4 {
+  animation: wave-processing-4 4.0s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-processing.wave-5 {
+  animation: wave-processing-5 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+/* Idle state - Subtle, breathing */
+.wave-idle.wave-1 {
+  animation: wave-idle-1 4.0s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-idle.wave-2 {
+  animation: wave-idle-2 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-idle.wave-3 {
+  animation: wave-idle-3 3.8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-idle.wave-4 {
+  animation: wave-idle-4 5.0s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-idle.wave-5 {
+  animation: wave-idle-5 4.2s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+/* Error state - Erratic, warning */
+.wave-error.wave-1 {
+  animation: wave-error-1 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-error.wave-2 {
+  animation: wave-error-2 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-error.wave-3 {
+  animation: wave-error-3 0.6s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-error.wave-4 {
+  animation: wave-error-4 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-error.wave-5 {
+  animation: wave-error-5 1.0s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+/* Initializing state - Building up */
+.wave-initializing.wave-1 {
+  animation: wave-initializing-1 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-initializing.wave-2 {
+  animation: wave-initializing-2 3.0s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-initializing.wave-3 {
+  animation: wave-initializing-3 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+.wave-initializing.wave-4 {
+  animation: wave-initializing-4 3.5s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate-reverse;
+}
+
+.wave-initializing.wave-5 {
+  animation: wave-initializing-5 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+/* Speaking animations - High energy, dynamic */
+@keyframes wave-speaking-1 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(20px); 
+    opacity: 0.9; 
+    stroke-width: 8;
+  }
+  100% { 
+    transform: translateY(-30px) scaleY(2.0) translateZ(40px); 
+    opacity: 1; 
+    stroke-width: 10;
+  }
+}
+
+@keyframes wave-speaking-2 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(40px); 
+    opacity: 0.8; 
+    stroke-width: 6;
+  }
+  100% { 
+    transform: translateY(35px) scaleY(2.2) translateZ(60px); 
+    opacity: 1; 
+    stroke-width: 8;
+  }
+}
+
+@keyframes wave-speaking-3 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(60px); 
+    opacity: 0.85; 
+    stroke-width: 4;
+  }
+  100% { 
+    transform: translateY(-25px) scaleY(1.8) translateZ(80px); 
+    opacity: 1; 
+    stroke-width: 6;
+  }
+}
+
+@keyframes wave-speaking-4 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(80px); 
+    opacity: 0.7; 
+    stroke-width: 3;
+  }
+  100% { 
+    transform: translateY(40px) scaleY(2.4) translateZ(100px); 
+    opacity: 0.9; 
+    stroke-width: 5;
+  }
+}
+
+@keyframes wave-speaking-5 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(120px); 
+    opacity: 0.6; 
+    stroke-width: 2;
+  }
+  100% { 
+    transform: translateY(-28px) scaleY(2.1) translateZ(140px); 
+    opacity: 0.8; 
+    stroke-width: 4;
+  }
+}
+
+/* Listening animations - Responsive to audio */
+@keyframes wave-listening-1 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(20px); 
+    opacity: 0.8; 
+    stroke-width: 8;
+  }
+  100% { 
+    transform: translateY(-15px) scaleY(1.5) translateZ(30px); 
+    opacity: 0.95; 
+    stroke-width: 9;
+  }
+}
+
+@keyframes wave-listening-2 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(40px); 
+    opacity: 0.75; 
+    stroke-width: 6;
+  }
+  100% { 
+    transform: translateY(18px) scaleY(1.6) translateZ(50px); 
+    opacity: 0.9; 
+    stroke-width: 7;
+  }
+}
+
+@keyframes wave-listening-3 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(60px); 
+    opacity: 0.8; 
+    stroke-width: 4;
+  }
+  100% { 
+    transform: translateY(-12px) scaleY(1.4) translateZ(70px); 
+    opacity: 0.95; 
+    stroke-width: 5;
+  }
+}
+
+@keyframes wave-listening-4 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(80px); 
+    opacity: 0.65; 
+    stroke-width: 3;
+  }
+  100% { 
+    transform: translateY(22px) scaleY(1.7) translateZ(90px); 
+    opacity: 0.8; 
+    stroke-width: 4;
+  }
+}
+
+@keyframes wave-listening-5 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(120px); 
+    opacity: 0.6; 
+    stroke-width: 2;
+  }
+  100% { 
+    transform: translateY(-16px) scaleY(1.5) translateZ(130px); 
+    opacity: 0.75; 
+    stroke-width: 3;
+  }
+}
+
+/* Processing animations - Thoughtful, analytical */
+@keyframes wave-processing-1 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(20px); 
+    opacity: 0.7; 
+    stroke-width: 8;
+  }
+  100% { 
+    transform: translateY(-10px) scaleY(1.3) translateZ(25px); 
+    opacity: 0.9; 
+    stroke-width: 8;
+  }
+}
+
+@keyframes wave-processing-2 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(40px); 
+    opacity: 0.65; 
+    stroke-width: 6;
+  }
+  100% { 
+    transform: translateY(12px) scaleY(1.4) translateZ(45px); 
+    opacity: 0.85; 
+    stroke-width: 6;
+  }
+}
+
+@keyframes wave-processing-3 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(60px); 
+    opacity: 0.7; 
+    stroke-width: 4;
+  }
+  100% { 
+    transform: translateY(-8px) scaleY(1.25) translateZ(65px); 
+    opacity: 0.9; 
+    stroke-width: 4;
+  }
+}
+
+@keyframes wave-processing-4 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(80px); 
+    opacity: 0.55; 
+    stroke-width: 3;
+  }
+  100% { 
+    transform: translateY(15px) scaleY(1.5) translateZ(85px); 
+    opacity: 0.75; 
+    stroke-width: 3;
+  }
+}
+
+@keyframes wave-processing-5 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(120px); 
+    opacity: 0.5; 
+    stroke-width: 2;
+  }
+  100% { 
+    transform: translateY(-10px) scaleY(1.35) translateZ(125px); 
+    opacity: 0.8; 
+    stroke-width: 2;
+  }
+}
+
+/* Idle animations - Subtle, breathing */
+@keyframes wave-idle-1 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(20px); 
+    opacity: 0.5; 
+    stroke-width: 8;
+  }
+  100% { 
+    transform: translateY(-5px) scaleY(1.08) translateZ(22px); 
+    opacity: 0.7; 
+    stroke-width: 8;
+  }
+}
+
+@keyframes wave-idle-2 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(40px); 
+    opacity: 0.45; 
+    stroke-width: 6;
+  }
+  100% { 
+    transform: translateY(6px) scaleY(1.1) translateZ(42px); 
+    opacity: 0.65; 
+    stroke-width: 6;
+  }
+}
+
+@keyframes wave-idle-3 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(60px); 
+    opacity: 0.5; 
+    stroke-width: 4;
+  }
+  100% { 
+    transform: translateY(-3px) scaleY(1.05) translateZ(62px); 
+    opacity: 0.7; 
+    stroke-width: 4;
+  }
+}
+
+@keyframes wave-idle-4 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(80px); 
+    opacity: 0.4; 
+    stroke-width: 3;
+  }
+  100% { 
+    transform: translateY(7px) scaleY(1.12) translateZ(82px); 
+    opacity: 0.6; 
+    stroke-width: 3;
+  }
+}
+
+@keyframes wave-idle-5 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(120px); 
+    opacity: 0.35; 
+    stroke-width: 2;
+  }
+  100% { 
+    transform: translateY(-4px) scaleY(1.08) translateZ(122px); 
+    opacity: 0.55; 
+    stroke-width: 2;
+  }
+}
+
+/* Error animations - Erratic, warning */
+@keyframes wave-error-1 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(20px); 
+    opacity: 0.8; 
+    stroke-width: 8;
+  }
+  100% { 
+    transform: translateY(-20px) scaleY(2.0) translateZ(30px); 
+    opacity: 1; 
+    stroke-width: 10;
+  }
+}
+
+@keyframes wave-error-2 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(40px); 
+    opacity: 0.7; 
+    stroke-width: 6;
+  }
+  100% { 
+    transform: translateY(25px) scaleY(2.2) translateZ(50px); 
+    opacity: 0.9; 
+    stroke-width: 8;
+  }
+}
+
+@keyframes wave-error-3 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(60px); 
+    opacity: 0.8; 
+    stroke-width: 4;
+  }
+  100% { 
+    transform: translateY(-18px) scaleY(1.8) translateZ(70px); 
+    opacity: 1; 
+    stroke-width: 6;
+  }
+}
+
+@keyframes wave-error-4 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(80px); 
+    opacity: 0.6; 
+    stroke-width: 3;
+  }
+  100% { 
+    transform: translateY(30px) scaleY(2.4) translateZ(90px); 
+    opacity: 0.8; 
+    stroke-width: 5;
+  }
+}
+
+@keyframes wave-error-5 {
+  0% { 
+    transform: translateY(0) scaleY(1) translateZ(120px); 
+    opacity: 0.5; 
+    stroke-width: 2;
+  }
+  100% { 
+    transform: translateY(-22px) scaleY(2.1) translateZ(130px); 
+    opacity: 0.7; 
+    stroke-width: 4;
+  }
+}
+
+/* Initializing animations - Building up */
+@keyframes wave-initializing-1 {
+  0% { 
+    transform: translateY(0) scaleY(0.5) translateZ(20px); 
+    opacity: 0.3; 
+    stroke-width: 4;
+  }
+  100% { 
+    transform: translateY(-8px) scaleY(1.2) translateZ(25px); 
+    opacity: 0.7; 
+    stroke-width: 8;
+  }
+}
+
+@keyframes wave-initializing-2 {
+  0% { 
+    transform: translateY(0) scaleY(0.5) translateZ(40px); 
+    opacity: 0.25; 
+    stroke-width: 3;
+  }
+  100% { 
+    transform: translateY(10px) scaleY(1.3) translateZ(45px); 
+    opacity: 0.65; 
+    stroke-width: 6;
+  }
+}
+
+@keyframes wave-initializing-3 {
+  0% { 
+    transform: translateY(0) scaleY(0.5) translateZ(60px); 
+    opacity: 0.3; 
+    stroke-width: 2;
+  }
+  100% { 
+    transform: translateY(-6px) scaleY(1.15) translateZ(65px); 
+    opacity: 0.7; 
+    stroke-width: 4;
+  }
+}
+
+@keyframes wave-initializing-4 {
+  0% { 
+    transform: translateY(0) scaleY(0.5) translateZ(80px); 
+    opacity: 0.2; 
+    stroke-width: 1.5;
+  }
+  100% { 
+    transform: translateY(12px) scaleY(1.4) translateZ(85px); 
+    opacity: 0.6; 
+    stroke-width: 3;
+  }
+}
+
+@keyframes wave-initializing-5 {
+  0% { 
+    transform: translateY(0) scaleY(0.5) translateZ(120px); 
+    opacity: 0.15; 
+    stroke-width: 1;
+  }
+  100% { 
+    transform: translateY(-8px) scaleY(1.25) translateZ(125px); 
+    opacity: 0.55; 
+    stroke-width: 2;
+  }
+}
+
+/* Particle animations */
+@keyframes particle-float {
+  0% {
+    transform: translateY(0px) translateX(0px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) translateX(50px);
+    opacity: 0;
+  }
+}
+
+/* Enhanced glow effects */
+@keyframes glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.1));
+  }
+  50% {
+    filter: drop-shadow(0 0 40px rgba(255, 255, 255, 0.2));
+  }
+}
+
+/* 3D depth animations */
+@keyframes depth-float {
+  0%, 100% {
+    transform: translateZ(0px);
+  }
+  50% {
+    transform: translateZ(20px);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .voice-animation-container {
+    border-radius: 0;
+  }
+  
+  .wave {
+    stroke-width: 2px;
+  }
+  
+  .wave-4, .wave-5 {
+    stroke-width: 1px;
+  }
+  
+  /* Reduce animation intensity on mobile */
+  @keyframes wave-speaking-1 {
+    0% { 
+      transform: translateY(0) scaleY(1) translateZ(10px); 
+      opacity: 0.9; 
+    }
+    100% { 
+      transform: translateY(-15px) scaleY(1.4) translateZ(20px); 
+      opacity: 1; 
+    }
+  }
+  
+  @keyframes wave-listening-1 {
+    0% { 
+      transform: translateY(0) scaleY(1) translateZ(10px); 
+      opacity: 0.8; 
+    }
+    100% { 
+      transform: translateY(-8px) scaleY(1.2) translateZ(15px); 
+      opacity: 0.95; 
+    }
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .wave {
+    stroke-width: 2px;
+    opacity: 0.9;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .wave {
+    animation-duration: 4s !important;
+    animation-timing-function: ease-in-out !important;
+  }
+  
+  .particle {
+    animation: none !important;
+  }
+} 
