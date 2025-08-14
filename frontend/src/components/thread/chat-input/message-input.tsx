@@ -191,7 +191,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                 selectedAgentId={selectedAgentId}
                 onAgentSelect={onAgentSelect}
                 disabled={loading || (disabled && !isAgentRunning)}
-                isSunaAgent={isSunaAgent}
+                isSunaAgent={true}
               />
             )}
             <ModelSelector
@@ -211,7 +211,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
     }
 
     return (
-      <div className="relative flex flex-col w-full h-full gap-10 justify-between">
+      <div className="relative flex flex-col w-full h-full gap-4 justify-between">
         <div className="flex flex-col px-2 flex-grow">
           <Textarea
             ref={ref}
@@ -220,7 +220,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             className={cn(
-              'w-full bg-transparent dark:bg-transparent z-20 border-none shadow-none focus-visible:ring-0 px-1 pb-6 pt-4 min-h-[96px] max-h-[200px] overflow-y-auto scrollbar-hide resize-none md:text-base md:placeholder:text-base',
+              'w-full bg-transparent dark:bg-transparent z-20 border-none shadow-none focus-visible:ring-0 px-1 pb-6 pt-4 min-h-[86px] max-h-[200px] overflow-y-auto scrollbar-hide resize-none md:text-base md:placeholder:text-base',
               isDraggingOver ? 'opacity-40' : '',
             )}
             disabled={loading || (disabled && !isAgentRunning)}
@@ -228,9 +228,6 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
           />
         </div>
 
-        <div className="flex items-center justify-between mt-0 mb-1 px-2 flex-shrink-0">
-          <div className='flex items-center gap-2 w-full'>
-            {/* Attach button */}
         <div className="flex items-center justify-between mt-0 mb-2 px-2 flex-shrink-0">
           <div className="flex items-center gap-3 w-full">
             {!hideAttachments && (
@@ -253,62 +250,66 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
             <div className='flex-1' />
 
             {/* Show model selector inline if custom agents are disabled, otherwise show settings dropdown */}
-            <ModelSelector
-              selectedModel={selectedModel}
-              onModelChange={onModelChange}
-              modelOptions={modelOptions}
-              subscriptionStatus={subscriptionStatus}
-              canAccessModel={canAccessModel}
-              refreshCustomModels={refreshCustomModels}
-              billingModalOpen={billingModalOpen}
-              setBillingModalOpen={setBillingModalOpen}
-            />
-
-          <div className='flex items-center gap-2'>
-            {renderDropdown()}
-            
-            {/* Billing Modal - only show in local mode */}
             {isLocalMode() && (
-              <BillingModal
-                open={billingModalOpen}
-                onOpenChange={setBillingModalOpen}
-                returnUrl={typeof window !== 'undefined' ? window.location.href : '/'}
+              <ModelSelector
+                selectedModel={selectedModel}
+                onModelChange={onModelChange}
+                modelOptions={modelOptions}
+                subscriptionStatus={subscriptionStatus}
+                canAccessModel={canAccessModel}
+                refreshCustomModels={refreshCustomModels}
+                billingModalOpen={billingModalOpen}
+                setBillingModalOpen={setBillingModalOpen}
               />
             )}
 
-            {/* Voice Recorder Button */}
-            {isLoggedIn && <VoiceRecorder
-              onTranscription={onTranscription}
-              disabled={loading || (disabled && !isAgentRunning)}
-            />}
+            <div className='flex items-center gap-2'>
+              {renderDropdown()}
+              
+              {/* Billing Modal - only show in local mode */}
+              {isLocalMode() && (
+                <BillingModal
+                  open={billingModalOpen}
+                  onOpenChange={setBillingModalOpen}
+                  returnUrl={typeof window !== 'undefined' ? window.location.href : '/'}
+                />
+              )}
 
-            <Button
-              type="submit"
-              onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
-              size="icon"
-              className={cn(
-                'w-8 h-8 flex-shrink-0 rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
-                (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
+              {/* Voice Recorder Button */}
+              {isLoggedIn && <VoiceRecorder
+                onTranscription={onTranscription}
+                disabled={loading || (disabled && !isAgentRunning)}
+              />}
+
+              <Button
+                type="submit"
+                onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
+                size="icon"
+                className={cn(
+                  'w-8 h-8 flex-shrink-0 rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
+                  (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
+                    loading ||
+                    (disabled && !isAgentRunning)
+                    ? 'opacity-50'
+                    : '',
+                )}
+                disabled={
+                  (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
                   loading ||
                   (disabled && !isAgentRunning)
-                  ? 'opacity-50'
-                  : '',
-              )}
-              disabled={
-                (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
-                loading ||
-                (disabled && !isAgentRunning)
-              }
-            >
-              {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : isAgentRunning ? (
-                <div className="w-3 h-3 aspect-square rounded-xs bg-current" />
-              ) : (
-                <ArrowUp className="h-5 w-5" />
-              )}
-            </Button>
+                }
+              >
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : isAgentRunning ? (
+                  <div className="w-3 h-3 aspect-square rounded-xs bg-current" />
+                ) : (
+                  <ArrowUp className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
           </div>
+          
           {subscriptionStatus === 'no_subscription' && !isLocalMode() &&
             <TooltipProvider>
               <Tooltip>
@@ -322,6 +323,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
             </TooltipProvider>
           }
         </div>
+        
         {subscriptionStatus === 'no_subscription' && !isLocalMode() &&
           <div className='sm:hidden absolute -bottom-8 left-0 right-0 flex justify-center'>
             <p className='text-xs text-amber-500 px-2 py-1'>
