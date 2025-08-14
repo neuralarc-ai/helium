@@ -57,7 +57,7 @@ interface MessageInputProps {
   enableAdvancedConfig?: boolean;
   hideAgentSelection?: boolean;
   isSunaAgent?: boolean;
-  // Optional tool control block to render near the attach button
+  // Tool control block for automatic tool execution
   toolControl?: {
     available: boolean;
     useDirectTool: boolean;
@@ -68,6 +68,9 @@ interface MessageInputProps {
     tools: string[];
     selectedToolName: string;
     onToolChange: (toolName: string) => void;
+    // Additional tool information
+    toolPurpose?: string;
+    toolCategory?: string;
   };
 }
 
@@ -114,6 +117,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
   ) => {
     const [billingModalOpen, setBillingModalOpen] = useState(false);
     const { enabled: customAgentsEnabled, loading: flagsLoading } = useFeatureFlag('custom_agents');
+    const [showToolSelector, setShowToolSelector] = useState(false);
 
     useEffect(() => {
       const textarea = ref as React.RefObject<HTMLTextAreaElement>;
@@ -206,13 +210,88 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
       <div className="relative flex flex-col w-full h-full gap-2 justify-between">
 
         <div className="flex flex-col gap-1 px-2">
+          {/* Tool indicator when automatically selected */}
+          {toolControl && toolControl.available && toolControl.selectedProfileId && (
+            <div className="flex items-center gap-2 px-2 py-1.5 bg-gradient-to-r from-accent/20 to-accent/10 border border-accent-30 rounded-lg mb-2 animate-in slide-in-from-top-2 duration-300">
+              <Zap className="h-3.5 w-3.5 text-accent-foreground" />
+              <div className="flex flex-col gap-1 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-accent-foreground">
+                    Using {toolControl.profiles.find(p => p.profile_id === toolControl.selectedProfileId)?.app_name || 'Tool'}
+                    {toolControl.selectedToolName && (
+                      <span className="text-accent-foreground/70"> - {toolControl.selectedToolName}</span>
+                    )}
+                  </span>
+                  <button
+                    onClick={() => setShowToolSelector(!showToolSelector)}
+                    className="text-xs text-accent-foreground/60 hover:text-accent-foreground/80 transition-colors"
+                  >
+                    {showToolSelector ? 'Hide' : 'Change tool'}
+                  </button>
+                </div>
+                {toolControl.toolPurpose && toolControl.toolCategory && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-accent-foreground/60">
+                      Purpose: {toolControl.toolPurpose}
+                    </span>
+                    <span className="text-xs text-accent-foreground/40">•</span>
+                    <span className="text-xs text-accent-foreground/60">
+                      Category: {toolControl.toolCategory}
+                    </span>
+                  </div>
+                )}
+                {/* Show all available tools for this profile */}
+                {toolControl.tools && toolControl.tools.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-accent-foreground/20">
+                    <span className="text-xs text-accent-foreground/50 mb-1 block">Available tools:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {toolControl.tools.map((tool, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            toolControl.onToolChange(tool);
+                            setShowToolSelector(false);
+                          }}
+                          title={`Click to use ${tool}`}
+                          className={`text-xs px-2 py-1 rounded-md transition-all cursor-pointer ${
+                            tool === toolControl.selectedToolName
+                              ? 'bg-accent-foreground/20 text-accent-foreground font-medium ring-1 ring-accent-foreground/30'
+                              : 'bg-accent-foreground/10 text-accent-foreground/70 hover:bg-accent-foreground/20 hover:text-accent-foreground hover:ring-1 hover:ring-accent-foreground/20'
+                          }`}
+                        >
+                          {tool}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-2 text-xs text-accent-foreground/50">
+                      💡 Click any tool above to change the selection
+                    </div>
+                  </div>
+                )}
+              </div>
+              {loading && (
+                <div className="flex items-center gap-1 ml-2 animate-in fade-in duration-200">
+                  <div className="w-2 h-2 bg-accent-foreground/70 rounded-full animate-pulse" />
+                  <span className="text-xs text-accent-foreground/70">Executing...</span>
+                </div>
+              )}
+            </div>
+          )}
           <Textarea
             ref={ref}
             value={value}
             onChange={onChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder={placeholder}
+            placeholder={
+              toolControl && toolControl.available && toolControl.selectedProfileId
+                ? `Describe what you want to do with ${toolControl.profiles.find(p => p.profile_id === toolControl.selectedProfileId)?.app_name || 'this tool'}${
+                    toolControl.selectedToolName ? ` (${toolControl.selectedToolName})` : ''
+                  }${
+                    toolControl.toolPurpose ? ` - Purpose: ${toolControl.toolPurpose}` : ''
+                  }...`
+                : placeholder
+            }
             className={cn(
               'w-full bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 px-0.5 pb-6 pt-4 !text-[15px] min-h-[96px] max-h-[200px] overflow-y-auto resize-none text-lg placeholder:text-lg',
               isDraggingOver ? 'opacity-40' : '',
@@ -239,52 +318,6 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                 messages={messages}
                 isLoggedIn={isLoggedIn}
               />
-            )}
-            {toolControl && toolControl.available && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-fit p-2 bg-transparent border rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 flex items-center gap-2">
-                    <Zap className="h-4 w-4" />
-                    <span className="text-xs">Use tool</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[320px] p-2">
-                  <div className="flex items-center gap-2 px-1 py-1">
-                    <Switch checked={toolControl.useDirectTool} onCheckedChange={toolControl.onUseDirectToolChange} />
-                    <Label className="text-xs">Use tool</Label>
-                  </div>
-                  {toolControl.useDirectTool && (
-                    <div className="flex flex-col gap-2 mt-1">
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs w-16">Profile</Label>
-                        <Select value={toolControl.selectedProfileId} onValueChange={toolControl.onProfileChange}>
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Profile" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {toolControl.profiles.map((p) => (
-                              <SelectItem key={p.profile_id} value={p.profile_id}>{p.app_name}: {p.profile_name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Label className="text-xs w-16">Tool</Label>
-                        <Select value={toolControl.selectedToolName} onValueChange={toolControl.onToolChange}>
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Tool" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {toolControl.tools.map((t) => (
-                              <SelectItem key={t} value={t}>{t}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
             )}
           </div>
 

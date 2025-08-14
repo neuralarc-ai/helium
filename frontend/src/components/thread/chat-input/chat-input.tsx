@@ -35,6 +35,10 @@ import { BillingModal } from '@/components/billing/billing-modal';
 import { useRouter } from 'next/navigation';
 import { BorderBeam } from '@/components/magicui/border-beam';
 import { toast } from 'sonner';
+import { createProject, createThread, addUserMessage, startAgent } from '@/lib/api';
+import { createClient } from '@/lib/supabase/client';
+
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 // Helper function to check if we're in production mode
 const isProductionMode = (): boolean => {
@@ -81,6 +85,9 @@ export interface ChatInputProps {
   agentMetadata?: {
     is_suna_default?: boolean;
   };
+  // Optional context to append tool operations to an existing project/thread instead of creating new
+  contextProjectId?: string;
+  contextThreadId?: string;
 }
 
 export interface UploadedFile {
@@ -124,6 +131,8 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       defaultShowSnackbar = false,
       showToLowCreditUsers = true,
       agentMetadata,
+      contextProjectId,
+      contextThreadId,
     },
     ref,
   ) => {
@@ -161,12 +170,14 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const deleteFileMutation = useFileDelete();
     const queryClient = useQueryClient();
 
-    // Direct tool execution state
-    const [useDirectTool, setUseDirectTool] = useState(false);
+    // Automatic tool execution state
     const [selectedProfileId, setSelectedProfileId] = useState<string>('');
     const [selectedToolName, setSelectedToolName] = useState<string>('');
-    const [userPickedProfile, setUserPickedProfile] = useState(false);
-    const [userPickedTool, setUserPickedTool] = useState(false);
+    const [isToolMode, setIsToolMode] = useState(false);
+    const [currentProfileName, setCurrentProfileName] = useState<string>('');
+    const [isExecutingTool, setIsExecutingTool] = useState(false);
+    const [currentThreadId, setCurrentThreadId] = useState<string>('');
+    const [currentProjectId, setCurrentProjectId] = useState<string>('');
     const { data: pdProfiles } = usePipedreamProfiles({ is_active: true });
     const enabledToolsByProfile = React.useMemo(() => {
       const map: Record<string, string[]> = {};
@@ -178,105 +189,374 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       return map;
     }, [pdProfiles]);
 
-    // Reset manual flags when toggling mode
-    useEffect(() => {
-      if (useDirectTool) {
-        setUserPickedProfile(false);
-        setUserPickedTool(false);
-      }
-    }, [useDirectTool]);
+    // Store current tool purpose and category
+    const [currentToolPurpose, setCurrentToolPurpose] = useState<string>('');
+    const [currentToolCategory, setCurrentToolCategory] = useState<string>('');
 
-    // Auto-select profile/tool based on message content using keyword scoring (only if user hasn't picked)
+    // Store current tool description
+    const [currentToolDescription, setCurrentToolDescription] = useState<string>('');
+
+    // Auto-select profile/tool based on message content using keyword scoring
     useEffect(() => {
-      if (!useDirectTool) return;
       const text = ((isControlled ? controlledValue : uncontrolledValue) || '').toLowerCase();
-      if (!text.trim()) return;
+      if (!text.trim()) {
+        setIsToolMode(false);
+        setSelectedProfileId('');
+        setSelectedToolName('');
+        setCurrentProfileName('');
+        setCurrentToolPurpose('');
+        setCurrentToolCategory('');
+        setCurrentToolDescription('');
+        return;
+      }
+
+      // Debounce the tool selection to avoid rapid changes
+      const timeoutId = setTimeout(() => {
       const profiles: any[] = (pdProfiles || []).filter((p: any) => p.is_connected && (p.enabled_tools?.length || 0) > 0);
-      if (profiles.length === 0) return;
+        if (profiles.length === 0) {
+          setIsToolMode(false);
+          return;
+        }
 
-      const appKeywordMap: Record<string, string[]> = {
-        google_calendar: ['calendar', 'event', 'invite', 'meeting', 'schedule', 'reschedule'],
-        google_drive: ['drive', 'file', 'files', 'upload', 'doc', 'docs', 'sheet', 'sheets', 'folder'],
-        gmail: ['gmail', 'mail', 'email', 'inbox', 'send email'],
-        slack: ['slack', 'channel', 'dm', 'message'],
-        notion: ['notion', 'page', 'database', 'db'],
-        github: ['github', 'issue', 'pull request', 'pr', 'repo'],
-        zoom: ['zoom', 'meeting', 'schedule', 'invite'],
-      };
+        // Enhanced app keyword mapping with purpose categorization
+        const appKeywordMap: Record<string, { keywords: string[], purpose: string, category: string }> = {
+          google_calendar: {
+            keywords: ['calendar', 'event', 'invite', 'meeting', 'schedule', 'reschedule', 'appointment', 'agenda', 'reminder', 'booking'],
+            purpose: 'create',
+            category: 'scheduling'
+          },
+          google_drive: {
+            keywords: ['drive', 'file', 'files', 'upload', 'doc', 'docs', 'sheet', 'sheets', 'folder', 'document', 'spreadsheet', 'presentation', 'pdf', 'image', 'photo'],
+            purpose: 'upload',
+            category: 'file_management'
+          },
+          gmail: {
+            keywords: ['gmail', 'mail', 'email', 'inbox', 'send email', 'compose', 'draft', 'message', 'correspondence', 'mailbox'],
+            purpose: 'send',
+            category: 'communication'
+          },
+          slack: {
+            keywords: ['slack', 'channel', 'dm', 'message', 'post', 'team', 'workspace', 'notification', 'chat', 'communication'],
+            purpose: 'send',
+            category: 'communication'
+          },
+          notion: {
+            keywords: ['notion', 'page', 'database', 'db', 'note', 'workspace', 'documentation', 'wiki', 'knowledge base'],
+            purpose: 'create',
+            category: 'content_creation'
+          },
+          github: {
+            keywords: ['github', 'issue', 'pull request', 'pr', 'repo', 'repository', 'code', 'git', 'commit', 'branch', 'merge'],
+            purpose: 'create',
+            category: 'development'
+          },
+          zoom: {
+            keywords: ['zoom', 'meeting', 'schedule', 'invite', 'video call', 'conference', 'webinar', 'call', 'video meeting'],
+            purpose: 'create',
+            category: 'scheduling'
+          },
+          discord: {
+            keywords: ['discord', 'server', 'channel', 'message', 'bot', 'guild', 'community', 'chat server'],
+            purpose: 'send',
+            category: 'communication'
+          },
+          trello: {
+            keywords: ['trello', 'board', 'card', 'list', 'task', 'project', 'kanban', 'workflow', 'management'],
+            purpose: 'create',
+            category: 'project_management'
+          },
+          asana: {
+            keywords: ['asana', 'task', 'project', 'team', 'workflow', 'project management', 'assignment'],
+            purpose: 'create',
+            category: 'project_management'
+          },
+          jira: {
+            keywords: ['jira', 'ticket', 'issue', 'project', 'sprint', 'agile', 'bug', 'feature request'],
+            purpose: 'create',
+            category: 'project_management'
+          },
+          figma: {
+            keywords: ['figma', 'design', 'prototype', 'mockup', 'ui', 'ux', 'wireframe', 'design file'],
+            purpose: 'create',
+            category: 'design'
+          },
+          canva: {
+            keywords: ['canva', 'design', 'template', 'graphic', 'presentation', 'poster', 'banner', 'social media'],
+            purpose: 'create',
+            category: 'design'
+          },
+          airtable: {
+            keywords: ['airtable', 'database', 'base', 'table', 'record', 'spreadsheet', 'data management'],
+            purpose: 'create',
+            category: 'data_management'
+          },
+          zapier: {
+            keywords: ['zapier', 'automation', 'workflow', 'integration', 'trigger', 'webhook', 'connect apps'],
+            purpose: 'create',
+            category: 'automation'
+          },
+          make: {
+            keywords: ['make', 'automation', 'scenario', 'workflow', 'integration', 'connect', 'automate'],
+            purpose: 'create',
+            category: 'automation'
+          },
+        };
 
-      // Tool selection heuristics by app -> list of { match: keywords[], toolContains: substring }
-      const toolKeywordMap: Record<string, Array<{ match: string[]; toolContains: string }>> = {
+        // Enhanced tool selection heuristics by purpose and category
+        const toolPurposeMap: Record<string, Array<{ match: string[]; toolContains: string; purpose: string; description: string }>> = {
         google_calendar: [
-          { match: ['create', 'new', 'schedule', 'add'], toolContains: 'create' },
-          { match: ['update', 'reschedule', 'move', 'change'], toolContains: 'update' },
-          { match: ['delete', 'remove', 'cancel'], toolContains: 'delete' },
-          { match: ['list', 'show', 'find', 'upcoming'], toolContains: 'list' },
+            { match: ['create', 'new', 'schedule', 'add', 'book', 'make', 'set up', 'arrange'], toolContains: 'create', purpose: 'create', description: 'Create new calendar events' },
+            { match: ['update', 'reschedule', 'move', 'change', 'modify', 'edit', 'adjust', 'shift'], toolContains: 'update', purpose: 'update', description: 'Modify existing events' },
+            { match: ['delete', 'remove', 'cancel', 'delete', 'erase', 'clear'], toolContains: 'delete', purpose: 'delete', description: 'Remove calendar events' },
+            { match: ['list', 'show', 'find', 'upcoming', 'search', 'get', 'view', 'see', 'display'], toolContains: 'list', purpose: 'read', description: 'View calendar events' },
         ],
         google_drive: [
-          { match: ['upload', 'add', 'put'], toolContains: 'upload' },
-          { match: ['create folder', 'new folder', 'folder'], toolContains: 'folder' },
-          { match: ['list', 'show', 'find'], toolContains: 'list' },
-          { match: ['share'], toolContains: 'share' },
+            { match: ['upload', 'add', 'put', 'save', 'store', 'backup', 'sync'], toolContains: 'upload', purpose: 'upload', description: 'Upload existing files to Drive' },
+            { match: ['create', 'new', 'make', 'generate', 'build'], toolContains: 'create', purpose: 'create', description: 'Create new files/folders from scratch' },
+            { match: ['create folder', 'new folder', 'folder', 'directory', 'organize', 'group'], toolContains: 'folder', purpose: 'create', description: 'Create new folders' },
+            { match: ['list', 'show', 'find', 'search', 'get', 'view', 'see', 'browse'], toolContains: 'list', purpose: 'read', description: 'List files and folders' },
+            { match: ['share', 'permission', 'access', 'collaborate', 'invite', 'grant access'], toolContains: 'share', purpose: 'share', description: 'Share files and folders' },
+            { match: ['download', 'get', 'retrieve', 'save locally', 'export'], toolContains: 'download', purpose: 'download', description: 'Download files' },
         ],
         gmail: [
-          { match: ['send', 'email', 'mail'], toolContains: 'send' },
-          { match: ['search', 'find'], toolContains: 'search' },
+            { match: ['send', 'email', 'mail', 'compose', 'write', 'draft', 'reply'], toolContains: 'send', purpose: 'send', description: 'Send emails' },
+            { match: ['search', 'find', 'lookup', 'filter', 'sort', 'organize'], toolContains: 'search', purpose: 'read', description: 'Search emails' },
+            { match: ['draft', 'compose', 'write', 'create email', 'new email'], toolContains: 'draft', purpose: 'create', description: 'Create email drafts' },
         ],
         slack: [
-          { match: ['send', 'message', 'post'], toolContains: 'post' },
-          { match: ['create channel', 'new channel'], toolContains: 'channel' },
+            { match: ['send', 'message', 'post', 'write', 'notify', 'announce'], toolContains: 'post', purpose: 'send', description: 'Send messages' },
+            { match: ['create channel', 'new channel', 'channel', 'room', 'space'], toolContains: 'channel', purpose: 'create', description: 'Create channels' },
+            { match: ['dm', 'direct message', 'private', 'personal', 'one-on-one'], toolContains: 'dm', purpose: 'send', description: 'Send direct messages' },
         ],
         notion: [
-          { match: ['create page', 'new page'], toolContains: 'page' },
-          { match: ['database', 'db', 'row'], toolContains: 'database' },
+            { match: ['create page', 'new page', 'page', 'note', 'document', 'entry'], toolContains: 'page', purpose: 'create', description: 'Create new pages' },
+            { match: ['database', 'db', 'row', 'table', 'collection', 'records'], toolContains: 'database', purpose: 'create', description: 'Create databases' },
+            { match: ['workspace', 'space', 'area', 'section', 'project'], toolContains: 'workspace', purpose: 'create', description: 'Create workspaces' },
         ],
         github: [
-          { match: ['create issue', 'new issue', 'bug'], toolContains: 'issue' },
-          { match: ['pull request', 'pr'], toolContains: 'pull' },
+            { match: ['create issue', 'new issue', 'bug', 'issue', 'problem', 'ticket'], toolContains: 'issue', purpose: 'create', description: 'Create issues' },
+            { match: ['pull request', 'pr', 'merge', 'code review', 'contribution'], toolContains: 'pull', purpose: 'create', description: 'Create pull requests' },
+            { match: ['repository', 'repo', 'code', 'project', 'source code'], toolContains: 'repo', purpose: 'create', description: 'Create repositories' },
         ],
         zoom: [
-          { match: ['schedule', 'create', 'meeting'], toolContains: 'create' },
-        ],
-      };
+            { match: ['schedule', 'create', 'meeting', 'call', 'video call', 'conference'], toolContains: 'create', purpose: 'create', description: 'Schedule meetings' },
+            { match: ['join', 'start', 'host', 'begin', 'launch', 'initiate'], toolContains: 'join', purpose: 'join', description: 'Join meetings' },
+          ],
+          discord: [
+            { match: ['send', 'message', 'post', 'write', 'notify', 'announce'], toolContains: 'send', purpose: 'send', description: 'Send messages' },
+            { match: ['create channel', 'server', 'room', 'space', 'category'], toolContains: 'channel', purpose: 'create', description: 'Create channels' },
+          ],
+          trello: [
+            { match: ['create card', 'new card', 'task', 'item', 'entry', 'work item'], toolContains: 'card', purpose: 'create', description: 'Create cards' },
+            { match: ['board', 'list', 'column', 'lane', 'swimlane'], toolContains: 'board', purpose: 'create', description: 'Create boards' },
+          ],
+          asana: [
+            { match: ['create task', 'new task', 'task', 'work item', 'assignment', 'todo'], toolContains: 'task', purpose: 'create', description: 'Create tasks' },
+            { match: ['project', 'team', 'group', 'initiative', 'campaign'], toolContains: 'project', purpose: 'create', description: 'Create projects' },
+          ],
+          jira: [
+            { match: ['create ticket', 'new ticket', 'issue', 'bug', 'story', 'epic'], toolContains: 'issue', purpose: 'create', description: 'Create tickets' },
+            { match: ['project', 'sprint', 'iteration', 'cycle', 'milestone'], toolContains: 'project', purpose: 'create', description: 'Create projects' },
+          ],
+          figma: [
+            { match: ['create design', 'new design', 'prototype', 'mockup', 'wireframe'], toolContains: 'create', purpose: 'create', description: 'Create designs' },
+            { match: ['file', 'project', 'design file', 'artboard', 'canvas'], toolContains: 'file', purpose: 'create', description: 'Create design files' },
+          ],
+          canva: [
+            { match: ['create design', 'new design', 'template', 'layout', 'composition'], toolContains: 'create', purpose: 'create', description: 'Create graphics' },
+            { match: ['design', 'graphic', 'visual', 'artwork', 'presentation'], toolContains: 'design', purpose: 'create', description: 'Create graphics' },
+          ],
+          airtable: [
+            { match: ['create record', 'new record', 'add', 'insert', 'entry', 'row'], toolContains: 'create', purpose: 'create', description: 'Create records' },
+            { match: ['database', 'base', 'table', 'collection', 'dataset'], toolContains: 'database', purpose: 'create', description: 'Create databases' },
+          ],
+          zapier: [
+            { match: ['create zap', 'new zap', 'automation', 'workflow', 'connection'], toolContains: 'create', purpose: 'create', description: 'Create automations' },
+            { match: ['workflow', 'trigger', 'action', 'step', 'process'], toolContains: 'workflow', purpose: 'create', description: 'Create workflows' },
+          ],
+          make: [
+            { match: ['create scenario', 'new scenario', 'automation', 'workflow', 'connection'], toolContains: 'create', purpose: 'create', description: 'Create scenarios' },
+            { match: ['workflow', 'trigger', 'action', 'step', 'process'], toolContains: 'workflow', purpose: 'create', description: 'Create workflows' },
+          ],
+        };
 
-      const scoreProfile = (p: any): number => {
+        // Get tool description for better user understanding
+        const getToolDescription = (appSlug: string, toolName: string): string => {
+          const heur = toolPurposeMap[appSlug] || [];
+          for (const h of heur) {
+            if (toolName.toLowerCase().includes(h.toolContains)) {
+              return h.description;
+            }
+          }
+          return `Execute ${toolName}`;
+        };
+
+        const scoreProfile = (p: any): { score: number, purpose: string, category: string } => {
         let score = 0;
+          let purpose = '';
+          let category = '';
         const slug = (p.app_slug || '').toLowerCase();
         const name = (p.app_name || '').toLowerCase();
-        if (slug && text.includes(slug)) score += 3;
-        if (name && text.includes(name)) score += 3;
-        const kws = appKeywordMap[slug] || appKeywordMap[name] || [];
-        kws.forEach((kw) => { if (text.includes(kw)) score += 2; });
+          
+          // Get app info
+          const appInfo = appKeywordMap[slug] || appKeywordMap[name];
+          if (appInfo) {
+            purpose = appInfo.purpose;
+            category = appInfo.category;
+          }
+          
+          // Direct app name/slug matches get highest score
+          if (slug && text.includes(slug)) score += 5;
+          if (name && text.includes(name)) score += 5;
+          
+          // Keyword matches get medium score
+          if (appInfo) {
+            const kws = appInfo.keywords || [];
+            kws.forEach((kw) => { 
+              if (text.includes(kw)) score += 3; 
+            });
+          }
+          
+          // Tool name matches get lower score
         const tools: string[] = p.enabled_tools || [];
-        tools.forEach((t) => { if (text.includes(t.toLowerCase())) score += 1; });
-        return score;
+          tools.forEach((t) => { 
+            if (text.includes(t.toLowerCase())) score += 2; 
+          });
+          
+          // Natural language patterns get bonus points
+          const naturalPatterns = [
+            'i want to', 'i need to', 'can you', 'please', 'help me',
+            'create a', 'make a', 'set up', 'organize', 'manage',
+            'send', 'share', 'upload', 'download', 'find', 'search'
+          ];
+          
+          naturalPatterns.forEach((pattern) => {
+            if (text.includes(pattern)) score += 1;
+          });
+          
+          // Sentence structure patterns
+          const sentencePatterns = [
+            'schedule a meeting', 'create an event', 'send an email',
+            'upload a file', 'create a folder', 'make a note',
+            'set up a', 'organize my', 'manage my', 'find my'
+          ];
+          
+          sentencePatterns.forEach((pattern) => {
+            if (text.includes(pattern)) score += 2;
+          });
+          
+          // Purpose-specific scoring
+          if (purpose === 'create' && (text.includes('create') || text.includes('make') || text.includes('new'))) {
+            score += 2;
+          }
+          if (purpose === 'upload' && (text.includes('upload') || text.includes('add') || text.includes('save'))) {
+            score += 2;
+          }
+          if (purpose === 'send' && (text.includes('send') || text.includes('post') || text.includes('message'))) {
+            score += 2;
+          }
+          
+          return { score, purpose, category };
       };
 
       // Pick highest-scoring profile above a confidence threshold
-      let best = { p: null as any, s: -1 };
+        let best = { p: null as any, s: -1, purpose: '', category: '' };
       profiles.forEach((p) => {
-        const s = scoreProfile(p);
-        if (s > best.s) best = { p, s };
-      });
-      const chosen = best.s >= 4 ? best.p : null;
+          const result = scoreProfile(p);
+          if (result.score > best.s) best = { p, s: result.score, purpose: result.purpose, category: result.category };
+        });
+        
+        const chosen = best.s >= 6 ? best.p : null; // Increased threshold for better accuracy
 
-      if (chosen && !userPickedProfile) {
-        if (chosen.profile_id !== selectedProfileId) setSelectedProfileId(chosen.profile_id);
+        if (chosen) {
+          setIsToolMode(true);
+          setSelectedProfileId(chosen.profile_id);
+          setCurrentProfileName(chosen.app_name || chosen.profile_name || 'Tool');
+          
         const tools: string[] = chosen.enabled_tools || [];
-        // Prefer tool whose name occurs in text
-        let matched = tools.find((t) => text.includes(t.toLowerCase()));
+          
+          // Enhanced tool selection logic
+          let matched = null;
+          let bestToolScore = -1;
+          
+          // First, try to find exact matches in the text
+          tools.forEach((tool) => {
+            const toolLower = tool.toLowerCase();
+            if (text.includes(toolLower)) {
+              matched = tool;
+              bestToolScore = 10; // High score for exact matches
+            }
+          });
+          
+          // If no exact match, use purpose-based selection
         if (!matched) {
-          const heur = toolKeywordMap[chosen.app_slug] || toolKeywordMap[chosen.app_name?.toLowerCase() || ''] || [];
-          for (const h of heur) {
-            if (h.match.some((kw) => text.includes(kw)) ) {
-              matched = tools.find((t) => t.toLowerCase().includes(h.toolContains));
-              if (matched) break;
+            const heur = toolPurposeMap[chosen.app_slug] || toolPurposeMap[chosen.app_name?.toLowerCase() || ''] || [];
+            
+            // Score each tool based on user intent
+            tools.forEach((tool) => {
+              let toolScore = 0;
+              const toolLower = tool.toLowerCase();
+              
+              // Check purpose-specific keywords
+              heur.forEach((h) => {
+                if (h.match.some((kw) => text.includes(kw))) {
+                  // If tool name contains the purpose-specific keyword, give it a high score
+                  if (toolLower.includes(h.toolContains)) {
+                    toolScore = Math.max(toolScore, 8);
+                  }
+                }
+              });
+              
+              // Check for general purpose keywords
+              if (text.includes('create') && toolLower.includes('create')) toolScore = Math.max(toolScore, 7);
+              if (text.includes('upload') && toolLower.includes('upload')) toolScore = Math.max(toolScore, 7);
+              if (text.includes('send') && toolLower.includes('send')) toolScore = Math.max(toolScore, 7);
+              if (text.includes('list') && toolLower.includes('list')) toolScore = Math.max(toolScore, 6);
+              if (text.includes('search') && toolLower.includes('search')) toolScore = Math.max(toolScore, 6);
+              if (text.includes('share') && toolLower.includes('share')) toolScore = Math.max(toolScore, 6);
+              
+              // Check for file-related keywords
+              if (text.includes('file') && (toolLower.includes('file') || toolLower.includes('upload'))) toolScore = Math.max(toolScore, 5);
+              if (text.includes('folder') && toolLower.includes('folder')) toolScore = Math.max(toolScore, 5);
+              if (text.includes('document') && (toolLower.includes('doc') || toolLower.includes('create'))) toolScore = Math.max(toolScore, 5);
+              
+              if (toolScore > bestToolScore) {
+                bestToolScore = toolScore;
+                matched = tool;
+              }
+            });
+          }
+          
+          // If still no match, default to first available tool
+          if (!matched && tools.length > 0) {
+            matched = tools[0];
+          }
+          
+          if (matched) {
+            setSelectedToolName(matched);
+            // Set tool description
+            const chosenProfile: any = (pdProfiles || []).find((p: any) => p.profile_id === chosen.profile_id);
+            if (chosenProfile?.app_slug) {
+              setCurrentToolDescription(getToolDescription(chosenProfile.app_slug, matched));
             }
           }
+          
+          // Store purpose and category for tool execution
+          setCurrentToolPurpose(best.purpose);
+          setCurrentToolCategory(best.category);
+        } else {
+          setIsToolMode(false);
+          setSelectedProfileId('');
+          setSelectedToolName('');
+          setCurrentProfileName('');
+          setCurrentToolPurpose('');
+          setCurrentToolCategory('');
+          setCurrentToolDescription('');
         }
-        if (!userPickedTool && matched && matched !== selectedToolName) setSelectedToolName(matched);
-      }
-    }, [useDirectTool, pdProfiles, controlledValue, uncontrolledValue, isControlled, selectedProfileId, selectedToolName, userPickedProfile, userPickedTool]);
+      }, 300); // 300ms debounce
+
+      return () => clearTimeout(timeoutId);
+    }, [pdProfiles, controlledValue, uncontrolledValue, isControlled]);
 
     // Show usage preview logic:
     // - Disabled in production environment
@@ -407,8 +687,34 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       }
 
       // If direct tool mode is on, execute the selected tool instead of sending to agent
-      if (useDirectTool && selectedProfileId && selectedToolName) {
+      if (isToolMode && selectedProfileId && selectedToolName) {
         try {
+          setIsExecutingTool(true);
+          
+          // Determine thread/project context for tool execution
+          let threadId = contextThreadId;
+          let projectId = contextProjectId;
+
+          if (!threadId || !projectId) {
+            // Create thread and project for tool execution if context not provided
+            const created = await createThreadForTool(
+              currentToolPurpose || 'execute',
+              currentToolCategory || 'general',
+              currentProfileName || 'Tool'
+            );
+            threadId = created.threadId;
+            projectId = created.projectId;
+          }
+          
+          if (threadId) setCurrentThreadId(threadId);
+          if (projectId) setCurrentProjectId(projectId);
+          
+          // Add user message to thread
+          if (threadId) await addMessageToThread(threadId, message, true);
+          
+          // Create agent run for tool execution
+          if (threadId) await createAgentRunForTool(threadId, currentToolPurpose || 'execute', currentToolCategory || 'general');
+          
           // Build arguments by looking up tool schema and filling sensible defaults
           let args = { query: message, instruction: message } as Record<string, any>;
           const chosenProfile: any = (pdProfiles || []).find((p: any) => p.profile_id === selectedProfileId);
@@ -434,15 +740,83 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
               }
             } catch {}
           }
-          toast.message('Executing tool...', { description: `${selectedToolName}` });
+          
+          toast.message('Executing tool...', { description: `${currentProfileName} - ${selectedToolName}` });
           const resp = await pipedreamApi.executeTool(selectedProfileId, selectedToolName, args);
+          
           if (resp.success) {
-            const text = typeof resp.result === 'string' ? resp.result : JSON.stringify(resp.result, null, 2);
+            const text = (function formatToolResult(result: any): string {
+              try {
+                if (typeof result === 'string') {
+                  const trimmed = result.trim();
+                  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                    try { return formatToolResult(JSON.parse(trimmed)); } catch { return result; }
+                  }
+                  return result;
+                }
+                if (Array.isArray(result)) {
+                  return result.map((item) => formatToolResult(item)).filter(Boolean).join('\n\n');
+                }
+                if (result && typeof result === 'object') {
+                  if (Array.isArray((result as any).content)) {
+                    const textParts = (result as any).content
+                      .map((c: any) => (typeof c === 'string' ? c : c?.text || ''))
+                      .filter((t: string) => t && t.trim() !== '');
+                    if (textParts.length > 0) return textParts.join('\n\n');
+                  }
+                  if (typeof (result as any).text === 'string') return (result as any).text;
+                  if (typeof (result as any).message === 'string') return (result as any).message;
+                  if (typeof (result as any).output === 'string') return (result as any).output;
+                  if (typeof (result as any).result === 'string') return (result as any).result;
+                  if ((result as any).data) return formatToolResult((result as any).data);
+                  return JSON.stringify(result, null, 2);
+                }
+                return String(result);
+              } catch {
+                return typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+              }
+            })(resp.result);
+            
+            // Add tool result to thread as assistant message for normal rendering
+            if (threadId && !threadId.startsWith('temp-')) {
+              try {
+                const payload: any = {
+                  thread_id: threadId,
+                  type: 'assistant',
+                  is_llm_message: true,
+                  content: JSON.stringify({ role: 'assistant', content: text }),
+                  metadata: JSON.stringify({
+                    tool_execution: true,
+                    tool_profile: selectedProfileId,
+                    tool_name: selectedToolName,
+                    app_name: currentProfileName,
+                    tool_purpose: currentToolPurpose,
+                    tool_category: currentToolCategory,
+                  })
+                };
+                const supabase = createClient();
+                await supabase.from('messages').insert(payload);
+              } catch (e) {
+                console.warn('Failed to add assistant message for tool result:', e);
+              }
+            }
+            
             // Emit an event so parent chat can add an assistant message
             try {
-              const evt = new CustomEvent('chat-direct-tool-result', { detail: { role: 'assistant', content: text, tool: selectedToolName } });
+              const evt = new CustomEvent('chat-direct-tool-result', { 
+                detail: { 
+                  role: 'assistant', 
+                  content: text, 
+                  tool: selectedToolName,
+                  threadId: threadId,
+                  projectId: projectId,
+                  toolPurpose: currentToolPurpose,
+                  toolCategory: currentToolCategory
+                } 
+              });
               window.dispatchEvent(evt);
             } catch {}
+            
             toast.success('Tool executed', { description: text.slice(0, 500) });
           } else {
             toast.error('Tool failed', { description: resp.error || 'Unknown error' });
@@ -450,6 +824,8 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
         } catch (err) {
           console.error('Direct tool execution failed', err);
           toast.error('Tool execution error');
+        } finally {
+          setIsExecutingTool(false);
         }
       } else {
         onSubmit(message, {
@@ -532,6 +908,82 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       setIsDraggingOver(false);
     };
 
+    // Dynamic placeholder based on tool selection
+    const dynamicPlaceholder = React.useMemo(() => {
+      if (isToolMode && selectedProfileId && currentProfileName) {
+        const toolInfo = selectedToolName ? ` (${selectedToolName})` : '';
+        return `Describe what you want to do with ${currentProfileName}${toolInfo}...`;
+      }
+      return placeholder;
+    }, [isToolMode, selectedProfileId, currentProfileName, selectedToolName, placeholder]);
+
+    // Create thread and project for tool execution
+    const createThreadForTool = async (toolPurpose: string, toolCategory: string, appName: string): Promise<{ threadId: string; projectId: string }> => {
+      try {
+        // Prefer backend endpoint that creates project + sandbox + thread atomically
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers: Record<string, string> = {};
+        if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+        const form = new FormData();
+        form.append('name', `Tool Execution: ${appName} - ${toolPurpose}`);
+
+        const response = await fetch(`${API_URL}/threads`, {
+          method: 'POST',
+          headers,
+          body: form,
+        });
+
+        if (!response.ok) {
+          const errText = await response.text().catch(() => '');
+          throw new Error(`Failed to create thread: ${response.status} ${response.statusText} ${errText}`);
+        }
+
+        const result = await response.json();
+        return {
+          threadId: result.thread_id,
+          projectId: result.project_id,
+        };
+      } catch (error) {
+        console.error('Error creating thread for tool:', error);
+        // Fallback: create a temporary thread ID
+        const tempThreadId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const tempProjectId = `temp-project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        return { threadId: tempThreadId, projectId: tempProjectId };
+      }
+    };
+
+    // Add message to thread
+    const addMessageToThread = async (threadId: string, message: string, isToolExecution: boolean = false) => {
+      try {
+        if (threadId.startsWith('temp-')) {
+          // Skip database insertion for temporary threads
+          return;
+        }
+        await addUserMessage(threadId, message);
+      } catch (error) {
+        console.error('Error adding message to thread:', error);
+      }
+    };
+
+    // Create agent run for tool execution
+    const createAgentRunForTool = async (threadId: string, toolPurpose: string, toolCategory: string) => {
+      try {
+        if (threadId.startsWith('temp-')) {
+          // Skip database insertion for temporary threads
+          return;
+        }
+        await startAgent(threadId, {
+          model_name: 'gpt-4o-mini',
+          enable_thinking: false,
+          reasoning_effort: 'low',
+          stream: true,
+        });
+      } catch (error) {
+        console.error('Error creating agent run for tool:', error);
+      }
+    };
 
 
     return (
@@ -592,7 +1044,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                   onChange={handleChange}
                   onSubmit={handleSubmit}
                   onTranscription={handleTranscription}
-                  placeholder={placeholder}
+                  placeholder={dynamicPlaceholder}
                   loading={loading}
                   disabled={disabled}
                   isAgentRunning={isAgentRunning}
@@ -610,24 +1062,31 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                   messages={messages}
                   toolControl={{
                     available: (pdProfiles || []).some((p: any) => p.is_connected && (p.enabled_tools?.length || 0) > 0),
-                    useDirectTool,
-                    onUseDirectToolChange: setUseDirectTool,
+                    useDirectTool: false, // Always false in this mode
+                    onUseDirectToolChange: () => {}, // No direct tool selection UI
                     profiles: (pdProfiles || [])
                       .filter((p: any) => p.is_connected && (p.enabled_tools?.length || 0) > 0)
                       .map((p: any) => ({ profile_id: p.profile_id, app_name: p.app_name, profile_name: p.profile_name })),
                     selectedProfileId,
                     onProfileChange: (v: string) => {
                       setSelectedProfileId(v);
-                      setUserPickedProfile(true);
-                      const tools = enabledToolsByProfile[v] || [];
-                      setSelectedToolName((prev) => (tools.includes(prev) ? prev : tools[0] || ''));
+                      setIsToolMode(false); // Reset tool mode
+                      setSelectedToolName('');
+                      setCurrentProfileName('');
+                      setCurrentToolPurpose('');
+                      setCurrentToolCategory('');
                     },
-                    tools: enabledToolsByProfile[selectedProfileId] || [],
+                    tools: enabledToolsByProfile[selectedProfileId] || [], // Pass actual tools for this profile
                     selectedToolName,
                     onToolChange: (t: string) => {
+                      // Update the selected tool and show feedback
                       setSelectedToolName(t);
-                      setUserPickedTool(true);
+                      toast.success('Tool changed', { 
+                        description: `Now using ${t} from ${currentProfileName}` 
+                      });
                     },
+                    toolPurpose: currentToolPurpose,
+                    toolCategory: currentToolCategory,
                   }}
 
                   selectedModel={selectedModel}

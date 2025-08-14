@@ -22,6 +22,7 @@ import {
 } from './utils';
 import type { PipedreamRegistryProps, ConnectedApp } from './types';
 import { usePathname } from 'next/navigation';
+import { getSimplifiedCategories, filterAppsByCategory, type CustomCategory } from './utils';
 
 const AppCardSkeleton = () => (
   <div className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-all">
@@ -65,6 +66,7 @@ export const PipedreamRegistry: React.FC<PipedreamRegistryProps> = ({
 }) => {
   const [search, setSearch] = useState('');
   const [showAllApps, setShowAllApps] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<CustomCategory>('Popular');
   const [showStreamlinedConnector, setShowStreamlinedConnector] = useState(false);
   const [selectedAppForConnection, setSelectedAppForConnection] = useState<PipedreamApp | null>(null);
   const [showToolsManager, setShowToolsManager] = useState(false);
@@ -77,12 +79,14 @@ export const PipedreamRegistry: React.FC<PipedreamRegistryProps> = ({
   const isHomePage = pathname.includes('dashboard');
   
   const [internalSelectedAgentId, setInternalSelectedAgentId] = useState<string | undefined>(selectedAgentId);
+  const categories = useMemo(() => getSimplifiedCategories(), []);
 
   const queryClient = useQueryClient();
   
   const { data: popularAppsData, isLoading: isLoadingPopular } = usePipedreamPopularApps();
   
-  const shouldFetchAllApps = showAllApps || search.trim() !== '';
+  // We always fetch the first page of all apps to support category filtering.
+  const shouldFetchAllApps = true;
   const { data: allAppsData, isLoading: isLoadingAll, error, refetch } = useQuery({
     queryKey: ['pipedream', 'apps', undefined, search],
     queryFn: async () => {
@@ -188,18 +192,29 @@ export const PipedreamRegistry: React.FC<PipedreamRegistryProps> = ({
     setShowAllApps(false);
   };
 
+  const VISIBLE_LIMIT = 10;
+
+  // Merge available sources for better category coverage (dedup by slug)
+  const mergedApps = useMemo(() => {
+    const map = new Map<string, PipedreamApp>();
+    (popularAppsData?.apps || []).forEach(a => map.set(a.name_slug, a));
+    (allAppsData?.apps || []).forEach(a => map.set(a.name_slug, a));
+    return Array.from(map.values());
+  }, [popularAppsData?.apps, allAppsData?.apps]);
+
   // Determine which apps to show
   const displayApps = useMemo(() => {
+    const baseApps = mergedApps;
     if (search.trim()) {
-      return allAppsData?.apps || [];
+      // Show full search results without category limit
+      return allAppsData?.apps || mergedApps;
     }
-    if (showAllApps) {
-      return allAppsData?.apps || [];
-    }
-    return popularAppsData?.apps || [];
-  }, [search, showAllApps, popularAppsData?.apps, allAppsData?.apps]);
+    const filtered = filterAppsByCategory(baseApps, selectedCategory);
+    return filtered.slice(0, VISIBLE_LIMIT);
+  }, [search, allAppsData?.apps, mergedApps, selectedCategory]);
 
-  const isLoading = search.trim() || showAllApps ? isLoadingAll : isLoadingPopular;
+  const hasAnyApps = ((allAppsData?.apps?.length ?? 0) > 0) || ((popularAppsData?.apps?.length ?? 0) > 0);
+  const isLoading = isLoadingAll && !hasAnyApps;
 
   if (error) {
     return (
@@ -230,9 +245,9 @@ export const PipedreamRegistry: React.FC<PipedreamRegistryProps> = ({
                 <h1 className="text-xl font-semibold text-foreground">
                   {agent?.name ? `${agent.name} Integrations` : 'Integrations'}
                 </h1>
-                <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 dark:border-blue-900 dark:bg-blue-900/20 dark:text-blue-400">
+                {/* <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 dark:border-blue-900 dark:bg-blue-900/20 dark:text-blue-400">
                   2700+ Apps
-                </Badge>
+                </Badge> */}
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 {agent?.name ? 'Connect apps to enhance your agent\'s capabilities' : 'Connect your favorite apps and services'}
@@ -323,11 +338,28 @@ export const PipedreamRegistry: React.FC<PipedreamRegistryProps> = ({
                     </div>
                     <div>
                       <h2 className="text-md font-semibold text-foreground">
-                        {search.trim() ? 'Search Results' : showAllApps ? 'All Apps' : 'Popular Apps'}
+                        {search.trim() ? 'Search Results' : `${selectedCategory} Apps`}
                       </h2>
                     </div>
                   </div>
                 </div>
+                {!search.trim() && (
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((cat) => (
+                      <Button
+                        key={cat}
+                        size="sm"
+                        variant={selectedCategory === cat ? 'default' : 'outline'}
+                        onClick={() => {
+                          setSelectedCategory(cat);
+                        }}
+                        className="rounded-full"
+                      >
+                        {cat}
+                      </Button>
+                    ))}
+                  </div>
+                )}
                 {isLoading ? (
                   <AppsGridSkeleton count={8} />
                 ) : displayApps.length > 0 ? (

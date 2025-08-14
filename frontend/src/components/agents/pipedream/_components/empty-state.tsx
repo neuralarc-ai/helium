@@ -9,7 +9,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   onClearFilters
 }) => {
   const getEmptyMessage = () => {
-    if (selectedCategory !== 'All') {
+    if (selectedCategory !== 'Popular') {
       return `No ${mode === 'profile-only' ? 'apps' : 'integrations'} found in "${selectedCategory}" category. Try a different category or search term.`;
     }
     return mode === 'profile-only'

@@ -707,6 +707,8 @@ export default function ThreadPage({
                 userClosedPanelRef.current = false;
               }}
               defaultShowSnackbar="tokens"
+              contextProjectId={project?.id}
+              contextThreadId={threadId}
             />
           </div>
         </div>

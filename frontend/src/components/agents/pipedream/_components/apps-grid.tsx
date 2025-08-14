@@ -22,21 +22,21 @@ export const AppsGrid: React.FC<AppsGridProps> = ({
   onBackToPopular
 }) => {
   const getSectionTitle = () => {
-    if (selectedCategory === 'All') {
+    if (selectedCategory === 'Popular') {
       return mode === 'profile-only' ? 'Available Apps' : 'Popular';
     }
     return selectedCategory;
   };
 
   const getSectionIcon = () => {
-    if (selectedCategory === 'All') {
+    if (selectedCategory === 'Popular') {
       return <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />;
     }
     return <span className="text-lg">{getCategoryEmoji(selectedCategory)}</span>;
   };
 
   const getSectionBadge = () => {
-    if (selectedCategory === 'All') {
+    if (selectedCategory === 'Popular') {
       return (
         <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-200 dark:border-orange-900 dark:bg-orange-900/20 dark:text-orange-400 text-xs">
           <Star className="h-3 w-3 mr-1" />

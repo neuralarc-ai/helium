@@ -40,7 +40,7 @@ export const PipedreamHeader: React.FC<PipedreamHeaderProps> = ({
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search 2700+ apps..."
+            placeholder="Search apps..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-10 h-9 focus:border-primary/50 focus:ring-primary/20 rounded-lg text-sm"
