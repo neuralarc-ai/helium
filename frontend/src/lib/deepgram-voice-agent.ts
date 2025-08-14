@@ -36,6 +36,9 @@ export class DeepgramVoiceAgent {
   private isSpeaking = false;
   private stopped = false; // Flag to check if conversation was stopped
   private currentAudio: HTMLAudioElement | null = null;
+  private lastSpokenText: string = '';
+  private ignoreRecognition: boolean = false;
+  private consecutiveNonEchoInterims: number = 0;
 
   constructor(config: DeepgramVoiceAgentConfig = {}) {
     // Get API key from environment variable or config
@@ -94,14 +97,18 @@ export class DeepgramVoiceAgent {
         }
       });
 
-      console.log('Microphone access granted, speaking starter message...');
+      console.log('Microphone access granted, starting recognition and speaking starter message...');
 
-      // Speak starter message first
-      await this.speakStarterMessage();
-      
-      // Start listening for speech
-      console.log('Starting speech recognition...');
+      // Reset control flags
+      this.stopped = false;
+      this.ignoreRecognition = false;
+      this.lastSpokenText = '';
+
+      // Start listening immediately so user can speak anytime
       await this.startListening(onTranscript, onResponse);
+
+      // Speak starter message (echo filter will ignore it)
+      await this.speakStarterMessage();
 
     } catch (error) {
       console.error('Failed to start conversation:', error);
@@ -573,6 +580,9 @@ export class DeepgramVoiceAgent {
     
     try {
       this.isSpeaking = true;
+      this.ignoreRecognition = true; // Temporarily ignore recognition during TTS
+      this.lastSpokenText = text;
+      this.consecutiveNonEchoInterims = 0;
       console.log('Calling Deepgram TTS API...');
       
       // Call Deepgram TTS API
@@ -597,20 +607,38 @@ export class DeepgramVoiceAgent {
       const audioBlob = await audioResponse.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       
-      // Play the audio
+      // Play the audio and wait until it finishes
       const audio = new Audio(audioUrl);
       this.currentAudio = audio; // Store the audio element
       await audio.play();
-      
       console.log('Audio playback started');
-      
-      // Clean up
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        this.isSpeaking = false;
-        this.currentAudio = null; // Clear the stored audio element
-        console.log('Audio playback finished');
-      };
+
+      await new Promise<void>((resolve, reject) => {
+        const handleEnded = () => {
+          URL.revokeObjectURL(audioUrl);
+          this.isSpeaking = false;
+          this.ignoreRecognition = false; // Re-enable recognition handling after TTS
+          this.consecutiveNonEchoInterims = 0;
+          this.currentAudio = null;
+          console.log('Audio playback finished');
+          audio.removeEventListener('ended', handleEnded);
+          audio.removeEventListener('error', handleError);
+          resolve();
+        };
+        const handleError = (e: Event) => {
+          URL.revokeObjectURL(audioUrl);
+          this.isSpeaking = false;
+          this.ignoreRecognition = false;
+          this.consecutiveNonEchoInterims = 0;
+          this.currentAudio = null;
+          console.error('Audio playback error', e);
+          audio.removeEventListener('ended', handleEnded);
+          audio.removeEventListener('error', handleError);
+          reject(new Error('Audio playback failed'));
+        };
+        audio.addEventListener('ended', handleEnded);
+        audio.addEventListener('error', handleError);
+      });
 
     } catch (error) {
       console.error('TTS error:', error);
@@ -630,8 +658,33 @@ export class DeepgramVoiceAgent {
       this.currentAudio.currentTime = 0;
       this.currentAudio = null;
       this.isSpeaking = false;
+      this.ignoreRecognition = false;
       console.log('Audio playback stopped by user interruption');
     }
+  }
+
+  /**
+   * Normalize text for comparison (lowercase, remove punctuation/extra spaces)
+   */
+  private normalizeText(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /**
+   * Heuristic to detect if recognized transcript is likely just our own TTS echo
+   */
+  private isEchoOfLastSpoken(transcript: string): boolean {
+    if (!transcript) return false;
+    const normTranscript = this.normalizeText(transcript);
+    if (normTranscript.length < 6) return true; // very short fragments likely echo/fillers
+    const normLast = this.normalizeText(this.lastSpokenText || '');
+    if (!normLast) return false;
+    // Consider echo if the transcript is largely contained in last spoken text
+    return normLast.includes(normTranscript);
   }
 
   /**
@@ -738,59 +791,73 @@ export class DeepgramVoiceAgent {
           toast.info('Listening... Speak your question');
         };
 
+        // Detect user speech start to support barge-in
+        recognition.onspeechstart = () => {
+          // If assistant is speaking and we detect real speech (not echo), stop TTS
+          if (this.isSpeaking) {
+            console.log('onspeechstart detected during TTS, preparing barge-in');
+            // Don't stop immediately here; onresult will verify content is not echo
+          }
+        };
+
         recognition.onresult = async (event) => {
           let interimTranscript = '';
           
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
+              // While speaking, ignore finals that are likely echo
+              if (this.isSpeaking && this.isEchoOfLastSpoken(transcript)) {
+                continue;
+              }
               finalTranscript += transcript;
             } else {
+              // While speaking, ignore interim that are likely echo
+              if (this.isSpeaking && this.isEchoOfLastSpoken(transcript)) {
+                continue;
+              }
               interimTranscript += transcript;
             }
           }
 
           // Show interim results
           if (interimTranscript) {
-            onTranscript(interimTranscript);
-            
-            // If user starts speaking while AI is speaking, interrupt
-            if (this.isSpeaking) {
-              console.log('User interruption detected, stopping AI response...');
-              this.stopCurrentAudio();
-              toast.info('Listening to your question...');
+            // Debounce barge-in: require two consecutive non-echo interims to interrupt TTS
+            if (this.isSpeaking || this.ignoreRecognition) {
+              if (!this.isEchoOfLastSpoken(interimTranscript)) {
+                this.consecutiveNonEchoInterims += 1;
+                if (this.consecutiveNonEchoInterims >= 2) {
+                  console.log('Confirmed non-echo interim during TTS, interrupting TTS');
+                  this.stopCurrentAudio();
+                  this.lastSpokenText = '';
+                  onTranscript(interimTranscript);
+                  this.consecutiveNonEchoInterims = 0;
+                }
+              } else {
+                this.consecutiveNonEchoInterims = 0;
+              }
+            } else {
+              this.consecutiveNonEchoInterims = 0;
+              onTranscript(interimTranscript);
             }
           }
 
-          // Process final results
-          if (finalTranscript && !isProcessing) {
+          // Process final results (ignore echo and ignore when muted)
+          if (finalTranscript && !isProcessing && !this.ignoreRecognition && !this.isEchoOfLastSpoken(finalTranscript)) {
             isProcessing = true;
             console.log('Final transcript received:', finalTranscript);
-            
-            // Stop current recognition
-            recognition.stop();
             
             // Process with AI search
             const response = await this.processWithDeepSeek(finalTranscript);
             console.log('Response generated:', response);
             onResponse(response);
             
-            // Speak the response
+            // Speak the response; recognition stays active. Echo filter will ignore own voice
             await this.speakResponse(response);
-            
+
             // Reset for next input
             finalTranscript = '';
             isProcessing = false;
-            
-            // Restart listening after speaking is done
-            if (!this.stopped) {
-              console.log('Restarting speech recognition after response...');
-              setTimeout(() => {
-                if (!this.stopped) {
-                  startRecognition();
-                }
-              }, 1500); // Wait 1.5 seconds after speaking
-            }
           }
         };
 
