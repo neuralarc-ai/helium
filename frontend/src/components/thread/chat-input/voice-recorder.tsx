@@ -94,6 +94,25 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                 cleanupStream();
             };
 
+            // Prevent starting mic if system TTS is speaking (Web Speech API)
+            try {
+                // @ts-ignore
+                if (window.speechSynthesis && window.speechSynthesis.speaking) {
+                    console.log('TTS is speaking, delaying microphone start...');
+                    const waitUntilSilent = async () => {
+                        return new Promise<void>((resolve) => {
+                            const check = () => {
+                                // @ts-ignore
+                                if (!window.speechSynthesis?.speaking) return resolve();
+                                setTimeout(check, 150);
+                            };
+                            check();
+                        });
+                    };
+                    await waitUntilSilent();
+                }
+            } catch {}
+
             mediaRecorder.start();
             setState('recording');
         } catch (error) {

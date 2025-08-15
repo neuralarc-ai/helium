@@ -597,20 +597,27 @@ export class DeepgramVoiceAgent {
       const audioBlob = await audioResponse.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       
-      // Play the audio
+      // Play the audio and wait until it finishes
       const audio = new Audio(audioUrl);
       this.currentAudio = audio; // Store the audio element
       await audio.play();
-      
       console.log('Audio playback started');
-      
-      // Clean up
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        this.isSpeaking = false;
-        this.currentAudio = null; // Clear the stored audio element
-        console.log('Audio playback finished');
-      };
+
+      await new Promise<void>((resolve, reject) => {
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          this.isSpeaking = false;
+          this.currentAudio = null; // Clear the stored audio element
+          console.log('Audio playback finished');
+          resolve();
+        };
+        audio.onerror = () => {
+          try { URL.revokeObjectURL(audioUrl); } catch {}
+          this.isSpeaking = false;
+          this.currentAudio = null;
+          reject(new Error('Audio playback error'));
+        };
+      });
 
     } catch (error) {
       console.error('TTS error:', error);
@@ -782,14 +789,19 @@ export class DeepgramVoiceAgent {
             finalTranscript = '';
             isProcessing = false;
             
-            // Restart listening after speaking is done
+            // Restart listening only after speaking has fully finished
             if (!this.stopped) {
-              console.log('Restarting speech recognition after response...');
-              setTimeout(() => {
-                if (!this.stopped) {
+              console.log('Queueing speech recognition restart after speaking ends...');
+              const intervalId = setInterval(() => {
+                if (this.stopped) {
+                  clearInterval(intervalId);
+                  return;
+                }
+                if (!this.isSpeaking) {
+                  clearInterval(intervalId);
                   startRecognition();
                 }
-              }, 1500); // Wait 1.5 seconds after speaking
+              }, 200);
             }
           }
         };
@@ -800,9 +812,9 @@ export class DeepgramVoiceAgent {
           toast.error(`Speech recognition error: ${event.error}`);
           
           // Restart on error if not stopped
-          if (!this.stopped) {
+          if (!this.stopped && !this.isSpeaking) {
             setTimeout(() => {
-              if (!this.stopped) {
+              if (!this.stopped && !this.isSpeaking) {
                 console.log('Restarting speech recognition after error...');
                 startRecognition();
               }
@@ -815,9 +827,9 @@ export class DeepgramVoiceAgent {
           this.isRecording = false;
           
           // Restart if not stopped manually and not currently processing
-          if (!this.stopped && !isProcessing) {
+          if (!this.stopped && !isProcessing && !this.isSpeaking) {
             setTimeout(() => {
-              if (!this.stopped && !isProcessing) {
+              if (!this.stopped && !isProcessing && !this.isSpeaking) {
                 console.log('Auto-restarting speech recognition...');
                 startRecognition();
               }
