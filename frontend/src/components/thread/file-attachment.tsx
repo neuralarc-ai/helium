@@ -554,7 +554,7 @@ export function FileAttachment({
                 "text-left",
                 isInlineMode 
                     ? "w-full sm:w-[calc(50%-0.5rem)] h-[54px] min-h-[54px]" // Two items per row with gap, fixed height
-                    : "min-w-[170px] max-w-[300px] w-fit h-auto", // Original constraints for grid layout
+                    : "min-w-full max-w-full w-fit h-auto", // Original constraints for grid layout
                 className
             )}
             style={safeStyle}
@@ -634,9 +634,6 @@ export function FileAttachmentGrid({
         ? attachments.slice(0, 3) 
         : attachments;
     
-    const remainingCount = showViewAll 
-        ? attachments.length - 3 
-        : 0;
 
     if (displayMode === 'inline') {
         return (
@@ -658,33 +655,41 @@ export function FileAttachmentGrid({
 
     return (
         <div className="w-full">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-wrap gap-2">
                 {visibleAttachments.map((filepath, index) => (
-                    <FileAttachment
-                        key={`${filepath}-${index}`}
-                        filepath={filepath}
-                        onClick={() => onFileClick?.(filepath, attachments)}
-                        sandboxId={sandboxId}
-                        showPreview={showPreviews}
-                        project={project}
-                        displayMode="grid"
-                    />
+                    <div key={`${filepath}-${index}`} className="w-[calc(50%-0.25rem)]">
+                        <FileAttachment
+                            filepath={filepath}
+                            onClick={() => onFileClick?.(filepath, attachments)}
+                            sandboxId={sandboxId}
+                            showPreview={showPreviews}
+                            project={project}
+                            displayMode="grid"
+                        />
+                    </div>
                 ))}
                 
-                {/* View all files button - shown when there are more than 2 documents */}
-                {showViewAll &&  (
-                    <div className="col-span-2 flex justify-center mt-2">
+                {/* View all button - shown as third item when there are more than 3 documents */}
+                {showViewAll && (
+                    <div className="w-[calc(50%-0.25rem)] h-[54px] flex items-center">
                         <button
-                            onClick={() => onFileClick?.(undefined, attachments)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onFileClick?.(undefined, attachments);
+                            }}
                             className={cn(
-                                "group flex items-center gap-2 px-4 py-2 rounded-lg w-1/2 max-w-xs justify-center",
-                                "bg-accent hover:bg-accent/80 transition-colors",
+                                "w-full h-[54px] flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl",
+                                "bg-sidebar hover:bg-accent/10 transition-colors",
                                 "text-sm font-medium text-foreground",
-                                "border border-border"
+                                "border border-black/10 dark:border-white/10"
                             )}
                         >
-                            <FolderOpen className="h-4 w-4" />
-                            <span>View all</span>
+                            <div className="flex items-center gap-1.5">
+                                <FolderOpen className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                <div className="flex flex-col items-start">
+                                    <span className="text-[11px] leading-none">View all</span>
+                                </div>
+                            </div>
                         </button>
                     </div>
                 )}
