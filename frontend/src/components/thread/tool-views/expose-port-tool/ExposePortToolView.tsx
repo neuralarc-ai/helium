@@ -39,13 +39,13 @@ export function ExposePortToolView({
   );
 
   return (
-    <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-lg mx-4 mt-2">
+    <Card className="gap-0 flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
+      <CardHeader className="h-9 bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 space-y-2 rounded-t-lg">
         <div className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Computer className="w-5 h-5 text-white" />
+          <div className="flex items-center w-full justify-center gap-1">
+            <Computer className="w-4 h-4 text-muted-foreground" />
             <div>
-              <CardTitle className="text-base font-medium text-white">
+              <CardTitle className="text-sm font-semibold text-muted-foreground">
                 Port Exposure
               </CardTitle>
             </div>
@@ -71,7 +71,7 @@ export function ExposePortToolView({
         </div>
       </CardHeader>
 
-      <CardContent className="p-0 h-full flex-1 overflow-hidden relative">
+      <CardContent className="p-0 h-full flex-1 overflow-hidden relative bg-transparent shadow-none">
         {isStreaming ? (
           <LoadingState
             icon={Computer}
@@ -83,9 +83,9 @@ export function ExposePortToolView({
           />
         ) : (
           <ScrollArea className="h-full w-full">
-            <div className="p-4 py-0 my-4 space-y-6">
+            <div className=" py-0 space-y-6">
               {url && (
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-sm overflow-hidden">
+                <div >
                   <div className="p-4">
                     <div className="flex items-start gap-3 mb-3">
                       <div className="flex-1 min-w-0">

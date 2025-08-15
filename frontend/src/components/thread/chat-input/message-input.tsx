@@ -249,20 +249,6 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
             {/* Spacer to push the rest of the buttons to the right */}
             <div className='flex-1' />
 
-            {/* Show model selector inline if custom agents are disabled, otherwise show settings dropdown */}
-            {isLocalMode() && (
-              <ModelSelector
-                selectedModel={selectedModel}
-                onModelChange={onModelChange}
-                modelOptions={modelOptions}
-                subscriptionStatus={subscriptionStatus}
-                canAccessModel={canAccessModel}
-                refreshCustomModels={refreshCustomModels}
-                billingModalOpen={billingModalOpen}
-                setBillingModalOpen={setBillingModalOpen}
-              />
-            )}
-
             <div className='flex items-center gap-2'>
               {renderDropdown()}
               

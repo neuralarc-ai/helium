@@ -146,13 +146,13 @@ export function CommandToolView({
   const linesToShow = showFullOutput ? formattedOutput : previewLines;
 
   return (
-    <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-md mx-4 mt-2">
+    <Card className="gap-0 flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
+      <CardHeader className="h-9 bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 space-y-2 rounded-t-lg">
         <div className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Terminal className="w-5 h-5 text-white" />
+          <div className="flex items-center w-full justify-center gap-2">
+            <Terminal className="w-4 h-4 text-muted-foreground" />
             <div>
-              <CardTitle className="text-base font-medium text-white">
+              <CardTitle className="text-sm font-semibold text-muted-foreground">
                 {toolTitle}
               </CardTitle>
             </div>
@@ -173,54 +173,38 @@ export function CommandToolView({
         ) : displayText ? (
           <ScrollArea className="w-full">
             <div className="p-4">
-              <div className="mb-4">
-                <div className="bg-zinc-100 dark:bg-neutral-900 rounded-lg overflow-hidden border border-zinc-200/20">
-                  <div className="bg-zinc-300 dark:bg-neutral-800 flex items-center justify-between dark:border-zinc-700/50">
-                    <div className="bg-zinc-200 w-full dark:bg-zinc-800 px-4 py-2 flex items-center gap-2">
-                      <TerminalIcon className="h-4 w-4 text-zinc-600 dark:text-zinc-400" />
-                      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Terminal</span>
+              <div className="max-h-[calc(100vh-290px)] overflow-auto scrollbar-hide">
+                <pre className="text-xs text-zinc-600 dark:text-zinc-300 font-mono whitespace-pre-wrap break-all overflow-visible">
+                  {/* Show command only */}
+                  {command && (
+                    <div className="py-0.5 bg-transparent">
+                      <span className="text-green-500 dark:text-green-400 font-semibold">{displayPrefix} </span>
+                      <span className="text-zinc-700 dark:text-zinc-300">{command}</span>
                     </div>
-                    {exitCode !== null && exitCode !== 0 && (
-                      <Badge variant="outline" className="text-xs h-5 border-red-700/30 text-red-400">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Error
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="p-4 max-h-[calc(100vh-290px)] overflow-auto scrollbar-hide">
-                    <pre className="text-xs text-zinc-600 dark:text-zinc-300 font-mono whitespace-pre-wrap break-all overflow-visible">
-                      {/* Show command only */}
-                      {command && (
-                        <div className="py-0.5 bg-transparent">
-                          <span className="text-green-500 dark:text-green-400 font-semibold">{displayPrefix} </span>
-                          <span className="text-zinc-700 dark:text-zinc-300">{command}</span>
-                        </div>
-                      )}
+                  )}
 
-                      {/* Show output only if there's actual command output */}
-                      {hasActualOutput && formattedOutput.length > 0 && (
-                        <>
-                          {formattedOutput.map((line, index) => (
-                            <div key={index} className="py-0.5 bg-transparent">
-                              <span className="text-zinc-600 dark:text-zinc-300">{line}</span>
-                            </div>
-                          ))}
-                        </>
-                      )}
-
-                      {!showFullOutput && hasMoreLines && (
-                        <div className="text-zinc-500 mt-2 border-t border-zinc-700/30 pt-2">
-                          + {formattedOutput.length - 10} more lines
+                  {/* Show output only if there's actual command output */}
+                  {hasActualOutput && formattedOutput.length > 0 && (
+                    <>
+                      {formattedOutput.map((line, index) => (
+                        <div key={index} className="py-0.5 bg-transparent">
+                          <span className="text-zinc-600 dark:text-zinc-300">{line}</span>
                         </div>
-                      )}
-                    </pre>
-                  </div>
-                </div>
+                      ))}
+                    </>
+                  )}
+
+                  {!showFullOutput && hasMoreLines && (
+                    <div className="text-zinc-500 mt-2 border-t border-zinc-700/30 pt-2">
+                      + {formattedOutput.length - 10} more lines
+                    </div>
+                  )}
+                </pre>
               </div>
 
               {/* Show status message for non-blocking commands */}
               {isNonBlockingCommand && output && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg mt-2 p-4 border border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-2 mb-2">
                     <CircleDashed className="h-4 w-4 text-blue-500" />
                     <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Command Status</span>
@@ -257,7 +241,7 @@ export function CommandToolView({
         )}
       </CardContent>
 
-      <div className="px-4 py-2 h-10 bg-gradient-to-r from-zinc-50/90 to-zinc-100/90 dark:from-zinc-900/90 dark:to-zinc-800/90 backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4">
+      <div className="px-4 py-2 h-fit bg-white backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4 rounded-b-lg">
         <div className="h-full flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
           {!isStreaming && displayText && (
             <Badge variant="outline" className="h-6 py-0.5 bg-zinc-50 dark:bg-zinc-900">

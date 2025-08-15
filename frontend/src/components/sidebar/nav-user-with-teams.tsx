@@ -275,7 +275,7 @@ export function NavUserWithTeams({
                             )
                           : ''}
                         <img
-                          src="/neuralarc/editIcon.png"
+                          src="/settings/edit.svg"
                           className="w-3.5 h-3.5 cursor-pointer text-muted-foreground/80 hover:text-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -349,7 +349,7 @@ export function NavUserWithTeams({
                     >
                       <div className="flex size-6 items-center justify-center">
                         <img
-                          src="/neuralarc/User_scan_light.png"
+                          src="/settings/personal-account.svg"
                           className="size-6 shrink-0"
                         />
                       </div>
@@ -360,7 +360,7 @@ export function NavUserWithTeams({
                         : ''}
                       <DropdownMenuShortcut>
                         <img
-                          src="/neuralarc/Setting_alt_line_light.png"
+                          src="/neuralarc/Settings.png"
                           className="size-4 shrink-0"
                         />
                       </DropdownMenuShortcut>
@@ -405,7 +405,7 @@ export function NavUserWithTeams({
                       >
                         <div className="flex size-6 items-center justify-center">
                           <img
-                            src="/neuralarc/Group_light.png"
+                            src="/settings/team-account.svg"
                             className="size-6 shrink-0"
                           />
                         </div>
@@ -464,7 +464,7 @@ export function NavUserWithTeams({
                   onClick={handleLogout}
                 >
                   <img
-                    src="/neuralarc/logout.png"
+                    src="/settings/logout.svg"
                     className="h-4 w-4 text-destructive"
                   />
                   Log out

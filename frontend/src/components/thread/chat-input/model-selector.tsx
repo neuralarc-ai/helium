@@ -277,7 +277,20 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   const premiumModels = sortedModels.filter(m => !getFreeModels().some(id => m.id.includes(id)));
 
+  // In local mode, always show all functionality including custom models
+  // In production mode, show based on subscription status
   const shouldDisplayAll = isLocalMode() || ((!isLocalMode() && subscriptionStatus === 'no_subscription') && premiumModels.length > 0);
+
+  // Debug logging for troubleshooting
+  useEffect(() => {
+    console.log('ModelSelector debug:', {
+      isLocalMode: isLocalMode(),
+      shouldDisplayAll,
+      customModels: customModels.length,
+      modelOptions: modelOptions.length,
+      subscriptionStatus
+    });
+  }, [shouldDisplayAll, customModels.length, modelOptions.length, subscriptionStatus]);
 
   // Handle opening the custom model dialog
   const openAddCustomModelDialog = (e?: React.MouseEvent) => {
@@ -586,7 +599,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           className="w-72 p-0 h-fit py-1.5 overflow-hidden bg-background/80 gap-1 backdrop-blur-md"
           sideOffset={4}
         >
-          <div className="overflow-y-auto w-full scrollbar-hide relative">
+          <div className="overflow-y-auto w-full scrollbar-hide relative sm:max-h-[350px]">
             {!isLocalMode() ? (
               // Production mode - show only Helio o1
               <div>
@@ -600,20 +613,11 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                 {shouldDisplayAll ? (
                   // No subscription view
                   <div>
-                    <div className="px-3 py-3 text-xs font-medium text-muted-foreground">
-                      Available Models
-                    </div>
-                    {uniqueModels
-                      .filter(m => !m.requiresSubscription)
-                      .map((model, index) => renderModelOption(model, index))}
-                  </div>
-                ) : (
-                  // Subscription view
-                  <div className='max-h-[320px] overflow-y-auto w-full'>
                     <div className="px-3 py-3 flex justify-between items-center">
                       <span className="text-xs font-medium text-muted-foreground">
-                        {isLocalMode() ? 'All Models' : 'Available Model'}
+                        Available Models
                       </span>
+                      {/* Always show custom model button in local mode */}
                       {isLocalMode() && (
                         <div className="flex items-center gap-1">
                           <TooltipProvider>
@@ -637,13 +641,67 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-6 w-6 p-0"
+                                  className="h-6 w-6 p-0 hover:bg-accent border border-border bg-background"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    console.log('Add custom model button clicked');
                                     openAddCustomModelDialog(e);
                                   }}
                                 >
-                                  <Plus className="h-3.5 w-3.5" />
+                                  <Plus className="h-3.5 w-3.5 text-foreground" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">
+                                Add a custom model
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      )}
+                    </div>
+                    {uniqueModels
+                      .filter(m => !m.requiresSubscription)
+                      .map((model, index) => renderModelOption(model, index))}
+                  </div>
+                ) : (
+                  // Subscription view
+                  <div className='max-h-[320px] overflow-y-auto w-full'>
+                    <div className="px-3 py-3 flex justify-between items-center">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {isLocalMode() ? 'All Models' : 'Available Model'}
+                      </span>
+                      {/* Always show custom model button in local mode */}
+                      {isLocalMode() && (
+                        <div className="flex items-center gap-1">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Link
+                                  href="/settings/env-manager"
+                                  className="h-6 w-6 p-0 flex items-center justify-center"
+                                >
+                                  <KeyRound className="h-3.5 w-3.5" />
+                                </Link>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">
+                                Local .Env Manager
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 hover:bg-accent border border-border bg-background"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log('Add custom model button clicked (subscription view)');
+                                    openAddCustomModelDialog(e);
+                                  }}
+                                >
+                                  <Plus className="h-3.5 w-3.5 text-foreground" />
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent side="bottom" className="text-xs">
@@ -676,7 +734,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               </div>
             )}
           </div>
-          {!shouldDisplayAll && isLocalMode() && (
+          {/* Search bar - always show in local mode */}
+          {isLocalMode() && (
             <div className="px-3 py-2 border-t border-border">
               <div className="relative flex items-center">
                 <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
