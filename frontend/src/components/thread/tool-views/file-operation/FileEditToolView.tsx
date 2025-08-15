@@ -190,16 +190,16 @@ export function FileEditToolView({
   const shouldShowError = !isStreaming && (!actualIsSuccess || (actualIsSuccess && (originalContent === null || updatedContent === null)));
 
   return (
-    <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full bg-card">
-      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 rounded-[12px] mx-2 mt-2 mb-1 flex flex-row items-center justify-between">
-        <div className="flex items-center gap-2 mt-4">
-          <FileDiff className="w-5 h-5 text-white" />
-          <CardTitle className="text-base font-medium text-white">
+    <Card className="gap-0 flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
+      <CardHeader className="h-9 w-full flex items-center bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 rounded-t-lg">
+        <div className="flex mt-4 h-full items-center w-full justify-center gap-1">
+          <FileDiff className="w-4 h-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-semibold text-muted-foreground">
             {toolTitle}
           </CardTitle>
         </div>
 
-        {!isStreaming && (
+        {/* {!isStreaming && (
           <Badge
             variant="secondary"
             className={
@@ -215,7 +215,7 @@ export function FileEditToolView({
             )}
             {actualIsSuccess ? 'Edit applied' : 'Edit failed'}
           </Badge>
-        )}
+        )} */}
       </CardHeader>
 
       <CardContent className="p-0 flex-1 flex flex-col min-h-0">
@@ -233,7 +233,7 @@ export function FileEditToolView({
           <ErrorState message={errorMessage} />
         ) : (
           <div className="flex-1 flex flex-col min-h-0">
-            <div className="shrink-0 p-3 border-b border-zinc-200 dark:border-zinc-800 bg-accent flex items-center justify-between">
+            <div className="shrink-0 p-2 py-1 border-b border-zinc-200 dark:border-zinc-800 bg-accent flex items-center justify-between">
               <div className="flex items-center">
                 <File className="h-4 w-4 mr-2 text-zinc-500 dark:text-zinc-400" />
                 <code className="text-sm font-mono text-zinc-700 dark:text-zinc-300">

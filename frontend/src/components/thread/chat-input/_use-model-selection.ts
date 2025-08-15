@@ -224,9 +224,9 @@ export const PRODUCTION_MODELS = {
     recommended: true,
     lowQuality: false,
     fallbacks: [
-      'bedrock/anthropic.claude-sonnet-4-20250514-v1:0',
       'openrouter/anthropic/claude-3-5-sonnet-20241022',
-      'openrouter/z-ai/glm-4.5-air'
+      'openrouter/z-ai/glm-4.5-air',
+      'bedrock/anthropic.claude-sonnet-4-20250514-v1:0',
     ]
   }
 };
@@ -235,9 +235,9 @@ export const PRODUCTION_MODELS = {
 export const PRODUCTION_FALLBACK_CHAIN = {
   'helio-o1': [
     'moonshot/kimi-k2-turbo-preview',       // Fallback 2: Kimi K2 from OpenRouter
-    'bedrock/anthropic.claude-sonnet-4-20250514-v1:0', // Primary: Claude Sonnet 4 from Bedrock
     'openrouter/anthropic/claude-3-5-sonnet-20241022',
-    'openrouter/z-ai/glm-4.5-air' // Fallback 1: Claude Sonnet 4 from OpenRouter
+    'openrouter/z-ai/glm-4.5-air', // Fallback 1: Claude Sonnet 4 from OpenRouter
+    'bedrock/anthropic.claude-sonnet-4-20250514-v1:0', // Primary: Claude Sonnet 4 from Bedrock
   ]
 };
 

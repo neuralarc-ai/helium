@@ -457,8 +457,8 @@ export function ToolCallSidePanel({
       if (agentStatus === 'running') {
         return (
           <div className={`${baseClasses} bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800`}>
-            <div className={`${dotClasses} bg-green-500 animate-pulse`} />
-            <span className={`${textClasses} text-green-700 dark:text-green-400`}>Live Updates</span>
+            <div className={`${dotClasses} bg-helium-teal animate-pulse`} />
+            <span className={`${textClasses} text-helium-teal`}>Live Updates</span>
           </div>
         );
       } else {
@@ -476,8 +476,8 @@ export function ToolCallSidePanel({
             className={`${baseClasses} bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors cursor-pointer`}
             onClick={jumpToLive}
           >
-            <div className={`${dotClasses} bg-green-500 animate-pulse`} />
-            <span className={`${textClasses} text-green-700 dark:text-green-400`}>Jump to Live</span>
+            <div className={`${dotClasses} bg-helium-teal animate-pulse`} />
+            <span className={`${textClasses} text-helium-teal`}>Jump to Live</span>
           </div>
         );
       } else {
@@ -486,8 +486,8 @@ export function ToolCallSidePanel({
             className={`${baseClasses} bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer`}
             onClick={jumpToLatest}
           >
-            <div className={`${dotClasses} bg-blue-500`} />
-            <span className={`${textClasses} text-blue-700 dark:text-blue-400`}>Jump to Latest</span>
+            <div className={`${dotClasses} bg-helium-blue`} />
+            <span className={`${textClasses} text-helium-blue`}>Jump to Latest</span>
           </div>
         );
       }
@@ -1027,7 +1027,7 @@ export function ToolCallSidePanel({
             }
           }}
           className={cn(
-            'fixed top-3 right-2 bottom-4 shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] border border-black/10 rounded-3xl flex flex-col z-30 transition-[width] duration-200 ease-in-out will-change-[width]',
+            'fixed top-3 right-2 bottom-4 shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] border border-black/10 rounded-[22px] flex flex-col z-30 transition-[width] duration-200 ease-in-out will-change-[width]',
             widthClass,
           )}
           style={{

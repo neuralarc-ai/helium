@@ -1,17 +1,26 @@
-import type React from "react"
-import { Check, Clock, CheckCircle, AlertTriangle, ListTodo, X, Square, SquareCheckBig } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { extractTaskListData, type Task, type Section } from "./_utils"
-import { getToolTitle } from "../utils"
-import type { ToolViewProps } from "../types"
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from "@/components/ui/scroll-area"
+import type React from 'react';
+import {
+  Check,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  ListTodo,
+  X,
+  Square,
+  SquareCheckBig,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { extractTaskListData, type Task, type Section } from './_utils';
+import { getToolTitle } from '../utils';
+import type { ToolViewProps } from '../types';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const TaskItem: React.FC<{ task: Task; index: number }> = ({ task, index }) => {
-  const isCompleted = task.status === "completed"
-  const isCancelled = task.status === "cancelled"
-  const isPending = !isCompleted && !isCancelled
+  const isCompleted = task.status === 'completed';
+  const isCancelled = task.status === 'cancelled';
+  const isPending = !isCompleted && !isCancelled;
 
   return (
     <div className="flex items-center gap-3 py-2 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50 transition-colors mx-4 first:pt-1 last:pb-4">
@@ -23,46 +32,58 @@ const TaskItem: React.FC<{ task: Task; index: number }> = ({ task, index }) => {
           </div>
         )}
         {isCancelled && <X className="h-4 w-4 text-helium-pink" />}
-        {isPending && <div className="h-4 w-4 rounded-full border-[1.5px] border-dashed border-zinc-400 dark:border-zinc-600" />}
+        {isPending && (
+          <div className="h-4 w-4 rounded-full border-[1.5px] border-dashed border-zinc-400 dark:border-zinc-600" />
+        )}
       </div>
 
       {/* Task Content */}
       <div className="flex-1 min-w-0">
         <p
           className={cn(
-            "text-sm leading-relaxed",
-            isCompleted && "text-zinc-900 dark:text-zinc-100",
-            isCancelled && "text-zinc-500 dark:text-zinc-400 line-through",
-            isPending && "text-zinc-600 dark:text-zinc-300",
+            'text-sm leading-relaxed',
+            isCompleted && 'text-zinc-900 dark:text-zinc-100',
+            isCancelled && 'text-zinc-500 dark:text-zinc-400 line-through',
+            isPending && 'text-zinc-600 dark:text-zinc-300',
           )}
         >
           {task.content}
         </p>
       </div>
     </div>
-  )
-}
+  );
+};
 
 const SectionHeader: React.FC<{ section: Section }> = ({ section }) => {
-  const totalTasks = section.tasks.length
-  const completedTasks = section.tasks.filter((t) => t.status === "completed").length
+  const totalTasks = section.tasks.length;
+  const completedTasks = section.tasks.filter(
+    (t) => t.status === 'completed',
+  ).length;
 
   return (
     <div className="flex items-center justify-between py-3 mt-1 px-4 bg-zinc-50/80">
-      <h3 className="text-base font-semibold text-zinc-800 dark:text-zinc-300">{section.title}</h3>
+      <h3 className="text-base font-semibold text-zinc-800 dark:text-zinc-300">
+        {section.title}
+      </h3>
       <div className="flex items-center gap-2">
-        <Badge variant="outline" className="text-xs h-5 px-2 py-0 font-normal bg-white dark:bg-zinc-800">
+        <Badge
+          variant="outline"
+          className="text-xs h-5 px-2 py-0 font-normal bg-white dark:bg-zinc-800"
+        >
           {completedTasks}/{totalTasks}
         </Badge>
         {completedTasks === totalTasks && totalTasks > 0 && (
-          <Badge variant="outline" className="text-xs h-5 px-2 py-0 bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
+          <Badge
+            variant="outline"
+            className="text-xs h-5 px-2 py-0 bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
+          >
             <Check className="h-3 w-3" />
           </Badge>
         )}
       </div>
     </div>
-  )
-}
+  );
+};
 
 const SectionView: React.FC<{ section: Section }> = ({ section }) => {
   return (
@@ -74,7 +95,9 @@ const SectionView: React.FC<{ section: Section }> = ({ section }) => {
         ))}
         {section.tasks.length === 0 && (
           <div className="py-6 px-4 text-center">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">No tasks in this section</p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              No tasks in this section
+            </p>
           </div>
         )}
       </div>
@@ -82,10 +105,8 @@ const SectionView: React.FC<{ section: Section }> = ({ section }) => {
         <div className="h-px bg-gradient-to-r from-transparent via-zinc-200 dark:via-zinc-700 to-transparent"></div>
       </div>
     </div>
-  )
-}
-
-
+  );
+};
 
 export const TaskListToolView: React.FC<ToolViewProps> = ({
   name = 'task-list',
@@ -94,25 +115,32 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
   assistantTimestamp,
   toolTimestamp,
   isSuccess = true,
-  isStreaming = false
+  isStreaming = false,
 }) => {
-  const taskData = extractTaskListData(assistantContent, toolContent)
-  const toolTitle = getToolTitle(name)
+  const taskData = extractTaskListData(assistantContent, toolContent);
+  const toolTitle = getToolTitle(name);
 
   // Process task data
-  const sections = taskData?.sections || []
-  const allTasks = sections.flatMap((section) => section.tasks)
-  const totalTasks = taskData?.total_tasks || 0
+  const sections = taskData?.sections || [];
+  const allTasks = sections.flatMap((section) => section.tasks);
+  const totalTasks = taskData?.total_tasks || 0;
 
-  const completedTasks = allTasks.filter((t) => t.status === "completed").length
-  const hasData = taskData?.total_tasks && taskData?.total_tasks > 0
+  const completedTasks = allTasks.filter(
+    (t) => t.status === 'completed',
+  ).length;
+  const hasData = taskData?.total_tasks && taskData?.total_tasks > 0;
 
   return (
-    <Card className="gap-0 flex border border-black/15 shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-10 bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 space-y-2 rounded-t-lg">
-        <CardTitle className="text-sm font-semibold text-muted-foreground h-full">
-          {toolTitle}
-        </CardTitle>
+    <Card className="gap-0 flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
+      <CardHeader className="h-9 bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 space-y-2 rounded-t-lg">
+        <div className="flex w-full justify-center items-center gap-1">
+          <ListTodo className="w-4 h-4 text-muted-foreground" />
+          <div>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {toolTitle}
+            </CardTitle>
+          </div>
+        </div>
       </CardHeader>
 
       <CardContent className="p-0 h-full flex-1 overflow-hidden relative bg-background">
@@ -133,7 +161,9 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
         ) : hasData ? (
           <ScrollArea className="h-full w-full">
             <div className="py-0">
-              {sections.map((section) => <SectionView key={section.id} section={section} />)}
+              {sections.map((section) => (
+                <SectionView key={section.id} section={section} />
+              ))}
             </div>
           </ScrollArea>
         ) : (
@@ -149,7 +179,7 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
             </p>
           </div>
         )}
-        
+
         {/* Bottom fade overlay */}
         <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-neutral-100 dark:from-zinc-950 to-transparent pointer-events-none z-10" />
       </CardContent>
@@ -162,7 +192,10 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
                 {sections.length} sections
               </Badge>
               {completedTasks === totalTasks && totalTasks > 0 && (
-                <Badge variant="outline" className="h-6 py-0.5 bg-green-50 dark:bg-green-900/20 text-helium-teal border-helium-teal/80">
+                <Badge
+                  variant="outline"
+                  className="h-6 py-0.5 bg-green-50 dark:bg-green-900/20 text-helium-teal border-helium-teal/80"
+                >
                   <Check className="h-3 w-3" />
                   All complete
                 </Badge>
@@ -178,11 +211,11 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
               : ''}
         </div> */}
         {!isStreaming && (
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs font-normal">
-                {completedTasks} / {totalTasks} tasks
-              </Badge>
-              {/* <Badge
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs font-normal">
+              {completedTasks} / {totalTasks} tasks
+            </Badge>
+            {/* <Badge
                 variant="secondary"
                 className={
                   isSuccess
@@ -197,9 +230,9 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
                 )}
                 {isSuccess ? 'Tasks loaded' : 'Failed to load'}
               </Badge> */}
-            </div>
-          )}
+          </div>
+        )}
       </div>
     </Card>
-  )
-}
+  );
+};
