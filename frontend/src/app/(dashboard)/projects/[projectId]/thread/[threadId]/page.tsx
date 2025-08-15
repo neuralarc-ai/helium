@@ -374,6 +374,95 @@ export default function ThreadPage({
     setFileViewerOpen(true);
   }, []);
 
+  // Listen for direct tool UI events to show messages without refresh
+  useEffect(() => {
+    function onDirectToolUser(e: any) {
+      try {
+        const { threadId: evtThreadId, content, createdAt } = e.detail || {};
+        if (!evtThreadId || evtThreadId !== threadId || !content) return;
+        setMessages(prev => [
+          ...prev,
+          {
+            message_id: `temp-user-${Date.now()}`,
+            thread_id: threadId,
+            type: 'user',
+            is_llm_message: false,
+            content,
+            metadata: '{}',
+            created_at: createdAt || new Date().toISOString(),
+            updated_at: createdAt || new Date().toISOString(),
+          }
+        ]);
+      } catch {}
+    }
+
+    function onDirectToolStart(e: any) {
+      try {
+        const { threadId: evtThreadId } = e.detail || {};
+        if (!evtThreadId || evtThreadId !== threadId) return;
+        // Show Helium loader row until result arrives
+        setAgentStatus('running');
+      } catch {}
+    }
+
+    function onDirectToolResult(e: any) {
+      try {
+        const { threadId: evtThreadId, content, tool, projectId: evtProjectId } = e.detail || {};
+        if (!evtThreadId || evtThreadId !== threadId) return;
+        // Replace last running assistant temp message if present, or append
+        setMessages(prev => {
+          const next = [...prev];
+          for (let i = next.length - 1; i >= 0; i--) {
+            const m = next[i];
+            if (m.thread_id === threadId && m.type === 'assistant' && m.message_id?.startsWith('temp-assistant-')) {
+              next[i] = {
+                ...m,
+                content: JSON.stringify({ role: 'assistant', content: content || '' }),
+                metadata: JSON.stringify({ tool_execution: true, tool_name: tool, status: 'completed' }),
+                updated_at: new Date().toISOString(),
+              } as any;
+              return next;
+            }
+          }
+          return [
+            ...next,
+            {
+              message_id: `temp-assistant-${Date.now()}`,
+              thread_id: threadId,
+              type: 'assistant',
+              is_llm_message: true,
+              content: JSON.stringify({ role: 'assistant', content: content || '' }),
+              metadata: JSON.stringify({ tool_execution: true, tool_name: tool, status: 'completed' }),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as any,
+          ];
+        });
+        // Keep loader visible slightly past content swap for smooth transition
+        setTimeout(() => setAgentStatus('idle'), 250);
+      } catch {}
+    }
+
+    function onDirectToolDone(e: any) {
+      try {
+        const { threadId: evtThreadId } = e.detail || {};
+        if (!evtThreadId || evtThreadId !== threadId) return;
+        setAgentStatus('idle');
+      } catch {}
+    }
+
+    window.addEventListener('chat-direct-tool-user', onDirectToolUser as any);
+    window.addEventListener('chat-direct-tool-start', onDirectToolStart as any);
+    window.addEventListener('chat-direct-tool-result', onDirectToolResult as any);
+    window.addEventListener('chat-direct-tool-done', onDirectToolDone as any);
+    return () => {
+      window.removeEventListener('chat-direct-tool-user', onDirectToolUser as any);
+      window.removeEventListener('chat-direct-tool-start', onDirectToolStart as any);
+      window.removeEventListener('chat-direct-tool-result', onDirectToolResult as any);
+      window.removeEventListener('chat-direct-tool-done', onDirectToolDone as any);
+    };
+  }, [threadId, setMessages]);
+
   const toolViewAssistant = useCallback(
     (assistantContent?: string, toolContent?: string) => {
       if (!assistantContent) return null;

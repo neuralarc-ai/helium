@@ -16,6 +16,8 @@ import { AttachmentGroup } from '../attachment-group';
 import { useModelSelection } from './_use-model-selection';
 import { useFileDelete } from '@/hooks/react-query/files';
 import { useQueryClient } from '@tanstack/react-query';
+import { projectKeys } from '@/hooks/react-query/sidebar/keys';
+import { threadKeys } from '@/hooks/react-query/threads/keys';
 import { ToolCallInput } from './floating-tool-preview';
 import { ChatSnack } from './chat-snack';
 import { Brain, Zap, Workflow, Database } from 'lucide-react';
@@ -225,8 +227,18 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             purpose: 'create',
             category: 'scheduling'
           },
+          google_meet: {
+            keywords: ['google meet', 'meet', 'video', 'video call', 'meeting', 'conference', 'call', 'join', 'invite', 'meeting link', 'hangout'],
+            purpose: 'create',
+            category: 'scheduling'
+          },
+          google_sheets: {
+            keywords: ['google sheets', 'sheets', 'sheet', 'spreadsheet', 'workbook', 'excel', 'table', 'cell', 'cells', 'row', 'column', 'formula', 'csv'],
+            purpose: 'create',
+            category: 'data_management'
+          },
           google_drive: {
-            keywords: ['drive', 'file', 'files', 'upload', 'doc', 'docs', 'sheet', 'sheets', 'folder', 'document', 'spreadsheet', 'presentation', 'pdf', 'image', 'photo'],
+            keywords: ['drive', 'file', 'files', 'upload', 'doc', 'docs', 'folder', 'document', 'presentation', 'pdf', 'image', 'photo'],
             purpose: 'upload',
             category: 'file_management'
           },
@@ -310,8 +322,25 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             { match: ['delete', 'remove', 'cancel', 'delete', 'erase', 'clear'], toolContains: 'delete', purpose: 'delete', description: 'Remove calendar events' },
             { match: ['list', 'show', 'find', 'upcoming', 'search', 'get', 'view', 'see', 'display'], toolContains: 'list', purpose: 'read', description: 'View calendar events' },
         ],
+        google_meet: [
+            { match: ['create', 'new', 'schedule', 'start', 'initiate', 'host', 'set up', 'arrange'], toolContains: 'create', purpose: 'create', description: 'Create new video meetings' },
+            { match: ['join', 'enter', 'participate', 'attend', 'connect', 'access'], toolContains: 'join', purpose: 'join', description: 'Join existing meetings' },
+            { match: ['invite', 'add', 'include', 'send link', 'share', 'notify'], toolContains: 'invite', purpose: 'invite', description: 'Invite participants to meetings' },
+            { match: ['record', 'save', 'capture', 'store', 'archive'], toolContains: 'record', purpose: 'record', description: 'Record meeting sessions' },
+            { match: ['end', 'stop', 'finish', 'close', 'terminate', 'hang up'], toolContains: 'end', purpose: 'end', description: 'End active meetings' },
+        ],
+        google_sheets: [
+            { match: ['create', 'new', 'make', 'generate', 'build', 'set up'], toolContains: 'create', purpose: 'create', description: 'Create new spreadsheets' },
+            { match: ['edit', 'modify', 'change', 'update', 'adjust', 'alter'], toolContains: 'edit', purpose: 'edit', description: 'Edit spreadsheet content' },
+            { match: ['add', 'insert', 'append', 'include', 'put in'], toolContains: 'add', purpose: 'add', description: 'Add data to spreadsheets' },
+            { match: ['delete', 'remove', 'clear', 'erase', 'eliminate'], toolContains: 'delete', purpose: 'delete', description: 'Remove data from spreadsheets' },
+            { match: ['format', 'style', 'design', 'appearance', 'layout'], toolContains: 'format', purpose: 'format', description: 'Format spreadsheet appearance' },
+            { match: ['share', 'permission', 'access', 'collaborate', 'invite'], toolContains: 'share', purpose: 'share', description: 'Share spreadsheets with others' },
+            { match: ['view', 'see', 'display', 'show', 'browse', 'read'], toolContains: 'view', purpose: 'read', description: 'View spreadsheet content' },
+            { match: ['export', 'download', 'save as', 'convert', 'extract'], toolContains: 'export', purpose: 'export', description: 'Export spreadsheets to other formats' },
+        ],
         google_drive: [
-            { match: ['upload', 'add', 'put', 'save', 'store', 'backup', 'sync'], toolContains: 'upload', purpose: 'upload', description: 'Upload existing files to Drive' },
+            { match: ['upload', 'put', 'save', 'store', 'backup', 'sync'], toolContains: 'upload', purpose: 'upload', description: 'Upload existing files to Drive' },
             { match: ['create', 'new', 'make', 'generate', 'build'], toolContains: 'create', purpose: 'create', description: 'Create new files/folders from scratch' },
             { match: ['create folder', 'new folder', 'folder', 'directory', 'organize', 'group'], toolContains: 'folder', purpose: 'create', description: 'Create new folders' },
             { match: ['list', 'show', 'find', 'search', 'get', 'view', 'see', 'browse'], toolContains: 'list', purpose: 'read', description: 'List files and folders' },
@@ -417,6 +446,21 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             });
           }
           
+          // Prefer Google Sheets over Drive when spreadsheet-like intents are present
+          const spreadsheetSignals = [
+            'spreadsheet', 'sheets', 'sheet', 'workbook', 'excel', 'csv',
+            'cell', 'cells', 'row', 'rows', 'column', 'columns', 'formula', 'pivot table', 'table'
+          ];
+          const mentionsSpreadsheet = spreadsheetSignals.some(sig => text.includes(sig));
+          if (mentionsSpreadsheet) {
+            if (slug === 'google_sheets' || name === 'google sheets') {
+              score += 8; // strong positive bias toward Sheets
+            }
+            if (slug === 'google_drive' || name === 'google drive') {
+              score -= 4; // de-prioritize Drive for spreadsheet intents
+            }
+          }
+
           // Tool name matches get lower score
         const tools: string[] = p.enabled_tools || [];
           tools.forEach((t) => { 
@@ -487,6 +531,586 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
               bestToolScore = 10; // High score for exact matches
             }
           });
+          
+          // HARD CODED: Google Drive specific tool mappings with comprehensive catch phrases
+          if (!matched && chosen.app_slug === 'google_drive') {
+            // Create file from text
+            const createFilePhrases = [
+              'create file', 'create a file', 'create file in my drive', 'create a file in my drive',
+              'make a file', 'make file', 'generate file', 'generate a file', 'new file', 'new text file',
+              'create document', 'create a document', 'make document', 'make a document',
+              'create text file', 'create a text file', 'make text file', 'make a text file',
+              'write file', 'write a file', 'compose file', 'compose a file'
+            ];
+            
+            // Upload file
+            const uploadFilePhrases = [
+              'upload file', 'upload a file', 'upload files', 'upload to drive', 'upload to my drive',
+              'put file', 'put a file', 'put files',
+              'save file', 'save a file', 'save files', 'store file', 'store a file', 'store files',
+              'backup file', 'backup a file', 'backup files', 'sync file', 'sync a file', 'sync files',
+              'import file', 'import a file', 'import files', 'move file to drive', 'move files to drive'
+            ];
+            
+            // Share file
+            const shareFilePhrases = [
+              'share file', 'share a file', 'share files', 'share with', 'share document',
+              'give access', 'grant access', 'permission', 'permissions', 'make public',
+              'make private', 'invite', 'invite to', 'collaborate', 'collaboration',
+              'set sharing', 'change sharing', 'update sharing', 'modify sharing',
+              'public access', 'private access', 'restrict access', 'allow access'
+            ];
+            
+            // Delete file
+            const deleteFilePhrases = [
+              'delete file', 'delete a file', 'delete files', 'remove file', 'remove a file', 'remove files',
+              'trash file', 'trash a file', 'trash files', 'move to trash', 'move file to trash',
+              'erase file', 'erase a file', 'erase files', 'clear file', 'clear a file', 'clear files',
+              'drop file', 'drop a file', 'drop files', 'discard file', 'discard a file', 'discard files'
+            ];
+            
+            // Download file
+            const downloadFilePhrases = [
+              'download file', 'download a file', 'download files', 'get file', 'get a file', 'get files',
+              'save locally', 'save to computer', 'save to desktop', 'export file', 'export a file', 'export files',
+              'retrieve file', 'retrieve a file', 'retrieve files', 'pull file', 'pull a file', 'pull files',
+              'copy to computer', 'copy to desktop', 'backup to computer', 'backup to desktop'
+            ];
+            
+            // Find file
+            const findFilePhrases = [
+              'find file', 'find a file', 'find files', 'search file', 'search for file', 'search files',
+              'look for file', 'look for files', 'locate file', 'locate a file', 'locate files',
+              'where is', 'where are', 'find my', 'search my', 'look up', 'lookup',
+              'discover file', 'discover files', 'browse files', 'explore files'
+            ];
+            
+            // List files
+            const listFilePhrases = [
+              'list files', 'list file', 'show files', 'show file', 'display files', 'display file',
+              'view files', 'view file', 'see files', 'see file', 'browse', 'explore',
+              'what files', 'what file', 'my files', 'all files', 'files in', 'contents of',
+              'folder contents', 'directory contents', 'drive contents', 'what\'s in'
+            ];
+            
+            // Check each category and select appropriate tool
+            if (createFilePhrases.some(phrase => text.includes(phrase))) {
+              const createFileFromTextTool = tools.find(tool => tool.toLowerCase().includes('create-file-from-text'));
+              if (createFileFromTextTool) {
+                matched = createFileFromTextTool;
+                bestToolScore = 100;
+              }
+            } else if (uploadFilePhrases.some(phrase => text.includes(phrase))) {
+              const uploadFileTool = tools.find(tool => tool.toLowerCase().includes('upload-file'));
+              if (uploadFileTool) {
+                matched = uploadFileTool;
+                bestToolScore = 100;
+              }
+            } else if (shareFilePhrases.some(phrase => text.includes(phrase))) {
+              const shareFileTool = tools.find(tool => tool.toLowerCase().includes('add-file-sharing-preference'));
+              if (shareFileTool) {
+                matched = shareFileTool;
+                bestToolScore = 100;
+              }
+            } else if (deleteFilePhrases.some(phrase => text.includes(phrase))) {
+              const deleteFileTool = tools.find(tool => tool.toLowerCase().includes('delete-file'));
+              if (deleteFileTool) {
+                matched = deleteFileTool;
+                bestToolScore = 100;
+              }
+            } else if (downloadFilePhrases.some(phrase => text.includes(phrase))) {
+              const downloadFileTool = tools.find(tool => tool.toLowerCase().includes('download-file'));
+              if (downloadFileTool) {
+                matched = downloadFileTool;
+                bestToolScore = 100;
+              }
+            } else if (findFilePhrases.some(phrase => text.includes(phrase))) {
+              const findFileTool = tools.find(tool => tool.toLowerCase().includes('find-file'));
+              if (findFileTool) {
+                matched = findFileTool;
+                bestToolScore = 100;
+              }
+            } else if (listFilePhrases.some(phrase => text.includes(phrase))) {
+              const listFileTool = tools.find(tool => tool.toLowerCase().includes('list-files'));
+              if (listFileTool) {
+                matched = listFileTool;
+                bestToolScore = 100;
+              }
+            }
+          }
+          
+          // HARD CODED: Gmail specific tool mappings with comprehensive catch phrases
+          if (!matched && chosen.app_slug === 'gmail') {
+            // Send email
+            const sendEmailPhrases = [
+              'send email', 'send an email', 'send mail', 'send a mail', 'send message', 'send a message',
+              'email someone', 'mail someone', 'compose email', 'compose mail', 'write email', 'write mail',
+              'send to', 'email to', 'mail to', 'send out', 'send off', 'dispatch email', 'dispatch mail',
+              'forward email', 'forward mail', 'reply to', 'respond to', 'send response', 'send reply'
+            ];
+            
+            // Create draft
+            const createDraftPhrases = [
+              'create draft', 'create a draft', 'make draft', 'make a draft', 'new draft', 'new email draft',
+              'save draft', 'save as draft', 'draft email', 'draft mail', 'start draft', 'begin draft',
+              'write draft', 'compose draft', 'prepare draft', 'work on draft', 'edit draft', 'modify draft'
+            ];
+            
+            // Find email
+            const findEmailPhrases = [
+              'find email', 'find an email', 'find mail', 'find a mail', 'search email', 'search for email',
+              'search mail', 'search for mail', 'look for email', 'look for mail', 'locate email', 'locate mail',
+              'where is my email', 'where is my mail', 'find my email', 'find my mail', 'search my inbox',
+              'look up email', 'look up mail', 'discover email', 'discover mail', 'browse emails', 'browse mail'
+            ];
+            
+            // List emails/labels
+            const listEmailsPhrases = [
+              'list emails', 'list email', 'list mail', 'list mails', 'show emails', 'show email',
+              'show mail', 'show mails', 'display emails', 'display email', 'display mail', 'display mails',
+              'view emails', 'view email', 'view mail', 'view mails', 'see emails', 'see email', 'see mail',
+              'my emails', 'my mail', 'all emails', 'all mail', 'emails in', 'mail in', 'inbox contents',
+              'what emails', 'what mail', 'browse emails', 'explore emails', 'check emails', 'check mail'
+            ];
+            
+            // Delete email
+            const deleteEmailPhrases = [
+              'delete email', 'delete an email', 'delete mail', 'delete a mail', 'remove email', 'remove an email',
+              'remove mail', 'remove a mail', 'trash email', 'trash mail', 'move to trash', 'move email to trash',
+              'erase email', 'erase mail', 'clear email', 'clear mail', 'drop email', 'drop mail',
+              'discard email', 'discard mail', 'archive email', 'archive mail', 'move to archive'
+            ];
+            
+            // Check each category and select appropriate tool
+            if (sendEmailPhrases.some(phrase => text.includes(phrase))) {
+              const sendEmailTool = tools.find(tool => tool.toLowerCase().includes('send-email'));
+              if (sendEmailTool) {
+                matched = sendEmailTool;
+                bestToolScore = 100;
+              }
+            } else if (createDraftPhrases.some(phrase => text.includes(phrase))) {
+              const createDraftTool = tools.find(tool => tool.toLowerCase().includes('create-draft'));
+              if (createDraftTool) {
+                matched = createDraftTool;
+                bestToolScore = 100;
+              }
+            } else if (findEmailPhrases.some(phrase => text.includes(phrase))) {
+              const findEmailTool = tools.find(tool => tool.toLowerCase().includes('find-email'));
+              if (findEmailTool) {
+                matched = findEmailTool;
+                bestToolScore = 100;
+              }
+            } else if (listEmailsPhrases.some(phrase => text.includes(phrase))) {
+              const listLabelsTool = tools.find(tool => tool.toLowerCase().includes('list-labels'));
+              if (listLabelsTool) {
+                matched = listLabelsTool;
+                bestToolScore = 100;
+              }
+            } else if (deleteEmailPhrases.some(phrase => text.includes(phrase))) {
+              const deleteEmailTool = tools.find(tool => tool.toLowerCase().includes('delete-email'));
+              if (deleteEmailTool) {
+                matched = deleteEmailTool;
+                bestToolScore = 100;
+              }
+            }
+          }
+          
+          // HARD CODED: Google Calendar specific tool mappings with comprehensive catch phrases
+          if (!matched && chosen.app_slug === 'google_calendar') {
+            // Create event
+            const createEventPhrases = [
+              'create event', 'create an event', 'make event', 'make an event', 'new event', 'new calendar event',
+              'add event', 'add an event', 'schedule event', 'schedule an event', 'book event', 'book an event',
+              'set up event', 'set up an event', 'arrange event', 'arrange an event', 'plan event', 'plan an event',
+              'create meeting', 'create a meeting', 'schedule meeting', 'schedule a meeting', 'set up meeting'
+            ];
+            
+            // Update event
+            const updateEventPhrases = [
+              'update event', 'update an event', 'modify event', 'modify an event', 'change event', 'change an event',
+              'edit event', 'edit an event', 'adjust event', 'adjust an event', 'reschedule event', 'reschedule an event',
+              'move event', 'move an event', 'shift event', 'shift an event', 'rearrange event', 'rearrange an event',
+              'update meeting', 'modify meeting', 'change meeting', 'edit meeting', 'reschedule meeting'
+            ];
+            
+            // List events
+            const listEventsPhrases = [
+              'list events', 'list event', 'show events', 'show event', 'display events', 'display event',
+              'view events', 'view event', 'see events', 'see event', 'browse events', 'explore events',
+              'my events', 'all events', 'events in', 'what events', 'what event', 'calendar contents',
+              'check events', 'check event', 'find events', 'find event', 'search events', 'search event'
+            ];
+            
+            // Get specific event
+            const getEventPhrases = [
+              'get event', 'get an event', 'find event', 'find an event', 'look up event', 'look up an event',
+              'retrieve event', 'retrieve an event', 'fetch event', 'fetch an event', 'pull event', 'pull an event',
+              'show event details', 'show event info', 'display event details', 'view event details',
+              'event details', 'event info', 'event information', 'specific event', 'particular event'
+            ];
+            
+            // Delete event
+            const deleteEventPhrases = [
+              'delete event', 'delete an event', 'remove event', 'remove an event', 'cancel event', 'cancel an event',
+              'trash event', 'trash an event', 'erase event', 'erase an event', 'clear event', 'clear an event',
+              'drop event', 'drop an event', 'discard event', 'discard an event', 'unbook event', 'unbook an event'
+            ];
+            
+            // Add attendees to event
+            const addAttendeesPhrases = [
+              'add attendees', 'add attendee', 'add people', 'add person', 'invite people', 'invite person',
+              'invite attendees', 'invite attendee', 'add to event', 'add people to event', 'invite to event',
+              'include people', 'include person', 'add participants', 'add participant', 'invite participants',
+              'add guests', 'add guest', 'invite guests', 'invite guest', 'add team members', 'add colleagues'
+            ];
+            
+            // Check each category and select appropriate tool
+            if (createEventPhrases.some(phrase => text.includes(phrase))) {
+              const createEventTool = tools.find(tool => tool.toLowerCase().includes('create-event'));
+              if (createEventTool) {
+                matched = createEventTool;
+                bestToolScore = 100;
+              }
+            } else if (updateEventPhrases.some(phrase => text.includes(phrase))) {
+              const updateEventTool = tools.find(tool => tool.toLowerCase().includes('update-event'));
+              if (updateEventTool) {
+                matched = updateEventTool;
+                bestToolScore = 100;
+              }
+            } else if (listEventsPhrases.some(phrase => text.includes(phrase))) {
+              const listEventsTool = tools.find(tool => tool.toLowerCase().includes('list-events'));
+              if (listEventsTool) {
+                matched = listEventsTool;
+                bestToolScore = 100;
+              }
+            } else if (getEventPhrases.some(phrase => text.includes(phrase))) {
+              const getEventTool = tools.find(tool => tool.toLowerCase().includes('get-event'));
+              if (getEventTool) {
+                matched = getEventTool;
+                bestToolScore = 100;
+              }
+            } else if (deleteEventPhrases.some(phrase => text.includes(phrase))) {
+              const deleteEventTool = tools.find(tool => tool.toLowerCase().includes('delete-event'));
+              if (deleteEventTool) {
+                matched = deleteEventTool;
+                bestToolScore = 100;
+              }
+            } else if (addAttendeesPhrases.some(phrase => text.includes(phrase))) {
+              const addAttendeesTool = tools.find(tool => tool.toLowerCase().includes('add-attendees-to-event'));
+              if (addAttendeesTool) {
+                matched = addAttendeesTool;
+                bestToolScore = 100;
+              }
+            }
+          }
+          
+          // HARD CODED: Google Meet specific tool mappings with comprehensive catch phrases
+          if (!matched && chosen.app_slug === 'google_meet') {
+            // Create meeting
+            const createMeetingPhrases = [
+              'create meeting', 'create a meeting', 'make meeting', 'make a meeting', 'new meeting', 'new video meeting',
+              'start meeting', 'start a meeting', 'begin meeting', 'begin a meeting', 'set up meeting', 'set up a meeting',
+              'schedule meeting', 'schedule a meeting', 'book meeting', 'book a meeting', 'arrange meeting', 'arrange a meeting',
+              'create video call', 'create a video call', 'start video call', 'start a video call', 'set up video call'
+            ];
+            
+            // Join meeting
+            const joinMeetingPhrases = [
+              'join meeting', 'join a meeting', 'enter meeting', 'enter a meeting', 'attend meeting', 'attend a meeting',
+              'participate in meeting', 'participate in a meeting', 'go to meeting', 'go to a meeting', 'access meeting',
+              'connect to meeting', 'connect to a meeting', 'link to meeting', 'link to a meeting', 'open meeting', 'open a meeting'
+            ];
+            
+            // Invite participants to meeting
+            const inviteParticipantsPhrases = [
+              'invite to meeting', 'invite participants', 'invite people', 'add participants', 'add people',
+              'send invite link', 'share meeting link', 'add to meeting', 'include in meeting'
+            ];
+            
+            // Record meeting
+            const recordMeetingPhrases = [
+              'record meeting', 'start recording', 'begin recording', 'enable recording', 'record this meeting'
+            ];
+            
+            // End meeting
+            const endMeetingPhrases = [
+              'end meeting', 'stop meeting', 'finish meeting', 'close meeting', 'terminate meeting', 'hang up'
+            ];
+            
+            // List meetings
+            const listMeetingsPhrases = [
+              'list meetings', 'list meeting', 'show meetings', 'show meeting', 'display meetings', 'display meeting',
+              'view meetings', 'view meeting', 'see meetings', 'see meeting', 'browse meetings', 'explore meetings',
+              'my meetings', 'all meetings', 'meetings in', 'what meetings', 'what meeting', 'meeting contents',
+              'check meetings', 'check meeting', 'find meetings', 'find meeting', 'search meetings', 'search meeting'
+            ];
+            
+            // Get meeting details
+            const getMeetingPhrases = [
+              'get meeting', 'get a meeting', 'find meeting', 'find a meeting', 'look up meeting', 'look up a meeting',
+              'retrieve meeting', 'retrieve a meeting', 'fetch meeting', 'fetch a meeting', 'pull meeting', 'pull a meeting',
+              'show meeting details', 'show meeting info', 'display meeting details', 'view meeting details',
+              'meeting details', 'meeting info', 'meeting information', 'specific meeting', 'particular meeting'
+            ];
+            
+            // Delete meeting
+            const deleteMeetingPhrases = [
+              'delete meeting', 'delete a meeting', 'remove meeting', 'remove a meeting', 'cancel meeting', 'cancel a meeting',
+              'trash meeting', 'trash a meeting', 'erase meeting', 'erase a meeting', 'clear meeting', 'clear a meeting',
+              'drop meeting', 'drop a meeting', 'discard meeting', 'discard a meeting', 'unbook meeting', 'unbook a meeting'
+            ];
+            
+            // Check each category and select appropriate tool
+            if (createMeetingPhrases.some(phrase => text.includes(phrase))) {
+              const createMeetingTool = tools.find(tool => tool.toLowerCase().includes('create-meeting'));
+              if (createMeetingTool) {
+                matched = createMeetingTool;
+                bestToolScore = 100;
+              }
+            } else if (joinMeetingPhrases.some(phrase => text.includes(phrase))) {
+              const joinMeetingTool = tools.find(tool => tool.toLowerCase().includes('join-meeting'));
+              if (joinMeetingTool) {
+                matched = joinMeetingTool;
+                bestToolScore = 100;
+              }
+            } else if (listMeetingsPhrases.some(phrase => text.includes(phrase))) {
+              const listMeetingsTool = tools.find(tool => tool.toLowerCase().includes('list-meetings'));
+              if (listMeetingsTool) {
+                matched = listMeetingsTool;
+                bestToolScore = 100;
+              }
+            } else if (getMeetingPhrases.some(phrase => text.includes(phrase))) {
+              const getMeetingTool = tools.find(tool => tool.toLowerCase().includes('get-meeting'));
+              if (getMeetingTool) {
+                matched = getMeetingTool;
+                bestToolScore = 100;
+              }
+            } else if (deleteMeetingPhrases.some(phrase => text.includes(phrase))) {
+              const deleteMeetingTool = tools.find(tool => tool.toLowerCase().includes('delete-meeting'));
+              if (deleteMeetingTool) {
+                matched = deleteMeetingTool;
+                bestToolScore = 100;
+              }
+            } else if (inviteParticipantsPhrases.some(phrase => text.includes(phrase))) {
+              const inviteParticipantsTool = tools.find(tool => 
+                tool.toLowerCase().includes('invite') && tool.toLowerCase().includes('meeting')
+              );
+              if (inviteParticipantsTool) {
+                matched = inviteParticipantsTool;
+                bestToolScore = 100;
+              }
+            } else if (recordMeetingPhrases.some(phrase => text.includes(phrase))) {
+              const recordMeetingTool = tools.find(tool => 
+                tool.toLowerCase().includes('record') && tool.toLowerCase().includes('meeting')
+              );
+              if (recordMeetingTool) {
+                matched = recordMeetingTool;
+                bestToolScore = 100;
+              }
+            } else if (endMeetingPhrases.some(phrase => text.includes(phrase))) {
+              const endMeetingTool = tools.find(tool => 
+                tool.toLowerCase().includes('end-meeting') || tool.toLowerCase().includes('end') && tool.toLowerCase().includes('meeting')
+              );
+              if (endMeetingTool) {
+                matched = endMeetingTool;
+                bestToolScore = 100;
+              }
+            }
+          }
+          
+          // HARD CODED: Google Sheets specific tool mappings with comprehensive catch phrases
+          if (!matched && chosen.app_slug === 'google_sheets') {
+            // Create spreadsheet (both Drive and native Sheets)
+            const createSpreadsheetPhrases = [
+              'create spreadsheet', 'create a spreadsheet', 'make spreadsheet', 'make a spreadsheet', 'new spreadsheet', 'new sheet',
+              'create sheet', 'create a sheet', 'make sheet', 'make a sheet', 'new google sheet', 'new google sheets',
+              'create workbook', 'create a workbook', 'make workbook', 'make a workbook', 'new workbook', 'new excel file',
+              'create excel', 'create an excel', 'make excel', 'make an excel', 'new excel', 'new table',
+              'create from drive', 'create in drive', 'make in drive', 'new in drive', 'create spreadsheet in drive'
+            ];
+            
+            // Update spreadsheet (both Drive and native Sheets)
+            const updateSpreadsheetPhrases = [
+              'update spreadsheet', 'update a spreadsheet', 'modify spreadsheet', 'modify a spreadsheet', 'change spreadsheet', 'change a spreadsheet',
+              'edit spreadsheet', 'edit a spreadsheet', 'adjust spreadsheet', 'adjust a spreadsheet', 'modify sheet', 'modify a sheet',
+              'update sheet', 'update a sheet', 'edit sheet', 'edit a sheet', 'change sheet', 'change a sheet',
+              'update workbook', 'modify workbook', 'edit workbook', 'change workbook',
+              'update in drive', 'modify in drive', 'edit in drive', 'change in drive', 'update spreadsheet in drive'
+            ];
+            
+            // List spreadsheets (both Drive and native Sheets)
+            const listSpreadsheetsPhrases = [
+              'list spreadsheets', 'list spreadsheet', 'show spreadsheets', 'show spreadsheet', 'display spreadsheets', 'display spreadsheet',
+              'view spreadsheets', 'view spreadsheet', 'see spreadsheets', 'see spreadsheet', 'browse spreadsheets', 'explore spreadsheets',
+              'my spreadsheets', 'all spreadsheets', 'spreadsheets in', 'what spreadsheets', 'what spreadsheet', 'sheets contents',
+              'check spreadsheets', 'check spreadsheet', 'find spreadsheets', 'find spreadsheet', 'search spreadsheets', 'search spreadsheet',
+              'list sheets', 'list sheet', 'show sheets', 'show sheet', 'my sheets', 'all sheets',
+              'list in drive', 'show in drive', 'view in drive', 'browse in drive', 'list spreadsheets in drive'
+            ];
+            
+            // Get spreadsheet details (both Drive and native Sheets)
+            const getSpreadsheetPhrases = [
+              'get spreadsheet', 'get a spreadsheet', 'find spreadsheet', 'find a spreadsheet', 'look up spreadsheet', 'look up a spreadsheet',
+              'retrieve spreadsheet', 'retrieve a spreadsheet', 'fetch spreadsheet', 'fetch a spreadsheet', 'pull spreadsheet', 'pull a spreadsheet',
+              'show spreadsheet details', 'show spreadsheet info', 'display spreadsheet details', 'view spreadsheet details',
+              'spreadsheet details', 'spreadsheet info', 'spreadsheet information', 'specific spreadsheet', 'particular spreadsheet',
+              'get sheet', 'get a sheet', 'find sheet', 'find a sheet', 'sheet details', 'sheet info',
+              'get from drive', 'find in drive', 'retrieve from drive', 'get spreadsheet from drive',
+              'find spreadsheet by id', 'get spreadsheet by id', 'retrieve spreadsheet by id'
+            ];
+            
+            // Delete spreadsheet (both Drive and native Sheets)
+            const deleteSpreadsheetPhrases = [
+              'delete spreadsheet', 'delete a spreadsheet', 'remove spreadsheet', 'remove a spreadsheet', 'trash spreadsheet', 'trash a spreadsheet',
+              'erase spreadsheet', 'erase a spreadsheet', 'clear spreadsheet', 'clear a spreadsheet', 'drop spreadsheet', 'drop a spreadsheet',
+              'discard spreadsheet', 'discard a spreadsheet', 'delete sheet', 'delete a sheet', 'remove sheet', 'remove a sheet',
+              'delete from drive', 'remove from drive', 'trash in drive', 'delete spreadsheet from drive'
+            ];
+            
+            // Delete worksheet
+            const deleteWorksheetPhrases = [
+              'delete worksheet', 'delete a worksheet', 'remove worksheet', 'remove a worksheet', 'delete tab', 'delete a tab',
+              'remove tab', 'remove a tab', 'delete sheet tab', 'remove sheet tab', 'delete worksheet tab'
+            ];
+            
+            // Add data to spreadsheet (native Sheets functionality)
+            const addDataPhrases = [
+              'add data', 'add data to', 'insert data', 'insert data to', 'add row', 'add rows', 'add column', 'add columns',
+              'add entry', 'add entries', 'add record', 'add records', 'add information', 'add info', 'add content',
+              'insert row', 'insert rows', 'insert column', 'insert columns', 'insert entry', 'insert entries',
+              'add to spreadsheet', 'add to sheet', 'insert to spreadsheet', 'insert to sheet', 'add to table',
+              'add cell', 'add cells', 'insert cell', 'insert cells', 'add value', 'insert value'
+            ];
+            
+            // Update cells/data (native Sheets functionality)
+            const updateDataPhrases = [
+              'update cell', 'update cells', 'modify cell', 'modify cells', 'change cell', 'change cells',
+              'edit cell', 'edit cells', 'update value', 'modify value', 'change value', 'edit value',
+              'update data', 'modify data', 'change data', 'edit data', 'update content', 'modify content',
+              'set cell', 'set cells', 'set value', 'set data', 'write to cell', 'write to cells'
+            ];
+
+            // Share spreadsheet
+            const shareSpreadsheetPhrases = [
+              'share spreadsheet', 'share a spreadsheet', 'share sheet', 'share a sheet', 'give access', 'grant access',
+              'invite to spreadsheet', 'invite to sheet', 'collaborate on spreadsheet', 'collaborate on sheet'
+            ];
+
+            // Export spreadsheet
+            const exportSpreadsheetPhrases = [
+              'export spreadsheet', 'export sheet', 'download spreadsheet', 'download sheet', 'save as csv', 'export to csv',
+              'save as xlsx', 'export to xlsx', 'download as', 'export as'
+            ];
+
+            // Format spreadsheet/cells
+            const formatSpreadsheetPhrases = [
+              'format spreadsheet', 'format sheet', 'format cells', 'apply formatting', 'set format', 'bold', 'italic', 'alignment',
+              'cell color', 'background color', 'number format', 'date format'
+            ];
+
+            // View/open spreadsheet
+            const viewSpreadsheetPhrases = [
+              'view spreadsheet', 'open spreadsheet', 'open sheet', 'view sheet', 'show spreadsheet', 'show sheet'
+            ];
+            
+            // Check each category and select appropriate tool
+            if (createSpreadsheetPhrases.some(phrase => text.includes(phrase))) {
+              const createSpreadsheetTool = tools.find(tool => tool === 'google_sheets-create-spreadsheet');
+              if (createSpreadsheetTool) {
+                matched = createSpreadsheetTool;
+                bestToolScore = 100;
+              }
+            } else if (addDataPhrases.some(phrase => text.includes(phrase))) {
+              const addDataTool = tools.find(tool => tool === 'google_sheets-add-multiple-rows');
+              if (addDataTool) {
+                matched = addDataTool;
+                bestToolScore = 100;
+              }
+            } else if (updateSpreadsheetPhrases.some(phrase => text.includes(phrase))) {
+              const updateSpreadsheetTool = tools.find(tool => tool === 'google_sheets-update-row');
+              if (updateSpreadsheetTool) {
+                matched = updateSpreadsheetTool;
+                bestToolScore = 100;
+              }
+            } else if (listSpreadsheetsPhrases.some(phrase => text.includes(phrase))) {
+              const listSpreadsheetsTool = tools.find(tool => tool === 'google_sheets-list-worksheets');
+              if (listSpreadsheetsTool) {
+                matched = listSpreadsheetsTool;
+                bestToolScore = 100;
+              }
+            } else if (deleteSpreadsheetPhrases.some(phrase => text.includes(phrase))) {
+              // Check for single row deletion vs all rows deletion
+              const singleRowDeletePhrases = ['delete row', 'delete a row', 'remove row', 'remove a row', 'delete single row'];
+              const allRowsDeletePhrases = ['delete all rows', 'clear all rows', 'remove all rows', 'delete rows', 'clear rows'];
+              
+              if (singleRowDeletePhrases.some(phrase => text.includes(phrase))) {
+                const deleteSingleRowTool = tools.find(tool => tool === 'google_sheets-delete-rows');
+                if (deleteSingleRowTool) {
+                  matched = deleteSingleRowTool;
+                  bestToolScore = 100;
+                }
+              } else if (allRowsDeletePhrases.some(phrase => text.includes(phrase))) {
+                const clearAllRowsTool = tools.find(tool => tool === 'google_sheets-clear-rows');
+                if (clearAllRowsTool) {
+                  matched = clearAllRowsTool;
+                  bestToolScore = 100;
+                }
+              }
+            } else if (getSpreadsheetPhrases.some(phrase => text.includes(phrase))) {
+              const getSpreadsheetTool = tools.find(tool => tool === 'google_sheets-get-spreadsheet-by-id');
+              if (getSpreadsheetTool) {
+                matched = getSpreadsheetTool;
+                bestToolScore = 100;
+              }
+            } else if (deleteWorksheetPhrases.some(phrase => text.includes(phrase))) {
+              const deleteWorksheetTool = tools.find(tool => tool === 'google_sheets-delete-worksheet');
+              if (deleteWorksheetTool) {
+                matched = deleteWorksheetTool;
+                bestToolScore = 100;
+              }
+            } else if (shareSpreadsheetPhrases.some(phrase => text.includes(phrase))) {
+              // Try native Sheets first, then Drive-based
+              const shareSpreadsheetTool = tools.find(tool => 
+                tool.toLowerCase().includes('share-spreadsheet') ||
+                tool.toLowerCase().includes('share-file') && tool.toLowerCase().includes('spreadsheet')
+              );
+              if (shareSpreadsheetTool) {
+                matched = shareSpreadsheetTool;
+                bestToolScore = 100;
+              }
+            } else if (exportSpreadsheetPhrases.some(phrase => text.includes(phrase))) {
+              // Try native Sheets first, then Drive-based
+              const exportSpreadsheetTool = tools.find(tool => 
+                tool.toLowerCase().includes('export-spreadsheet') ||
+                tool.toLowerCase().includes('download-file') && tool.toLowerCase().includes('spreadsheet') ||
+                tool.toLowerCase().includes('export') && tool.toLowerCase().includes('sheet')
+              );
+              if (exportSpreadsheetTool) {
+                matched = exportSpreadsheetTool;
+                bestToolScore = 100;
+              }
+            } else if (formatSpreadsheetPhrases.some(phrase => text.includes(phrase))) {
+              const formatSpreadsheetTool = tools.find(tool => 
+                tool.toLowerCase().includes('format-spreadsheet') ||
+                tool.toLowerCase().includes('format-cell') ||
+                tool.toLowerCase().includes('apply-formatting')
+              );
+              if (formatSpreadsheetTool) {
+                matched = formatSpreadsheetTool;
+                bestToolScore = 100;
+              }
+            } else if (viewSpreadsheetPhrases.some(phrase => text.includes(phrase))) {
+              const viewSpreadsheetTool = tools.find(tool => 
+                tool.toLowerCase().includes('view-spreadsheet') ||
+                tool.toLowerCase().includes('open-spreadsheet') ||
+                tool.toLowerCase().includes('get-spreadsheet')
+              );
+              if (viewSpreadsheetTool) {
+                matched = viewSpreadsheetTool;
+                bestToolScore = 100;
+              }
+            }
+          }
           
           // If no exact match, use purpose-based selection
         if (!matched) {
@@ -709,19 +1333,118 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
           if (threadId) setCurrentThreadId(threadId);
           if (projectId) setCurrentProjectId(projectId);
           
+          // Navigate to the thread page so the tool run appears like a normal chat
+          try {
+            if (threadId && projectId && !threadId.startsWith('temp-')) {
+              const targetPath = `/projects/${projectId}/thread/${threadId}`;
+              if (typeof window !== 'undefined') {
+                const currentPath = window.location.pathname;
+                if (currentPath !== targetPath) {
+                  router.push(targetPath);
+                } else {
+                  router.refresh();
+                }
+              } else {
+                router.push(targetPath);
+              }
+              // Keep sidebar thread lists in sync
+              try {
+                queryClient.invalidateQueries({ queryKey: threadKeys.all });
+                queryClient.invalidateQueries({ queryKey: threadKeys.project(projectId) });
+                queryClient.invalidateQueries({ queryKey: projectKeys.all });
+              } catch {}
+            }
+          } catch {}
+          
           // Add user message to thread
           if (threadId) await addMessageToThread(threadId, message, true);
+          // Emit comprehensive user message event for immediate UI update
+          try {
+            if (threadId) {
+              const evtUser = new CustomEvent('chat-direct-tool-user', {
+                detail: {
+                  role: 'user',
+                  threadId,
+                  projectId,
+                  content: message,
+                  createdAt: new Date().toISOString(),
+                  isToolExecution: true,
+                  toolProfile: selectedProfileId,
+                  toolName: selectedToolName,
+                  appName: currentProfileName,
+                },
+              });
+              window.dispatchEvent(evtUser);
+            }
+          } catch {}
           
-          // Create agent run for tool execution
-          if (threadId) await createAgentRunForTool(threadId, currentToolPurpose || 'execute', currentToolCategory || 'general');
+          // Create agent run for tool execution (but skip for direct tool execution to prevent recursion)
+          // if (threadId) await createAgentRunForTool(threadId, currentToolPurpose || 'execute', currentToolCategory || 'general');
           
           // Build arguments by looking up tool schema and filling sensible defaults
           let args = { query: message, instruction: message } as Record<string, any>;
+          let toolToExecute = selectedToolName;
+          let relevantToolCandidates: string[] = [];
           const chosenProfile: any = (pdProfiles || []).find((p: any) => p.profile_id === selectedProfileId);
           if (chosenProfile?.app_slug) {
             try {
               const toolsResp = await pipedreamApi.getAppTools(chosenProfile.app_slug);
-              const toolMeta: any = (toolsResp.tools || []).find((t: any) => t.name === selectedToolName);
+              const availableTools: any[] = toolsResp.tools || [];
+
+              // Intent + keyword scoring across all tools to mimic agent tool choice
+              const lowerMsg = (message || '').toLowerCase();
+              const intents = [
+                { key: 'create', rx: /(create|make|new|generate|add|build|compose|draft)/ },
+                { key: 'update', rx: /(update|modify|edit|change|rename|move|reschedule)/ },
+                { key: 'delete', rx: /(delete|remove|trash|erase|clear|cancel)/ },
+                { key: 'list', rx: /(list|show|view|display|browse)/ },
+                { key: 'search', rx: /(search|find|lookup|query|filter)/ },
+                { key: 'send', rx: /(send|post|message|email|compose|draft)/ },
+                { key: 'upload', rx: /(upload|save|store|backup|sync)/ },
+                { key: 'share', rx: /(share|permission|access|invite|collaborate)/ },
+                { key: 'download', rx: /(download|export|retrieve)/ },
+              ] as const;
+              const matchedIntents = intents.filter(i => i.rx.test(lowerMsg)).map(i => i.key);
+              const intentRx = matchedIntents.length ? new RegExp(matchedIntents.join('|'), 'i') : null;
+
+              const keywordGroups: Array<{ kw: RegExp; weight: number }> = [
+                { kw: /(file|doc|document|txt|text)/, weight: 5 },
+                { kw: /(folder|directory)/, weight: 4 },
+                { kw: /(sheet|spreadsheet)/, weight: 4 },
+                { kw: /(slide|presentation)/, weight: 3 },
+                { kw: /(page|note)/, weight: 2 },
+                { kw: /(email|mail|inbox|draft)/, weight: 4 },
+                { kw: /(message|dm|channel)/, weight: 3 },
+                { kw: /(permission|share)/, weight: 2 },
+                { kw: /(download|export)/, weight: 2 },
+                { kw: /(calendar|event|meeting|invite|schedule)/, weight: 4 },
+              ];
+
+              type Scored = { name: string; score: number };
+              const scored: Scored[] = (availableTools || []).map((t: any) => {
+                const n = (t.name || '').toLowerCase();
+                let score = 0;
+                if (!intentRx || intentRx.test(n)) score += 1;
+                keywordGroups.forEach(({ kw, weight }) => {
+                  if (kw.test(lowerMsg) && kw.test(n)) score += weight;
+                });
+                // explicit patterns
+                if (/create.*file.*from.*text|create.*text.*file/.test(n) && /(text|content)/.test(lowerMsg)) score += 3;
+                if (/folder/.test(n) && /(folder|directory)/.test(lowerMsg)) score += 2;
+                return { name: t.name, score };
+              });
+
+              const best = scored.sort((a,b)=>b.score-a.score)[0];
+              const maxScore = best ? best.score : -1;
+              const threshold = Math.max(1, Math.floor(maxScore * 0.6));
+              relevantToolCandidates = scored.filter(s => s.score >= threshold).map(s => s.name);
+              if (best && best.score >= threshold && best.name) {
+                toolToExecute = best.name;
+                setSelectedToolName(best.name);
+              }
+
+              // Use the selected tool metadata for schema defaulting
+              const toolMeta: any = availableTools.find((t: any) => t.name === toolToExecute);
               const schema: any = toolMeta?.inputSchema || toolMeta?.input_schema;
               if (schema && schema.properties) {
                 // If specific required fields exist and are strings, fill with the whole message when undefined
@@ -731,18 +1454,62 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                 // Ensure common text keys are present if defined
                 textLikeKeys.forEach((k) => { if (props[k] && args[k] === undefined) args[k] = message; });
                 // Fill required string fields with message if not present
+                let missingRequired = false;
                 required.forEach((key) => {
                   const prop = props[key];
-                  if (prop && (prop.type === 'string' || (Array.isArray(prop.type) && prop.type.includes('string'))) && args[key] === undefined) {
+                  if (!prop) return;
+                  const types: string[] = Array.isArray(prop.type) ? prop.type : [prop.type];
+                  if (args[key] !== undefined) return;
+                  if (types.includes('string')) {
                     args[key] = message;
+                  } else if (prop.default !== undefined) {
+                    args[key] = prop.default;
+                  } else if (types.includes('boolean')) {
+                    args[key] = false;
+                  } else if (types.includes('number') || types.includes('integer')) {
+                    args[key] = 0;
+                  } else {
+                    // Unknown required type without default — safer to fallback to agent to avoid tool error
+                    missingRequired = true;
                   }
                 });
+                if (missingRequired) {
+                  toolToExecute = '';
+                }
               }
             } catch {}
           }
+
+          // If no reasonable tool match, fallback to normal agent to avoid unnecessary tools/errors
+          if (!toolToExecute) {
+            onSubmit(message, {
+              model_name: baseModelName,
+              enable_thinking: thinkingEnabled,
+            });
+            if (!isControlled) setUncontrolledValue('');
+            setUploadedFiles([]);
+            setIsExecutingTool(false);
+            return;
+          }
           
-          toast.message('Executing tool...', { description: `${currentProfileName} - ${selectedToolName}` });
-          const resp = await pipedreamApi.executeTool(selectedProfileId, selectedToolName, args);
+          toast.message('Executing tool...', { description: `${currentProfileName} - ${toolToExecute}` });
+          // Emit a start event so the thread can show a loading assistant bubble
+          try {
+            if (threadId) {
+              const evtStart = new CustomEvent('chat-direct-tool-start', {
+                detail: {
+                  threadId,
+                  projectId,
+                  tool: toolToExecute,
+                  appName: currentProfileName,
+                  relevantTools: relevantToolCandidates,
+                  createdAt: new Date().toISOString(),
+                },
+              });
+              window.dispatchEvent(evtStart);
+            }
+          } catch {}
+          const resp = await pipedreamApi.executeTool(selectedProfileId, toolToExecute, args);
           
           if (resp.success) {
             const text = (function formatToolResult(result: any): string {
@@ -788,7 +1555,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                   metadata: JSON.stringify({
                     tool_execution: true,
                     tool_profile: selectedProfileId,
-                    tool_name: selectedToolName,
+                    tool_name: toolToExecute,
                     app_name: currentProfileName,
                     tool_purpose: currentToolPurpose,
                     tool_category: currentToolCategory,
@@ -801,20 +1568,36 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
               }
             }
             
-            // Emit an event so parent chat can add an assistant message
+            // Emit a comprehensive event with both user message and tool result for immediate UI update
             try {
-              const evt = new CustomEvent('chat-direct-tool-result', { 
+              const evt = new CustomEvent('chat-direct-tool-complete', { 
                 detail: { 
-                  role: 'assistant', 
-                  content: text, 
-                  tool: selectedToolName,
-                  threadId: threadId,
-                  projectId: projectId,
-                  toolPurpose: currentToolPurpose,
-                  toolCategory: currentToolCategory
+                  userMessage: {
+                    role: 'user',
+                    content: message,
+                    threadId: threadId,
+                    projectId: projectId,
+                    createdAt: new Date().toISOString(),
+                  },
+                  assistantMessage: {
+                    role: 'assistant', 
+                    content: text, 
+                    tool: toolToExecute,
+                    threadId: threadId,
+                    projectId: projectId,
+                    toolPurpose: currentToolPurpose,
+                    toolCategory: currentToolCategory,
+                    createdAt: new Date().toISOString(),
+                  }
                 } 
               });
               window.dispatchEvent(evt);
+              
+              // Signal done to hide any loaders
+              const evtDone = new CustomEvent('chat-direct-tool-done', {
+                detail: { threadId: threadId, projectId: projectId }
+              });
+              window.dispatchEvent(evtDone);
             } catch {}
             
             toast.success('Tool executed', { description: text.slice(0, 500) });
@@ -826,6 +1609,30 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
           toast.error('Tool execution error');
         } finally {
           setIsExecutingTool(false);
+          
+          // Remove router.refresh() to prevent page refresh requirement
+          // Instead, rely on custom events and query invalidation for UI updates
+          
+          // Refresh sidebar thread queries so updated_at/order are correct
+          try {
+            const pid = currentProjectId || contextProjectId;
+            queryClient.invalidateQueries({ queryKey: threadKeys.all });
+            if (pid) queryClient.invalidateQueries({ queryKey: threadKeys.project(pid) });
+            queryClient.invalidateQueries({ queryKey: projectKeys.all });
+            
+            // Also invalidate messages for the current thread to ensure fresh content
+            if (contextThreadId) {
+              queryClient.invalidateQueries({ queryKey: threadKeys.messages(contextThreadId) });
+            }
+          } catch {}
+          
+          // Always signal done to hide loaders even on failure
+          try {
+            const evtDone = new CustomEvent('chat-direct-tool-done', {
+              detail: { threadId: currentThreadId || contextThreadId, projectId: currentProjectId || contextProjectId }
+            });
+            window.dispatchEvent(evtDone);
+          } catch {}
         }
       } else {
         onSubmit(message, {
@@ -1045,9 +1852,9 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                   onSubmit={handleSubmit}
                   onTranscription={handleTranscription}
                   placeholder={dynamicPlaceholder}
-                  loading={loading}
+                  loading={loading || isExecutingTool}
                   disabled={disabled}
-                  isAgentRunning={isAgentRunning}
+                  isAgentRunning={isAgentRunning || isExecutingTool}
                   onStopAgent={onStopAgent}
                   isDraggingOver={isDraggingOver}
                   uploadedFiles={uploadedFiles}

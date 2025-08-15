@@ -9,6 +9,11 @@ export const useMessagesQuery = (threadId: string) =>
     {
       enabled: !!threadId,
       retry: 1,
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+      refetchOnReconnect: true,
+      staleTime: 0, // Always consider data stale to ensure fresh content
+      gcTime: 5 * 60 * 1000, // 5 minutes
     }
   )();
 

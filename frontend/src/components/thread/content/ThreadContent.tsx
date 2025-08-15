@@ -603,6 +603,19 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     }
   }, [agentStatus, scrollToBottom]);
 
+  // Auto-refresh messages when component becomes visible
+  React.useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && messages.length > 0) {
+        // Trigger a custom event to signal that messages should be refreshed
+        window.dispatchEvent(new CustomEvent('refresh-thread-messages'));
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [messages.length]);
+
   React.useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];

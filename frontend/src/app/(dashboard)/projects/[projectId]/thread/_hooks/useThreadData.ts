@@ -165,6 +165,58 @@ export function useThreadData(threadId: string, projectId: string): UseThreadDat
     }
   }, [messagesQuery.data, messagesQuery.status, isLoading, agentStatus, threadId]);
 
+  // Add automatic refetch when component becomes visible or when there are changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && messagesQuery.data && threadId) {
+        // Refetch messages when tab becomes visible to ensure fresh content
+        messagesQuery.refetch();
+      }
+    };
+
+    const handleFocus = () => {
+      if (messagesQuery.data && threadId) {
+        // Refetch messages when window gains focus
+        messagesQuery.refetch();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [messagesQuery, threadId]);
+
+  // Add periodic refetch to ensure messages stay fresh
+  useEffect(() => {
+    if (!threadId || !messagesQuery.data) return;
+
+    const interval = setInterval(() => {
+      // Only refetch if the tab is visible and not actively streaming
+      if (!document.hidden && agentStatus !== 'running' && agentStatus !== 'connecting') {
+        messagesQuery.refetch();
+      }
+    }, 30000); // Refetch every 30 seconds when conditions are met
+
+    return () => clearInterval(interval);
+  }, [threadId, messagesQuery, agentStatus]);
+
+  // Listen for custom refresh events
+  useEffect(() => {
+    const handleRefreshEvent = () => {
+      if (threadId && messagesQuery.data) {
+        console.log('[useThreadData] Refreshing messages due to visibility change');
+        messagesQuery.refetch();
+      }
+    };
+
+    window.addEventListener('refresh-thread-messages', handleRefreshEvent);
+    return () => window.removeEventListener('refresh-thread-messages', handleRefreshEvent);
+  }, [threadId, messagesQuery]);
+
   return {
     messages,
     setMessages,

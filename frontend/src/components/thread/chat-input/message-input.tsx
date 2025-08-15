@@ -228,6 +228,26 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                   >
                     {showToolSelector ? 'Hide' : 'Change tool'}
                   </button>
+                  {showToolSelector && toolControl.tools && toolControl.tools.length > 0 && (
+                    <Select
+                      value={toolControl.selectedToolName || undefined}
+                      onValueChange={(v) => {
+                        toolControl.onToolChange(v);
+                        setShowToolSelector(false);
+                      }}
+                    >
+                      <SelectTrigger className="h-7 py-0 px-2 text-xs w-[160px]">
+                        <SelectValue placeholder="Select tool" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {toolControl.tools.map((tool) => (
+                          <SelectItem key={tool} value={tool} className="text-xs">
+                            {tool}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 {toolControl.toolPurpose && toolControl.toolCategory && (
                   <div className="flex items-center gap-2">
@@ -240,34 +260,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                     </span>
                   </div>
                 )}
-                {/* Show all available tools for this profile */}
-                {toolControl.tools && toolControl.tools.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-accent-foreground/20">
-                    <span className="text-xs text-accent-foreground/50 mb-1 block">Available tools:</span>
-                    <div className="flex flex-wrap gap-1">
-                      {toolControl.tools.map((tool, index) => (
-                        <button
-                          key={index}
-                          onClick={() => {
-                            toolControl.onToolChange(tool);
-                            setShowToolSelector(false);
-                          }}
-                          title={`Click to use ${tool}`}
-                          className={`text-xs px-2 py-1 rounded-md transition-all cursor-pointer ${
-                            tool === toolControl.selectedToolName
-                              ? 'bg-accent-foreground/20 text-accent-foreground font-medium ring-1 ring-accent-foreground/30'
-                              : 'bg-accent-foreground/10 text-accent-foreground/70 hover:bg-accent-foreground/20 hover:text-accent-foreground hover:ring-1 hover:ring-accent-foreground/20'
-                          }`}
-                        >
-                          {tool}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="mt-2 text-xs text-accent-foreground/50">
-                      💡 Click any tool above to change the selection
-                    </div>
-                  </div>
-                )}
+                {/* Tool list replaced by inline dropdown; no visual grid of tools */}
               </div>
               {loading && (
                 <div className="flex items-center gap-1 ml-2 animate-in fade-in duration-200">
