@@ -34,7 +34,7 @@ export const AgentLoader = () => {
   }, []);
 
   return (
-    <div className="flex py-2 items-center w-full">
+    <div className="flex py-2 items-center w-full relative">
             <AnimatePresence>
             <motion.div
                 key={items[index].id}
