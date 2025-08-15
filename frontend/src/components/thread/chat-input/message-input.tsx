@@ -171,7 +171,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                         <span className="text-sm font-medium text-foreground">Helio o1</span>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
+                  <TooltipContent side="top" className="text-xs">
                     Our most powerful agent system
                   </TooltipContent>
                 </Tooltip>

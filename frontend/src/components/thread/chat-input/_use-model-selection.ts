@@ -216,7 +216,7 @@ export const MODEL_DESCRIPTIONS = {
 // Production-only models for Helio branding
 export const PRODUCTION_MODELS = {
   'helio-o1': {
-    id: 'bedrock/anthropic.claude-sonnet-4-20250514-v1:0',
+    id: 'moonshot/kimi-k2-turbo-preview',
     label: 'Helio o1',
     description: 'Our most powerful model for complex tasks',
     tier: 'free',
@@ -224,8 +224,9 @@ export const PRODUCTION_MODELS = {
     recommended: true,
     lowQuality: false,
     fallbacks: [
+      'bedrock/anthropic.claude-sonnet-4-20250514-v1:0',
       'openrouter/anthropic/claude-3-5-sonnet-20241022',
-      'openrouter/moonshot/kimi-k2-0711-preview'
+      'openrouter/z-ai/glm-4.5-air'
     ]
   }
 };
@@ -233,9 +234,10 @@ export const PRODUCTION_MODELS = {
 // Fallback model chain for production
 export const PRODUCTION_FALLBACK_CHAIN = {
   'helio-o1': [
+    'moonshot/kimi-k2-turbo-preview',       // Fallback 2: Kimi K2 from OpenRouter
     'bedrock/anthropic.claude-sonnet-4-20250514-v1:0', // Primary: Claude Sonnet 4 from Bedrock
-    'openrouter/anthropic/claude-3-5-sonnet-20241022', // Fallback 1: Claude Sonnet 4 from OpenRouter
-    'openrouter/moonshot/kimi-k2-0711-preview'         // Fallback 2: Kimi K2 from OpenRouter
+    'openrouter/anthropic/claude-3-5-sonnet-20241022',
+    'openrouter/z-ai/glm-4.5-air' // Fallback 1: Claude Sonnet 4 from OpenRouter
   ]
 };
 
