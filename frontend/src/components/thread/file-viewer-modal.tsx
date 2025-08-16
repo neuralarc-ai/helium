@@ -51,7 +51,27 @@ import { cn } from '@/lib/utils';
 
 // Define API_URL
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
-
+function getFileIcon(fileName: string) {
+  const extension = fileName.toLowerCase().split('.').pop();
+  
+  switch (extension) {
+    case 'html':
+    case 'htm':
+      return '/html.png';
+      case 'markdown':
+        case 'md':
+          return '/html.png';
+    case 'docx':
+    case 'doc':
+      return '/doc.png';
+    case 'csv':
+      return '/csv.png';
+    case 'pdf':
+      return '/pdf.png';
+    default:
+      return null; // Will use default File icon
+  }
+}
 interface FileViewerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1572,7 +1592,18 @@ export function FileViewerModal({
                           {file.is_dir ? (
                             <Folder className="h-9 w-9 text-blue-500" />
                           ) : (
-                            <File className="h-8 w-8 text-muted-foreground" />
+                            (() => {
+                              const iconPath = getFileIcon(file.name);
+                              return iconPath ? (
+                                <img 
+                                  src={iconPath} 
+                                  alt={`${file.name} icon`}
+                                  className="h-10 w-10 object-contain"
+                                />
+                              ) : (
+                                <File className="h-8 w-8 text-muted-foreground" />
+                              );
+                            })()
                           )}
                         </div>
                         <span className="text-xs text-center font-medium truncate max-w-full">

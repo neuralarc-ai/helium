@@ -296,7 +296,7 @@ export function FileAttachment({
                     <img 
                         src={getIconPath()}
                         alt={typeLabel} 
-                        className="h-9 w-9 object-contain opacity-70"
+                        className="h-10 w-10 object-contain opacity-70"
                         onError={handleImageError}
                     />
                 </div>
