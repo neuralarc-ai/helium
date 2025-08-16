@@ -221,7 +221,7 @@ export function CsvRenderer({
 
     const getCellClassName = (value: any) => {
         if (typeof value === 'number') {
-            return 'text-right font-mono';
+            return 'text-left font-mono';
         }
         if (typeof value === 'boolean') {
             return value ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';

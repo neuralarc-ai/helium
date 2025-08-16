@@ -35,6 +35,7 @@ interface AttachmentGroupProps {
     gridImageHeight?: number; // New prop for grid image height
     collapsed?: boolean; // Add new collapsed prop
     project?: Project; // Add project prop
+    displayMode?: 'inline' | 'grid'; // Pass displayMode through
 }
 
 export function AttachmentGroup({
@@ -48,7 +49,8 @@ export function AttachmentGroup({
     maxHeight = '216px',
     gridImageHeight = 180, // Increased from 120 for better visibility
     collapsed = true, // By default, HTML/MD files are collapsed
-    project // Add project prop
+    project,
+    displayMode = 'inline' // Add displayMode to props
 }: AttachmentGroupProps) {
     // State for modal
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -215,6 +217,7 @@ export function AttachmentGroup({
                             style={item.wrapperStyle}
                         >
                             <FileAttachment
+                                displayMode={displayMode}
                                 filepath={item.path}
                                 onClick={handleFileClick}
                                 sandboxId={sandboxId}
@@ -281,6 +284,7 @@ export function AttachmentGroup({
                     {visibleFilesWithMeta.map((item, index) => (
                         <div key={index} className={cn("relative group h-[54px]", item.wrapperClassName)}>
                             <FileAttachment
+                                displayMode={displayMode}
                                 filepath={item.path}
                                 onClick={handleFileClick}
                                 sandboxId={sandboxId}
@@ -437,6 +441,7 @@ export function AttachmentGroup({
                                     className={item.wrapperClassName}
                                 >
                                     <FileAttachment
+                                displayMode={displayMode}
                                         filepath={item.path}
                                         onClick={(path) => {
                                             handleFileClick(path);

@@ -2,7 +2,8 @@ import React from 'react';
 import {
     FileText, FileImage, FileCode, FileSpreadsheet, FileVideo,
     FileAudio, FileType, Database, Archive, File, ExternalLink,
-    Loader2
+    Loader2, FolderOpen, Info,
+    Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AttachmentGroup } from './attachment-group';
@@ -18,7 +19,7 @@ import { Project } from '@/lib/api';
 export type FileType =
     | 'image' | 'code' | 'text' | 'pdf'
     | 'audio' | 'video' | 'spreadsheet'
-    | 'archive' | 'database' | 'markdown'
+    | 'archive' | 'database' | 'markdown' | 'html'
     | 'csv'
     | 'document'
     | 'other';
@@ -58,7 +59,8 @@ function getFileIcon(type: FileType): React.ElementType {
         csv: FileSpreadsheet,
         archive: Archive,
         database: Database,
-        other: File
+        other: File,
+        html: FileText
     };
 
     return icons[type];
@@ -83,7 +85,8 @@ function getTypeLabel(type: FileType, extension?: string): string {
         archive: 'Archive',
         database: 'Database',
         document: 'Document',
-        other: 'File'
+        other: 'File',
+        html: 'HTML'
     };
 
     return labels[type];
@@ -108,7 +111,8 @@ function getFileSize(filepath: string, type: FileType): string {
         archive: 5.0,
         database: 4.0,
         document: 2.0,
-        other: 1.0
+        other: 1.0,
+        html: 0
     };
 
     const size = base * multipliers[type];
@@ -161,6 +165,7 @@ interface FileAttachmentProps {
      */
     collapsed?: boolean;
     project?: Project;
+    displayMode?: 'inline' | 'grid'; // Explicit display mode
 }
 
 // Cache fetched content between mounts to avoid duplicate fetches
@@ -177,7 +182,8 @@ export function FileAttachment({
     localPreviewUrl,
     customStyle,
     collapsed = true,
-    project
+    project,
+    displayMode = 'grid' // Default to inline
 }: FileAttachmentProps) {
     // Authentication 
     const { session } = useAuth();
@@ -193,16 +199,15 @@ export function FileAttachment({
     const typeLabel = getTypeLabel(fileType, extension);
     const fileSize = getFileSize(filepath, fileType);
     const IconComponent = getFileIcon(fileType);
-
     // Display flags
     const isImage = fileType === 'image';
     const isHtmlOrMd = extension === 'html' || extension === 'htm' || extension === 'md' || extension === 'markdown';
     const isCsv = extension === 'csv' || extension === 'tsv';
     const isPdf = extension === 'pdf';
-    const isGridLayout = customStyle?.gridColumn === '1 / -1' || Boolean(customStyle && ('--attachment-height' in customStyle));
-    // Define isInlineMode early, before any hooks
-    const isInlineMode = !isGridLayout;
-    const shouldShowPreview = (isHtmlOrMd || isCsv || isPdf) && showPreview && collapsed === false;
+    const isGridLayout = displayMode === 'grid';
+    const isInlineMode = displayMode === 'inline';
+    // Only show previews in grid layout, not inline
+    const shouldShowPreview = (isHtmlOrMd || isCsv || isPdf) && showPreview && collapsed === false && isGridLayout;
 
     // Use the React Query hook to fetch file content
     const {
@@ -393,6 +398,12 @@ export function FileAttachment({
         'tsv': CsvRenderer
     };
 
+    // Determine if this is a document type that should show an info icon
+    const isDocumentType = [
+        'pdf', 'document', 'markdown', 'text', 'csv', 
+        'spreadsheet', 'code', 'markdown', 'html'
+    ].includes(fileType);
+
     // HTML/MD/CSV/PDF preview when not collapsed and in grid layout
     if (shouldShowPreview && isGridLayout) {
         // Determine the renderer component
@@ -417,7 +428,8 @@ export function FileAttachment({
                 onClick={hasError ? handleClick : undefined} // Make clickable if error
             >
                 {/* Content area */}
-                <div className="h-full w-full relative">
+                <div className="h-full w-full relative group">
+                    
                     {/* Render PDF or text-based previews */}
                     {!hasError && (
                         <>
@@ -507,29 +519,64 @@ export function FileAttachment({
     const safeStyle = { ...customStyle };
     delete safeStyle.height;
     delete (safeStyle as any)['--attachment-height'];
+    
+    // Get the appropriate icon path based on file type
+    const getIconPath = () => {
+        switch (fileType) {
+            case 'pdf':
+                return '/pdf.png';
+            case 'markdown':
+                return '/html.png';
+            case 'csv':
+                return '/csv.png';
+            case 'document':
+                return '/doc.png';
+            case 'html':
+                return '/html.png';
+            case 'spreadsheet':
+                return '/csv.png';
+            case 'image':
+                return '/icons/image-icon.svg';
+            case 'code':
+                return '/icons/code-icon.svg';
+            default:
+                return '/icons/file-icon.svg';
+        }
+    };
 
     return (
         <button
             onClick={handleClick}
             className={cn(
-                "group flex rounded-xl transition-all duration-200 min-h-[54px] h-[54px] overflow-hidden cursor-pointer",
+                "group flex rounded-xl transition-all duration-200 h-[54px] overflow-hidden cursor-pointer",
                 "border border-black/10 dark:border-white/10",
                 "bg-sidebar",
                 "text-left",
-                "pr-7", // Right padding for X button
-                isInlineMode
-                    ? "min-w-[170px] w-full sm:max-w-[300px] sm:w-fit" // Full width on mobile, constrained on larger screens
-                    : "min-w-[170px] max-w-[300px] w-fit", // Original constraints for grid layout
+                isInlineMode 
+                    ? "w-full sm:w-[calc(50%-0.5rem)] h-[54px] min-h-[54px]" // Two items per row with gap, fixed height
+                    : "min-w-full max-w-full w-fit h-auto", // Original constraints for grid layout
                 className
             )}
             style={safeStyle}
             title={filename}
         >
-            <div className="relative min-w-[54px] w-[54px] h-full aspect-square flex-shrink-0 bg-black/5 dark:bg-white/5">
-                <div className="flex items-center justify-center h-full w-full">
-                    <IconComponent className="h-5 w-5 text-black/60 dark:text-white/60" />
-                </div>
+            <div className="relative min-w-[47px] h-[54px] flex-shrink-0 flex items-center justify-center">
+                <img 
+                    src={getIconPath()} 
+                    alt={fileType} 
+                    className={cn(
+                        "h-9 w-9 object-contain",
+                        isDocumentType ? "opacity-90" : "opacity-70"
+                    )} 
+                    onError={(e) => {
+                        // Fallback to default icon if custom icon fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/html.png';
+                    }}
+                />
             </div>
+
+           
 
             <div className="flex-1 min-w-0 flex flex-col justify-center p-2 pl-3 overflow-hidden">
                 <div className="text-sm font-medium text-foreground truncate max-w-full">
@@ -541,6 +588,19 @@ export function FileAttachment({
                     <span className="text-black/60 dark:text-white/60 flex-shrink-0">{fileSize}</span>
                 </div>
             </div>
+            
+ {/* Info icon for documents - shown on hover */}
+ {isDocumentType && (
+                <div 
+                    className="ml-2 mr-2 opacity-0 group-hover:opacity-70 transition-opacity cursor-pointer hover:opacity-100 flex items-center"
+                    onClick={(e) => {
+                        e.stopPropagation(); // Prevent triggering the parent button click
+                        handleClick();
+                    }}
+                >
+                    <Eye className="h-5 w-5 text-muted-foreground m-1" />
+                </div>
+            )}
         </button>
     );
 }
@@ -553,6 +613,7 @@ interface FileAttachmentGridProps {
     showPreviews?: boolean;
     collapsed?: boolean;
     project?: Project;
+    displayMode?: 'inline' | 'grid'; // Pass displayMode through
 }
 
 export function FileAttachmentGrid({
@@ -562,21 +623,77 @@ export function FileAttachmentGrid({
     sandboxId,
     showPreviews = true,
     collapsed = false,
-    project
+    project,
+    displayMode = 'grid' // Default to grid for better previews
 }: FileAttachmentGridProps) {
     if (!attachments || attachments.length === 0) return null;
 
+    // Show only first 3 attachments when collapsed and there are more than 3
+    const showViewAll = attachments.length > 3;
+    const visibleAttachments = collapsed && showViewAll 
+        ? attachments.slice(0, 3) 
+        : attachments;
+    
+
+    if (displayMode === 'inline') {
+        return (
+            <div className="flex flex-col gap-2">
+                {attachments.map((filepath, index) => (
+                    <FileAttachment
+                        key={`${filepath}-${index}`}
+                        filepath={filepath}
+                        onClick={() => onFileClick?.(filepath, attachments)}
+                        sandboxId={sandboxId}
+                        showPreview={showPreviews}
+                        project={project}
+                        displayMode="inline"
+                    />
+                ))}
+            </div>
+        );
+    }
+
     return (
-        <AttachmentGroup
-            files={attachments}
-            onFileClick={onFileClick}
-            className={className}
-            sandboxId={sandboxId}
-            showPreviews={showPreviews}
-            layout="grid"
-            gridImageHeight={150} // Use larger height for grid layout
-            collapsed={collapsed}
-            project={project}
-        />
+        <div className="w-full">
+            <div className="flex flex-wrap gap-2">
+                {visibleAttachments.map((filepath, index) => (
+                    <div key={`${filepath}-${index}`} className="w-[calc(50%-0.25rem)]">
+                        <FileAttachment
+                            filepath={filepath}
+                            onClick={() => onFileClick?.(filepath, attachments)}
+                            sandboxId={sandboxId}
+                            showPreview={showPreviews}
+                            project={project}
+                            displayMode="grid"
+                        />
+                    </div>
+                ))}
+                
+                {/* View all button - shown as third item when there are more than 3 documents */}
+                {showViewAll && (
+                    <div className="w-[calc(50%-0.25rem)] h-[54px] flex items-center">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onFileClick?.(undefined, attachments);
+                            }}
+                            className={cn(
+                                "w-full h-[54px] flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl",
+                                "bg-sidebar hover:bg-accent/10 transition-colors",
+                                "text-sm font-medium text-foreground",
+                                "border border-black/10 dark:border-white/10"
+                            )}
+                        >
+                            <div className="flex items-center gap-1.5">
+                                <FolderOpen className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                <div className="flex flex-col items-start">
+                                    <span className="text-[11px] leading-none">View all</span>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 } 
