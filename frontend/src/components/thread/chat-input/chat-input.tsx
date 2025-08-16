@@ -407,7 +407,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                 <BorderBeam duration={6} borderWidth={1} size={200} className="from-transparent via-helium-teal to-transparent"/>
                 <BorderBeam duration={6} borderWidth={1} delay={3} size={200} className="from-transparent via-helium-pink to-transparent"/>
               </div>
-                {/* Action Buttons - Moved above MessageInput */}
+                {/* Action Buttons - Moved above MessageInput
                 {enableAdvancedConfig && selectedAgentId && (
                   <div className="w-full border-b border-muted/20 px-4 py-1.5 mb-2">
                     <div className="flex items-center justify-between">
@@ -472,7 +472,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                       </div>
                     </div>
                   </div>
-                )}
+                )} */}
                 
                 <AttachmentGroup
                   files={uploadedFiles || []}
