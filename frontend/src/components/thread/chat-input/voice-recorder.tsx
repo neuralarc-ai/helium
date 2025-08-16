@@ -58,6 +58,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   disabled = false,
   className,
 }) => {
+  const { spokenLanguageCode } = useSpokenLanguage();
   const [state, setState] = useState<'idle' | 'recording' | 'processing'>('idle');
   const [volume, setVolume] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -66,11 +67,13 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   const [interimTranscript, setInterimTranscript] = useState('');
   const [finalTranscript, setFinalTranscript] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const { spokenLanguageCode } = useSpokenLanguage();
   const lastFinalTranscript = useRef('');
   const lastUpdateTime = useRef(0);
   const updateQueue = useRef<{transcript: string; isFinal: boolean}[]>([]);
   const isProcessing = useRef(false);
+  // Keep a ref of state to avoid stale closures in event handlers
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
 
   const recognitionRef = useRef<any>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -78,6 +81,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const deviceChangeHandlerRef = useRef<((this: MediaDevices, ev: Event) => any) | null>(null);
 
   // Process queue function to handle speech recognition results
   const processQueue = () => {
@@ -93,18 +97,25 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     const { transcript, isFinal } = updateQueue.current.shift()!;
     
     if (isFinal) {
+      // For final results, update the final transcript and keep it in the chat
       if (transcript && transcript !== lastFinalTranscript.current) {
-        lastFinalTranscript.current = transcript;
-        setFinalTranscript(transcript);
-        onTranscription(transcript);
+        const updatedTranscript = finalTranscript 
+          ? `${finalTranscript} ${transcript}`
+          : transcript;
+          
+        lastFinalTranscript.current = updatedTranscript;
+        setFinalTranscript(updatedTranscript);
+        onTranscription(updatedTranscript);
       }
-      setInterimTranscript('');
+      // Don't clear interim transcript on final result to maintain context
     } else {
-      setInterimTranscript(transcript);
-      // Only update if this is new information
-      if (transcript && !lastFinalTranscript.current.endsWith(transcript)) {
-        onTranscription(transcript);
-      }
+      // For interim results, update the display but keep the final transcript
+      const fullTranscript = finalTranscript 
+        ? `${finalTranscript} ${transcript}`
+        : transcript;
+        
+      setInterimTranscript(fullTranscript);
+      onTranscription(fullTranscript);
     }
     
     lastUpdateTime.current = now;
@@ -116,7 +127,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     }
   };
 
-  // Initialize speech recognition
+  // Initialize speech recognition (once)
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -127,11 +138,13 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     }
 
     // Create new recognition instance with current language
-    recognitionRef.current = new SpeechRecognition() as VoiceRecognition;
-    recognitionRef.current.lang = spokenLanguageCode;
+    recognitionRef.current = new SpeechRecognition();
     recognitionRef.current.continuous = true;
     recognitionRef.current.interimResults = true;
     recognitionRef.current.maxAlternatives = 1;
+    
+    // Set the language based on the selected spoken language
+    recognitionRef.current.lang = spokenLanguageCode || 'en-US';
     
     // @ts-ignore - experimental feature for faster response
     recognitionRef.current.continuous = true;
@@ -144,18 +157,11 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       setIsSpeaking(false);
     };
 
-    let silenceTimer: NodeJS.Timeout;
-    
     recognitionRef.current.onresult = (event: VoiceRecognitionEvent) => {
       const result = event.results[event.resultIndex];
       if (!result || !result[0]) return;
       
       const transcript = result[0].transcript.trim();
-      
-      // Clear any existing silence timer for final results
-      if (result.isFinal) {
-        if (silenceTimer) clearTimeout(silenceTimer);
-      }
       
       // Add to queue for processing
       updateQueue.current.push({
@@ -167,40 +173,66 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       if (!isProcessing.current) {
         requestAnimationFrame(processQueue);
       }
-      
-      // Set a timer to detect end of speech
-      if (!result.isFinal) {
-        if (silenceTimer) clearTimeout(silenceTimer);
-        silenceTimer = setTimeout(() => {
-          if (transcript) {
-            updateQueue.current.push({
-              transcript,
-              isFinal: true
-            });
-            if (!isProcessing.current) {
-              requestAnimationFrame(processQueue);
-            }
-          }
-        }, 300); // Shorter delay for more responsive feel
-      }
     };
 
     recognitionRef.current.onerror = (event: any) => {
-      console.error('Speech recognition error', event.error);
-      setError(`Error: ${event.error}`);
-      stopRecording();
+      const err = (event && (event.error || event.name)) || 'unknown';
+      console.error('Speech recognition error', err, event);
+      // Handle recoverable vs fatal errors
+      const recoverableErrors = new Set(['no-speech', 'aborted', 'network', 'service-not-allowed', 'invalid-state']);
+      const permissionErrors = new Set(['not-allowed', 'audio-capture']);
+
+      if (permissionErrors.has(err)) {
+        // Permission denied or no mic available
+        setError(
+          err === 'audio-capture'
+            ? 'No microphone found. Please connect a microphone and try again.'
+            : 'Microphone access denied. Please grant permission in your browser settings and retry.'
+        );
+        stopRecording();
+        return;
+      }
+
+      if (recoverableErrors.has(err)) {
+        // Attempt to auto-recover if we are still recording
+        if (stateRef.current === 'recording') {
+          try {
+            recognitionRef.current?.stop();
+          } catch {}
+          setTimeout(() => {
+            try {
+              if (stateRef.current === 'recording') recognitionRef.current?.start();
+            } catch (e) {
+              console.error('Failed to recover recognition after error:', e);
+            }
+          }, 150);
+        }
+        return;
+      }
+
+      // Unknown error: show message but don't permanently disable retry
+      setError('Speech recognition error. Try again.');
+      // Do not call stopRecording() here to avoid tearing down mic unnecessarily
     };
 
     recognitionRef.current.onend = () => {
-      if (state === 'recording') {
+      if (stateRef.current === 'recording') {
         console.log('Speech recognition ended, restarting...');
-        try {
-          recognitionRef.current?.start();
-        } catch (e) {
-          console.error('Error restarting speech recognition:', e);
-          setError('Error with voice recognition. Please try again.');
-          stopRecording();
-        }
+        // Add a small delay before restarting to prevent rapid restarts
+        setTimeout(() => {
+          if (stateRef.current === 'recording' && recognitionRef.current) {
+            try {
+              recognitionRef.current.start();
+            } catch (e) {
+              console.error('Error restarting speech recognition:', e);
+              // Only show error if we're still supposed to be recording
+              if (stateRef.current === 'recording') {
+                setError('Error with voice recognition. Please try again.');
+                stopRecording();
+              }
+            }
+          }
+        }, 300);
       }
     };
 
@@ -209,7 +241,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         recognitionRef.current.stop();
       }
     };
-  }, [onTranscription, state, finalTranscript]);
+  }, []);
 
   // Handle volume visualization
   const analyzeVolume = () => {
@@ -240,9 +272,10 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       setState('recording');
       setError(null);
       setRecordingTime(0);
-      setFinalTranscript('');
+      // Don't clear final transcript when starting a new recording
+      // to maintain conversation history
       setInterimTranscript('');
-      lastFinalTranscript.current = '';
+      lastFinalTranscript.current = finalTranscript || '';
       updateQueue.current = [];
       isProcessing.current = false;
       lastUpdateTime.current = 0;
@@ -260,9 +293,73 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         }
       }
 
-      // Request microphone access
+      // Ensure secure context (required by most browsers for mic access)
+      const isLocalhost = typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+      if (typeof window !== 'undefined' && !window.isSecureContext && !isLocalhost) {
+        throw Object.assign(new Error('Microphone requires HTTPS. Open the app over https:// or use localhost.'), { name: 'SecurityError' });
+      }
+
+      // Check Permissions API (best-effort, not supported everywhere)
+      if (typeof navigator !== 'undefined' && (navigator as any).permissions?.query) {
+        try {
+          const status = await (navigator as any).permissions.query({ name: 'microphone' as any });
+          if (status.state === 'denied') {
+            throw Object.assign(new Error('Microphone permission is denied. Please enable it in site settings and retry.'), { name: 'NotAllowedError' });
+          }
+        } catch {
+          // Ignore permissions API errors; we'll fallback to getUserMedia prompt
+        }
+      }
+
+      // Request microphone access (will prompt if needed)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
+      // If the audio input device goes away (USB unplug, OS revoke), try to recover
+      const [track] = stream.getAudioTracks();
+      if (track) {
+        track.onended = async () => {
+          console.warn('Microphone track ended; attempting to re-acquire...');
+          if (stateRef.current !== 'recording') return;
+          try {
+            // Tear down current audio context resources
+            if (animationFrameRef.current) {
+              cancelAnimationFrame(animationFrameRef.current);
+              animationFrameRef.current = null;
+            }
+            if (audioContextRef.current) {
+              await audioContextRef.current.close();
+              audioContextRef.current = null;
+            }
+            // Get a fresh stream
+            const newStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaStreamRef.current = newStream;
+            const newTrack = newStream.getAudioTracks()[0];
+            if (newTrack) {
+              newTrack.onended = track.onended as any;
+            }
+            // Recreate audio nodes
+            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            audioContextRef.current = audioContext;
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 32;
+            analyserRef.current = analyser;
+            const source = audioContext.createMediaStreamSource(newStream);
+            source.connect(analyser);
+            animationFrameRef.current = requestAnimationFrame(analyzeVolume);
+            // Ensure recognition is running
+            try {
+              recognitionRef.current?.stop();
+            } catch {}
+            setTimeout(() => {
+              try { if (stateRef.current === 'recording') recognitionRef.current?.start(); } catch {}
+            }, 100);
+          } catch (e) {
+            console.error('Failed to re-acquire microphone:', e);
+            setError('Lost access to the microphone. Please check your device and try again.');
+            stopRecording();
+          }
+        };
+      }
 
       // Set up audio context for volume visualization
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -285,9 +382,65 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
           // Removed auto-stop to keep mic on until user stops it
       // Recording can be manually stopped by the user
-    } catch (err) {
-      console.error('Error accessing microphone:', err);
-      setError('Could not access microphone. Please ensure you have granted microphone permissions.');
+
+      // Listen for device changes (e.g., mic unplugged/replugged) and try to recover
+      if (navigator.mediaDevices && 'addEventListener' in navigator.mediaDevices) {
+        const handler = async () => {
+          if (stateRef.current !== 'recording') return;
+          console.warn('Media devices changed; attempting to re-acquire microphone...');
+          try {
+            const newStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Replace current stream
+            if (mediaStreamRef.current) {
+              mediaStreamRef.current.getTracks().forEach(t => t.stop());
+            }
+            mediaStreamRef.current = newStream;
+            const newTrack = newStream.getAudioTracks()[0];
+            if (newTrack) {
+              // Reuse the same onended logic as above
+              newTrack.onended = (mediaStreamRef.current?.getAudioTracks()[0]?.onended || null) as any;
+            }
+            // Rebuild audio graph
+            if (animationFrameRef.current) {
+              cancelAnimationFrame(animationFrameRef.current);
+              animationFrameRef.current = null;
+            }
+            if (audioContextRef.current) {
+              await audioContextRef.current.close();
+              audioContextRef.current = null;
+            }
+            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            audioContextRef.current = audioContext;
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 32;
+            analyserRef.current = analyser;
+            const source = audioContext.createMediaStreamSource(newStream);
+            source.connect(analyser);
+            animationFrameRef.current = requestAnimationFrame(analyzeVolume);
+            // Ensure recognition runs
+            try { recognitionRef.current?.stop(); } catch {}
+            setTimeout(() => { try { if (stateRef.current === 'recording') recognitionRef.current?.start(); } catch {} }, 150);
+          } catch (e) {
+            console.error('Failed to re-acquire mic after devicechange:', e);
+          }
+        };
+        deviceChangeHandlerRef.current = handler as any;
+        navigator.mediaDevices.addEventListener('devicechange', handler);
+      }
+    } catch (err: any) {
+      const name = err?.name || 'Error';
+      console.error('Error accessing microphone:', name, err);
+      let message = 'Could not access microphone. Please ensure you have granted microphone permissions.';
+      if (name === 'NotAllowedError') {
+        message = 'Microphone access denied. Click the mic icon again after allowing access in your browser.';
+      } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        message = 'No microphone found. Please connect a microphone and try again.';
+      } else if (name === 'SecurityError') {
+        message = 'Microphone requires a secure context (HTTPS) or localhost. Open the app over https:// or use localhost and try again.';
+      } else if (name === 'NotReadableError') {
+        message = 'Microphone is in use by another application. Close other apps using the mic and try again.';
+      }
+      setError(message);
       setState('idle');
     }
   };
@@ -317,57 +470,70 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       animationFrameRef.current = null;
     }
 
+    // Remove devicechange listener
+    if (navigator.mediaDevices && deviceChangeHandlerRef.current && 'removeEventListener' in navigator.mediaDevices) {
+      try { navigator.mediaDevices.removeEventListener('devicechange', deviceChangeHandlerRef.current); } catch {}
+      deviceChangeHandlerRef.current = null;
+    }
+
     // Clear recording timeout
     if (recordingTimeoutRef.current) {
       clearTimeout(recordingTimeoutRef.current);
       recordingTimeoutRef.current = null;
     }
 
-    // If there's any remaining interim text, finalize it
+    // Finalize any remaining interim text
     if (interimTranscript) {
-      const combinedTranscript = finalTranscript + ' ' + interimTranscript;
+      const combinedTranscript = finalTranscript 
+        ? `${finalTranscript} ${interimTranscript}`
+        : interimTranscript;
+      
       setFinalTranscript(combinedTranscript);
       onTranscription(combinedTranscript.trim());
       setInterimTranscript('');
     }
 
+    // Reset state but don't clear the final transcript
     setState('idle');
     setVolume(0);
   };
 
   // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    if (state === 'idle') return;
+    
+    let interval: NodeJS.Timeout;
     
     if (isTimerRunning) {
       interval = setInterval(() => {
-        setRecordingTime(prevTime => prevTime + 1);
+        setRecordingTime((prevTime) => prevTime + 1);
       }, 1000);
     }
     
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isTimerRunning]);
+  }, [state, isTimerRunning]);
+  
+  // (Removed duplicate language-change effect)
 
-  // Handle language changes
+  // Handle language changes (lightweight): update recognition language or restart recognition only,
+  // without tearing down the microphone stream.
   useEffect(() => {
-    if (recognitionRef.current && state === 'recording') {
-      // If we're currently recording and the language changes,
-      // we need to restart the recognition with the new language
-      const wasRecording = state === 'recording';
-      if (wasRecording) {
-        stopRecording();
-        // Small delay to ensure recognition is properly stopped before restarting
+    if (recognitionRef.current) {
+      if (state === 'recording') {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+        recognitionRef.current.lang = spokenLanguageCode || 'en-US';
         setTimeout(() => {
-          startRecording();
+          try { if (state === 'recording') recognitionRef.current.start(); } catch {}
         }, 100);
+      } else {
+        recognitionRef.current.lang = spokenLanguageCode || 'en-US';
       }
-    } else if (recognitionRef.current) {
-      // Just update the language if we're not currently recording
-      recognitionRef.current.lang = spokenLanguageCode;
     }
-  }, [spokenLanguageCode]);
+  }, [spokenLanguageCode, state]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -380,6 +546,10 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       }
       if (recognitionRef.current) {
         recognitionRef.current.stop();
+      }
+      if (navigator.mediaDevices && deviceChangeHandlerRef.current && 'removeEventListener' in navigator.mediaDevices) {
+        try { navigator.mediaDevices.removeEventListener('devicechange', deviceChangeHandlerRef.current); } catch {}
+        deviceChangeHandlerRef.current = null;
       }
       stopRecording();
     };
@@ -444,7 +614,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
               variant={getButtonVariant()}
               size="sm"
               onClick={state === 'recording' ? stopRecording : startRecording}
-              disabled={disabled || state === 'processing' || !!error}
+              disabled={disabled || state === 'processing'}
               className={cn(
                 'h-fit p-2 rounded-full aspect-square transition-all',
                 state === 'recording' && 'bg-red-500 hover:bg-red-600 text-white',
