@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
+  CheckIcon,
   MessageCircleQuestion,
-  CheckCircle,
-  AlertTriangle,
-  Loader2,
-  Clock,
   MessageSquare,
   Paperclip,
 } from 'lucide-react';
@@ -74,15 +71,16 @@ export function AskToolView({
       <CardHeader className="h-9 bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 space-y-2 rounded-t-lg">
         <div className="flex flex-row items-center justify-between">
           <div className="flex items-center w-full justify-center gap-1">
-            <MessageCircleQuestion className="w-4 h-4 text-muted-foreground" />
+            <CheckIcon className="w-4 h-4 text-muted-foreground" />
+            
             <div>
               <CardTitle className="text-sm font-semibold text-muted-foreground">
-                Helium is waiting for your response...
+                Helium has completed your request
               </CardTitle>
             </div>
           </div>
 
-          {!isStreaming && (
+          {/* {!isStreaming && (
             <Badge
               variant="secondary"
               className={
@@ -105,7 +103,7 @@ export function AskToolView({
               <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
               Asking user
             </Badge>
-          )}
+          )} */}
         </div>
       </CardHeader>
 
