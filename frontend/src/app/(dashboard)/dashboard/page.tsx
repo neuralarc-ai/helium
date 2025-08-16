@@ -1,14 +1,31 @@
+'use client';
+
 import { cn } from "@/lib/utils";
 import { DashboardContent } from "../../../components/dashboard/dashboard-content";
 import { BackgroundAALChecker } from "@/components/auth/background-aal-checker";
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isFlagEnabled } from "@/lib/feature-flags";
 
-export default async function DashboardPage() {
+export default function DashboardPage() {
+  const [languageKey, setLanguageKey] = useState(0);
+
+  // Listen for language changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'preferredLanguage') {
+        setLanguageKey(prev => prev + 1);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   return (
     <BackgroundAALChecker>
       <Suspense
+        key={languageKey}
         fallback={
           <div className="flex flex-col h-full w-full">
             <div className="flex-1 flex flex-col items-center justify-center px-4">
@@ -27,7 +44,7 @@ export default async function DashboardPage() {
           </div>
         }
       >
-        <DashboardContent />
+        <DashboardContent key={`dashboard-${languageKey}`} />
       </Suspense>
     </BackgroundAALChecker>
   );

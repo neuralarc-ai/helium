@@ -423,9 +423,18 @@ const TOOL_DISPLAY_NAMES = new Map([
   ['configure_mcp_server', 'Configuring MCP Server'],
   ['get_popular_mcp_servers', 'Getting Popular MCP Servers'],
   ['test_mcp_server_connection', 'Testing MCP Server Connection'],
-
+  ['langchain', 'LangChain'],
+  ['llamaindex', 'LlamaIndex'],
+  ['composio', 'Composio'],
+  ['openai', 'OpenAI'],
+  ['anthropic', 'Anthropic'],
+  ['exa', 'Exa Search'],
+  ['github', 'GitHub'],
+  ['notion', 'Notion'],
+  ['slack', 'Slack'],
+  ['filesystem', 'File System'],
+  ['memory', 'Memory'],
 ]);
-
 
 const MCP_SERVER_NAMES = new Map([
   ['exa', 'Exa Search'],
@@ -434,6 +443,11 @@ const MCP_SERVER_NAMES = new Map([
   ['slack', 'Slack'],
   ['filesystem', 'File System'],
   ['memory', 'Memory'],
+  ['anthropic', 'Anthropic'],
+  ['openai', 'OpenAI'],
+  ['composio', 'Composio'],
+  ['langchain', 'LangChain'],
+  ['llamaindex', 'LlamaIndex']
 ]);
 
 function formatMCPToolName(serverName: string, toolName: string): string {

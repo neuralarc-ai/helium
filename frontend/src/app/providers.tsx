@@ -5,6 +5,8 @@ import { useState, createContext, useEffect } from 'react';
 import { AuthProvider } from '@/components/AuthProvider';
 import { ReactQueryProvider } from '@/providers/react-query-provider';
 import { dehydrate, QueryClient } from '@tanstack/react-query';
+import { SpokenLanguageProvider } from '@/contexts/SpokenLanguageContext';
+import { I18nProvider } from '@/lib/i18n-clients';
 
 export interface ParsedTag {
   tagName: string;
@@ -42,18 +44,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthProvider>
-      <ToolCallsContext.Provider value={{ toolCalls, setToolCalls }}>
-        <ThemeProvider 
-          attribute="class" 
-          defaultTheme="light" 
-          enableSystem={false}
-          disableTransitionOnChange={false}
-        >
-          <ReactQueryProvider dehydratedState={dehydratedState}>
-            {children}
-          </ReactQueryProvider>
-        </ThemeProvider>
-      </ToolCallsContext.Provider>
+      <I18nProvider>
+        <ToolCallsContext.Provider value={{ toolCalls, setToolCalls }}>
+          <ThemeProvider 
+            attribute="class" 
+            defaultTheme="dark" 
+            enableSystem={false}
+          >
+            <SpokenLanguageProvider>
+              <ReactQueryProvider dehydratedState={dehydratedState}>
+                {children}
+              </ReactQueryProvider>
+            </SpokenLanguageProvider>
+          </ThemeProvider>
+        </ToolCallsContext.Provider>
+      </I18nProvider>
     </AuthProvider>
   );
 }

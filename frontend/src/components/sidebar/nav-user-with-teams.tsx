@@ -20,6 +20,7 @@ import {
   Moon,
   KeyRound,
   Pencil,
+  Languages,
 } from 'lucide-react';
 import { useAccounts } from '@/hooks/use-accounts';
 import NewTeamForm from '@/components/basejump/new-team-form';
@@ -283,6 +284,15 @@ export function NavUserWithTeams({
                     </div>
                   </div>
                 </DropdownMenuLabel>
+                
+                {/* Language Button */}
+                <DropdownMenuItem asChild>
+                  <Link href="/settings/language" className="w-full">
+                    <Languages className="h-4 w-4 mr-2" />
+                    Language
+                  </Link>
+                </DropdownMenuItem>
+                
                 <DropdownMenuSeparator />
 
                 {/* Teams Section */}

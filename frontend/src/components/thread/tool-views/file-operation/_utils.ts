@@ -325,93 +325,98 @@ export const getOperationType = (name?: string, assistantContent?: any): FileOpe
     if (name.includes('create')) return 'create';
     if (name.includes('rewrite')) return 'rewrite';
     if (name.includes('delete')) return 'delete';
-    if (name.includes('edit-file')) return 'edit'; // Specific for edit_file
+    if (name.includes('edit-file')) return 'edit';
     if (name.includes('str-replace')) return 'str-replace';
   }
 
   if (!assistantContent) return 'create';
 
-  // Assuming normalizeContentToString is imported from existing utils
   const contentStr = typeof assistantContent === 'string' ? assistantContent : JSON.stringify(assistantContent);
   if (!contentStr) return 'create';
 
   if (contentStr.includes('<create-file>')) return 'create';
   if (contentStr.includes('<full-file-rewrite>')) return 'rewrite';
   if (contentStr.includes('<edit-file>')) return 'edit';
-  if (
-    contentStr.includes('delete-file') ||
-    contentStr.includes('<delete>')
-  )
-    return 'delete';
-
+  if (contentStr.includes('delete-file') || contentStr.includes('<delete>')) return 'delete';
+  if (contentStr.includes('str-replace')) return 'str-replace';
+  
+  // Check for common patterns in content
   if (contentStr.toLowerCase().includes('create file')) return 'create';
-  if (contentStr.toLowerCase().includes('rewrite file'))
-    return 'rewrite';
+  if (contentStr.toLowerCase().includes('rewrite file')) return 'rewrite';
   if (contentStr.toLowerCase().includes('edit file')) return 'edit';
   if (contentStr.toLowerCase().includes('delete file')) return 'delete';
+  if (contentStr.toLowerCase().includes('replace text')) return 'str-replace';
+  
+  if (contentStr.includes('delete-file') || contentStr.includes('<delete>')) {
+    return 'delete';
+  }
 
+  if (contentStr.toLowerCase().includes('create file')) return 'create';
+  if (contentStr.toLowerCase().includes('rewrite file')) return 'rewrite';
+  if (contentStr.toLowerCase().includes('edit file')) return 'edit';
+  if (contentStr.toLowerCase().includes('replace text') || contentStr.includes('str-replace')) return 'str-replace';
+  
+  // Default to create if no specific operation is detected
   return 'create';
-};
+}
 
-export const getOperationConfigs = (): Record<FileOperation, OperationConfig> => {
-  return {
+export const getOperationConfigs = (): Record<FileOperation, OperationConfig> => ({
   create: {
-    icon: FilePen,
-      color: 'text-green-600',
+    icon: FileSpreadsheet,
+    color: 'text-green-500',
+    hoverColor: 'hover:text-green-600',
     successMessage: 'File created successfully',
     progressMessage: 'Creating file...',
-      bgColor: 'bg-green-50',
-      gradientBg: 'from-green-50 to-green-100',
-      borderColor: 'border-green-200',
-      badgeColor: 'bg-green-100 text-green-700 border-green-200',
-      hoverColor: 'hover:bg-green-100',
-    },
-    edit: {
-      icon: Replace,
-      color: 'text-blue-600',
-      successMessage: 'File edited successfully',
-      progressMessage: 'Editing file...',
-      bgColor: 'bg-blue-50',
-      gradientBg: 'from-blue-50 to-blue-100',
-      borderColor: 'border-blue-200',
-      badgeColor: 'bg-blue-100 text-blue-700 border-blue-200',
-      hoverColor: 'hover:bg-blue-100',
+    bgColor: 'bg-green-50',
+    gradientBg: 'from-green-50 to-green-100',
+    borderColor: 'border-green-200',
+    badgeColor: 'bg-green-100 text-green-800',
   },
   rewrite: {
     icon: Replace,
-      color: 'text-amber-600',
+    color: 'text-blue-500',
+    hoverColor: 'hover:text-blue-600',
     successMessage: 'File rewritten successfully',
     progressMessage: 'Rewriting file...',
-      bgColor: 'bg-amber-50',
-      gradientBg: 'from-amber-50 to-amber-100',
-      borderColor: 'border-amber-200',
-      badgeColor: 'bg-amber-100 text-amber-700 border-amber-200',
-      hoverColor: 'hover:bg-amber-100',
-  },
-  delete: {
-    icon: Trash2,
-      color: 'text-red-600',
-    successMessage: 'File deleted successfully',
-    progressMessage: 'Deleting file...',
-      bgColor: 'bg-red-50',
-      gradientBg: 'from-red-50 to-red-100',
-      borderColor: 'border-red-200',
-      badgeColor: 'bg-red-100 text-red-700 border-red-200',
-      hoverColor: 'hover:bg-red-100',
-  },
-  'str-replace': {
-    icon: Replace,
-    color: 'text-blue-600',
-    successMessage: 'String replaced successfully',
-    progressMessage: 'Replacing string...',
     bgColor: 'bg-blue-50',
     gradientBg: 'from-blue-50 to-blue-100',
     borderColor: 'border-blue-200',
-    badgeColor: 'bg-blue-100 text-blue-700 border-blue-200',
-    hoverColor: 'hover:bg-blue-100',
+    badgeColor: 'bg-blue-100 text-blue-800',
   },
-  };
-};
+  'delete': {
+    icon: Trash2,
+    color: 'text-red-500',
+    hoverColor: 'hover:text-red-600',
+    successMessage: 'File deleted successfully',
+    progressMessage: 'Deleting file...',
+    bgColor: 'bg-red-50',
+    gradientBg: 'from-red-50 to-red-100',
+    borderColor: 'border-red-200',
+    badgeColor: 'bg-red-100 text-red-800',
+  },
+  edit: {
+    icon: FilePen,
+    color: 'text-purple-500',
+    hoverColor: 'hover:text-purple-600',
+    successMessage: 'File edited successfully',
+    progressMessage: 'Editing file...',
+    bgColor: 'bg-purple-50',
+    gradientBg: 'from-purple-50 to-purple-100',
+    borderColor: 'border-purple-200',
+    badgeColor: 'bg-purple-100 text-purple-800',
+  },
+  'str-replace': {
+    icon: FileCode,
+    color: 'text-amber-500',
+    hoverColor: 'hover:text-amber-600',
+    successMessage: 'Text replaced successfully',
+    progressMessage: 'Replacing text...',
+    bgColor: 'bg-amber-50',
+    gradientBg: 'from-amber-50 to-amber-100',
+    borderColor: 'border-amber-200',
+    badgeColor: 'bg-amber-100 text-amber-800',
+  },
+});
 
 export const getFileIcon = (fileName: string): LucideIcon => {
   if (fileName.endsWith('.md')) return FileCode;

@@ -1,0 +1,170 @@
+'use client';
+
+import React, { useState } from 'react';
+import useI18n from '@/lib/i18n-clients';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { useSpokenLanguage } from '@/contexts/SpokenLanguageContext';
+import { Mic, Globe, Check, ChevronDown } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+type LanguageCode = 'en' | 'es' | 'fr' | 'de' | 'zh' | 'ja' | 'hi' | 'ar' | 'ru' | 'pt' | 'it' | 'ko' | 'ur' | 'bn' | 'ms' | 'en_GB';
+
+const availableLanguages = [
+  { code: 'en' as LanguageCode, name: 'English' },
+  { code: 'es' as LanguageCode, name: 'Español' },
+  { code: 'fr' as LanguageCode, name: 'Français' },
+  { code: 'de' as LanguageCode, name: 'Deutsch' },
+  { code: 'zh' as LanguageCode, name: '中文' },
+  { code: 'ja' as LanguageCode, name: '日本語' },
+  { code: 'hi' as LanguageCode, name: 'हिन्दी' },
+  { code: 'ar' as LanguageCode, name: 'العربية' },
+  { code: 'ru' as LanguageCode, name: 'Русский' },
+  { code: 'pt' as LanguageCode, name: 'Português' },
+  { code: 'it' as LanguageCode, name: 'Italiano' },
+  { code: 'ko' as LanguageCode, name: '한국어' },
+  { code: 'ur' as LanguageCode, name: 'اردو' },
+  { code: 'bn' as LanguageCode, name: 'বাংলা' },
+  { code: 'ms' as LanguageCode, name: 'Bahasa Melayu' },
+  { code: 'en_GB' as LanguageCode, name: 'English (UK)' },
+];
+
+export default function LanguageSettings() {
+  const router = useRouter();
+  const { currentLanguage, setLanguage } = useI18n();
+  const { spokenLanguage, setSpokenLanguage, spokenLanguageCode } = useSpokenLanguage();
+  
+  // State for dropdown open/close
+  const [interfaceOpen, setInterfaceOpen] = useState(false);
+  const [spokenOpen, setSpokenOpen] = useState(false);
+  
+  // Get current language display name
+  const currentLanguageName = availableLanguages.find(lang => lang.code === currentLanguage)?.name || 'English';
+  const currentSpokenLanguageName = availableLanguages.find(lang => lang.code === spokenLanguageCode)?.name || spokenLanguage || 'English';
+  
+  // Handle language change
+  const handleLanguageChange = (langCode: LanguageCode) => {
+    setLanguage(langCode);
+    setInterfaceOpen(false);
+    toast.success('Language preference saved');
+  };
+  
+  // Handle spoken language change
+  const handleSpokenLanguageChange = (langCode: LanguageCode, langName: string) => {
+    setSpokenLanguage(langName);
+    setSpokenOpen(false);
+    toast.success('Spoken language preference saved');
+  };
+
+  return (
+    <div className="container mx-auto py-8 px-4">
+      <h1 className="text-3xl font-bold mb-6">Language Settings</h1>
+      
+      <div className="grid gap-6 max-w-2xl">
+        {/* Interface Language Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              Interface Language
+            </CardTitle>
+            <CardDescription>
+              Choose your preferred language for the application interface
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{currentLanguageName}</span>
+                {currentLanguage === 'en' && (
+                  <Badge variant="outline" className="text-xs">
+                    Default
+                  </Badge>
+                )}
+              </div>
+              
+              <DropdownMenu open={interfaceOpen} onOpenChange={setInterfaceOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    Change
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 max-h-60 overflow-y-auto">
+                  {availableLanguages.map((lang) => (
+                    <DropdownMenuItem
+                      key={lang.code}
+                      onClick={() => handleLanguageChange(lang.code)}
+                      className="flex items-center justify-between"
+                    >
+                      <span>{lang.name}</span>
+                      {lang.code === currentLanguage && (
+                        <Check className="h-4 w-4 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Spoken Language Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mic className="h-5 w-5" />
+              Spoken Language
+            </CardTitle>
+            <CardDescription>
+              Choose your preferred language for voice interactions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{currentSpokenLanguageName}</span>
+                {spokenLanguageCode === 'en' && (
+                  <Badge variant="outline" className="text-xs">
+                    Default
+                  </Badge>
+                )}
+              </div>
+              
+              <DropdownMenu open={spokenOpen} onOpenChange={setSpokenOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    Change
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 max-h-60 overflow-y-auto">
+                  {availableLanguages.map((lang) => (
+                    <DropdownMenuItem
+                      key={`spoken-${lang.code}`}
+                      onClick={() => handleSpokenLanguageChange(lang.code, lang.name)}
+                      className="flex items-center justify-between"
+                    >
+                      <span>{lang.name}</span>
+                      {lang.code === spokenLanguageCode && (
+                        <Check className="h-4 w-4 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

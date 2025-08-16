@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import Image from 'next/image';
+import { useSidebarTranslations } from '@/hooks/use-sidebar-translations';
 
 import { NavAgents } from '@/components/sidebar/nav-agents';
 import { NavUserWithTeams } from '@/components/sidebar/nav-user-with-teams';
@@ -93,6 +94,7 @@ export function SidebarLeft({
   const { state, setOpen, setOpenMobile } = useSidebar();
   const isMobile = useIsMobile();
   const router = useRouter();
+  const t = useSidebarTranslations();
   const [user, setUser] = useState<{
     name: string;
     email: string;
@@ -199,7 +201,7 @@ export function SidebarLeft({
                 <TooltipTrigger asChild>
                   <SidebarTrigger className="h-8 w-8" />
                 </TooltipTrigger>
-                <TooltipContent>Toggle sidebar (CMD+B)</TooltipContent>
+                <TooltipContent>{t.toggleSidebar}</TooltipContent>
               </Tooltip>
             )}
 
@@ -213,7 +215,7 @@ export function SidebarLeft({
                     <X className="h-5 w-5 sm:h-5 sm:w-5 md:h-4 md:w-4 transition-all duration-300 ease-in-out" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Close sidebar</TooltipContent>
+                <TooltipContent>{t.closeSidebar}</TooltipContent>
               </Tooltip>
             )}
           </div>
@@ -230,7 +232,7 @@ export function SidebarLeft({
             >
               <Plus className="h-4 w-4 mr-1 cursor-pointer" />
               <span className="flex items-center justify-between w-full">
-                New Task
+                {t.newTask}
               </span>
             </SidebarMenuButton>
           </Link>
@@ -241,7 +243,7 @@ export function SidebarLeft({
                   <SidebarTrigger className="h-8 w-8 hover:bg-accent hover:text-accent-foreground cursor-pointer" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  Expand sidebar (CMD+B)
+                  {t.expandSidebar}
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -260,7 +262,7 @@ export function SidebarLeft({
                       className="cursor-pointer"
                     >
                       <Bot className="h-4 w-4 mr-1" />
-                      <span>Agents</span>
+                      <span>{t.agents.title}</span>
                       <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
@@ -276,7 +278,7 @@ export function SidebarLeft({
                           asChild
                         >
                           <Link href="/agents?tab=marketplace">
-                            <span>Explore</span>
+                            <span>{t.agents.explore}</span>
                           </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
@@ -291,7 +293,7 @@ export function SidebarLeft({
                           asChild
                         >
                           <Link href="/agents?tab=my-agents">
-                            <span>My Agents</span>
+                            <span>{t.agents.myAgents}</span>
                           </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
@@ -300,7 +302,7 @@ export function SidebarLeft({
                           onClick={() => setShowNewAgentDialog(true)}
                           className="cursor-pointer pl-3"
                         >
-                          <span>New Agent</span>
+                          <span>{t.agents.newAgent}</span>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     </SidebarMenuSub>
@@ -350,14 +352,14 @@ export function SidebarLeft({
                     )} />
                     {(isMobile || state !== 'collapsed') && (
                       <span className="text-sm font-medium whitespace-nowrap">
-                        Integrations
+                        {t.integrations}
                       </span>
                     )}
                   </button>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right">
-                Integrations
+                {t.integrations}
               </TooltipContent>
             </Tooltip>
           )}
@@ -397,13 +399,13 @@ export function SidebarLeft({
                   )} />
                   {(isMobile || state !== 'collapsed') && (
                     <span className="text-sm font-medium whitespace-nowrap">
-                      Knowledge Base
+                      {t.knowledgeBase}
                     </span>
                   )}
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                Knowledge Base
+                {t.knowledgeBase}
               </TooltipContent>
             </Tooltip>
           )}

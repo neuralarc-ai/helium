@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Menu } from 'lucide-react';
+import { useI18n } from '@/lib/i18n-clients';
 import {
   ChatInput,
   ChatInputHandles,
@@ -56,12 +57,115 @@ export function DashboardContent() {
     user?.email?.split('@')[0] ||
     'there';
 
-  function getGreeting() {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning!';
-    if (hour < 18) return 'Good Afternoon!';
-    return 'Good Evening!';
-  }
+  const { t, currentLanguage } = useI18n();
+  const [greeting, setGreeting] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Update greeting when language changes or time changes
+  useEffect(() => {
+    console.log('Interface language changed to:', currentLanguage);
+    
+    const updateGreeting = () => {
+      const hour = new Date().getHours();
+      let greetingKey = '';
+      
+      // Determine the appropriate greeting based on time of day
+      if (hour < 12) {
+        greetingKey = 'dashboard.goodMorning';
+      } else if (hour < 18) {
+        greetingKey = 'dashboard.goodAfternoon';
+      } else {
+        greetingKey = 'dashboard.goodEvening';
+      }
+      
+      // Define greetings for all available languages
+      const greetings: Record<string, Record<string, string>> = {
+        'dashboard.goodMorning': {
+          en: 'Good Morning!',
+          es: '¡Buenos días!',
+          fr: 'Bonjour!',
+          de: 'Guten Morgen!',
+          zh: '早上好!',
+          ja: 'おはようございます!',
+          hi: 'सुप्रभात!',
+          ar: 'صباح الخير!',
+          ru: 'Доброе утро!',
+          pt: 'Bom dia!',
+          it: 'Buongiorno!',
+          ko: '안녕하세요! (아침)',
+          ur: 'صبح بخیر!',
+          bn: 'শুভ সকাল!',
+          ms: 'Selamat pagi!',
+          en_GB: 'Good Morning!'
+        },
+        'dashboard.goodAfternoon': {
+          en: 'Good Afternoon!',
+          es: '¡Buenas tardes!',
+          fr: 'Bon après-midi!',
+          de: 'Guten Tag!',
+          zh: '下午好!',
+          ja: 'こんにちは!',
+          hi: 'नमस्ते!',
+          ar: 'مساء الخير!',
+          ru: 'Добрый день!',
+          pt: 'Boa tarde!',
+          it: 'Buon pomeriggio!',
+          ko: '안녕하세요! (오후)',
+          ur: 'سہ پہر بخیر!',
+          bn: 'শুভ অপরাহ্ন!',
+          ms: 'Selamat petang!',
+          en_GB: 'Good Afternoon!'
+        },
+        'dashboard.goodEvening': {
+          en: 'Good Evening!',
+          es: '¡Buenas noches!',
+          fr: 'Bonsoir!',
+          de: 'Guten Abend!',
+          zh: '晚上好!',
+          ja: 'こんばんは!',
+          hi: 'शुभ संध्या!',
+          ar: 'مساء الخير!',
+          ru: 'Добрый вечер!',
+          pt: 'Boa noite!',
+          it: 'Buonasera!',
+          ko: '안녕하세요! (저녁)',
+          ur: 'شام بخیر!',
+          bn: 'শুভ সন্ধ্যা!',
+          ms: 'Selamat malam!',
+          en_GB: 'Good Evening!'
+        }
+      };
+
+      // Get the greeting in the current interface language, fallback to English
+      const greetingText = greetings[greetingKey]?.[currentLanguage] || 
+                          greetings[greetingKey]?.['en'] || 
+                          'Hello!';
+      
+      setGreeting(greetingText);
+    };
+    
+    // Update greeting immediately
+    updateGreeting();
+    
+    // Add storage event listener to detect language changes in other tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'preferredLanguage' && e.newValue && e.newValue !== currentLanguage) {
+        console.log('Detected language change from storage event:', e.newValue);
+        setRefreshKey(prev => prev + 1);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Update greeting every minute to handle time changes
+    const intervalId = setInterval(updateGreeting, 60000);
+    
+    // Cleanup on unmount
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [t, currentLanguage]); // Re-run effect when language changes
 
   // Fetch agents to get the selected agent's name
   const { data: agentsResponse } = useAgents({
@@ -215,7 +319,7 @@ export function DashboardContent() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[650px] max-w-[90%]">
           <div className="flex flex-col items-center text-center w-full">
             <p className="tracking-tight text-4xl font-normal text-muted-foreground/80 mt-2">
-              {getGreeting()}{' '}
+              {greeting}{' '}
               <span 
                 className="font-semibold text-foreground/80"
               >

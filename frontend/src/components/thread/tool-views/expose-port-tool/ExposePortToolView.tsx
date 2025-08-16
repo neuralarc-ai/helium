@@ -85,24 +85,21 @@ export function ExposePortToolView({
           <ScrollArea className="h-full w-full">
             <div className="p-4 py-0 my-4 space-y-6">
               {url && (
-                <div className="bg-white dark:bg-zinc-900 border border-emerald-200 dark:border-emerald-900 rounded-lg shadow-sm overflow-hidden">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-sm overflow-hidden">
                   <div className="p-4">
                     <div className="flex items-start gap-3 mb-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CheckCircle className="h-4 w-4 text-emerald-500" />
-                          <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                            Permanent URL Created
-                          </h3>
-                        </div>
+                        <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2">
+                          Exposed URL
+                        </h3>
                         <a
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-md font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 mb-3 break-all max-w-full group"
+                          className="text-md font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 mb-3 break-all max-w-full"
                         >
-                          <span className="group-hover:underline">{url}</span>
-                          <ExternalLink className="h-4 w-4 flex-shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
+                          {url}
+                          <ExternalLink className="flex-shrink-0 h-3.5 w-3.5" />
                         </a>
                       </div>
                     </div>
@@ -117,14 +114,6 @@ export function ExposePortToolView({
                             Port: {port}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mt-2">
-                          <span className="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 px-2 py-1 rounded">
-                            <CheckCircle className="h-3 w-3" />
-                            Permanent Link
-                          </span>
-                          <span>•</span>
-                          <span>This URL will persist across sessions</span>
-                        </div>
                       </div>
 
                       {message && (
@@ -133,9 +122,9 @@ export function ExposePortToolView({
                         </div>
                       )}
 
-                      <div className="text-xs bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/50 rounded-md p-3 text-emerald-600 dark:text-emerald-400 flex items-start gap-2">
-                        <CheckCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                        <span>This is a permanent URL that will remain accessible even after restarting the sandbox.</span>
+                      <div className="text-xs bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 rounded-md p-3 text-amber-600 dark:text-amber-400 flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                        <span>This URL might only be temporarily available and could expire after some time.</span>
                       </div>
                     </div>
                   </div>

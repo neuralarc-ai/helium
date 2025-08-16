@@ -1,4 +1,5 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useContext } from 'react';
+import { useI18n } from '@/lib/i18n-clients';
 import {
   ArrowDown,
   CircleDashed,
@@ -513,7 +514,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   onSubmit,
   isFloatingToolPreviewVisible = false,
   setInputValue,
-}) => {
+}: ThreadContentProps) => {
+  const { t } = useI18n();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
@@ -893,17 +895,10 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 return finalGroupedMessages.map((group, groupIndex) => {
                   if (group.type === 'user') {
                     const message = group.messages[0];
-                    const messageContent = (() => {
-                      try {
-                        const parsed = safeJsonParse<ParsedContent>(
-                          message.content,
-                          { content: message.content },
-                        );
-                        return parsed.content || message.content;
-                      } catch {
-                        return message.content;
-                      }
-                    })();
+                    const messageContent = typeof message.content === 'object' && message.content !== null
+                      ? (message.content as any)[t('language.code')] || message.content['en'] || JSON.stringify(message.content)
+                      : message.content;
+                    const messageRole = message.role;
 
                     // In debug mode, display raw message content
                     if (debugMode) {
