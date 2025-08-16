@@ -327,13 +327,13 @@ export function SidebarLeft({
                 <Link href="/settings/credentials">
                   <button
                     className={cn(
-                      'h-fit cursor-pointer flex items-center rounded-md flex-shrink-0 transition-colors my-4',
+                      'h-fit cursor-pointer flex items-center rounded-md flex-shrink-0 transition-colors',
                       {
                         // Collapsed state styling
-                        'w-8 h-8 justify-center hover:bg-accent hover:text-accent-foreground my-1': 
+                        'w-8 h-8 justify-center hover:bg-accent hover:text-accent-foreground mb-1': 
                           state === 'collapsed' && !isMobile,
                         // Expanded state styling
-                        'w-full py-1 px-3 hover:bg-accent justify-start': 
+                        'w-full py-1 px-2 hover:bg-accent justify-start mb-1': 
                           state !== 'collapsed' || isMobile,
                       }
                     )}
@@ -371,10 +371,10 @@ export function SidebarLeft({
                     'h-fit cursor-pointer flex items-center rounded-md flex-shrink-0 transition-colors',
                     {
                       // Collapsed state styling
-                      'w-8 h-8 justify-center hover:bg-accent hover:text-accent-foreground my-1': 
+                      'w-8 h-8 justify-center hover:bg-accent hover:text-accent-foreground mb-2': 
                         state === 'collapsed' && !isMobile,
                       // Expanded state styling
-                      'w-full py-1 px-3 hover:bg-accent justify-start': 
+                      'w-full py-1 px-2 hover:bg-accent justify-start': 
                         state !== 'collapsed' || isMobile,
                     }
                   )}

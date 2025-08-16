@@ -96,19 +96,19 @@ export function DataProviderEndpointsToolView({
   const endpointCount = endpoints && typeof endpoints === 'object' ? Object.keys(endpoints).length : 0;
 
   return (
-    <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-xl mx-2 mt-2">
+    <Card className="gap-0 flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
+      <CardHeader className="h-9 bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 space-y-2 rounded-t-lg">
         <div className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Globe className="w-5 h-5 text-white" />
+          <div className="flex items-center w-full justify-center gap-1">
+            <Globe className="w-4 h-4 text-muted-foreground" />
             <div>
-              <CardTitle className="text-base font-medium text-white">
+              <CardTitle className="text-sm font-semibold text-muted-foreground">
                 Data Provider
               </CardTitle>
             </div>
           </div>
 
-          {!isStreaming && (
+          {/* {!isStreaming && (
             <Badge
               variant="secondary"
               className={cn(
@@ -125,7 +125,7 @@ export function DataProviderEndpointsToolView({
               )}
               {actualIsSuccess ? 'Loaded' : 'Failed'}
             </Badge>
-          )}
+          )} */}
         </div>
       </CardHeader>
 
@@ -148,7 +148,7 @@ export function DataProviderEndpointsToolView({
           <div className="p-4 space-y-6">
             <div className="flex items-center gap-4 p-4 bg-zinc-50 dark:bg-zinc-900/50 rounded-lg border border-zinc-200 dark:border-zinc-800">
               <div className={cn(
-                "w-12 h-12 rounded-lg flex items-center justify-center shadow-sm border-2",
+                "w-10 h-10 rounded-lg flex items-center justify-center shadow-sm border-2",
                 `bg-gradient-to-br ${providerConfig.color}`,
                 "border-white/20"
               )}>
@@ -255,7 +255,7 @@ export function DataProviderEndpointsToolView({
         )}
       </CardContent>
 
-      <div className="px-4 py-2 h-10 bg-zinc-50/50 dark:bg-zinc-900/50 backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4">
+      <div className="px-4 py-2 h-fit bg-white backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4 rounded-b-lg">
         <div className="h-full flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
           {!isStreaming && (
             <Badge variant="outline" className="h-6 py-0.5 text-xs">

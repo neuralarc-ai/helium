@@ -686,7 +686,7 @@ export default function ThreadPage({
           )}>
             <div className={cn(
               "w-full",
-              isSidePanelOpen ? "max-w-2xl" : "max-w-3xl"
+              isSidePanelOpen ? "max-w-3xl" : "max-w-3xl"
             )}>
           
             <ChatInput

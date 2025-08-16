@@ -20,7 +20,7 @@ import {
   ParsedContent,
   ParsedMetadata,
 } from '@/components/thread/types';
-import { FileAttachmentGrid } from '@/components/thread/file-attachment';
+import { ThreadFilesDisplay } from '@/components/thread/file-attachment';
 import { useFilePreloader } from '@/hooks/react-query/files';
 import { useAuth } from '@/components/AuthProvider';
 import { Project } from '@/lib/api';
@@ -83,31 +83,7 @@ const HIDE_STREAMING_XML_TAGS = new Set([
   'execute-data-provider-endpoint',
 ]);
 
-// Helper function to render attachments with configurable layout
-export function renderAttachments(
-  attachments: string[],
-  fileViewerHandler?: (filePath?: string, filePathList?: string[]) => void,
-  sandboxId?: string,
-  project?: Project,
-  layout: 'grid' | 'document' = 'grid' // 'document' layout for assistant messages, 'grid' for others by default
-) {
-  if (!attachments || attachments.length === 0) return null;
 
-  // Note: Preloading is now handled by React Query in the main ThreadContent component
-  // to avoid duplicate requests with different content types
-
-  return (
-    <FileAttachmentGrid
-      attachments={attachments}
-      onFileClick={fileViewerHandler}
-      showPreviews={true}
-      sandboxId={sandboxId}
-      project={project}
-      layout={layout}
-      className={layout === 'document' ? 'mt-2' : ''}
-    />
-  );
-}
 
 // Render Markdown content while preserving XML tags that should be displayed as tool calls
 export function renderMarkdownContent(
@@ -181,12 +157,15 @@ export function renderMarkdownContent(
                 content={askText}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
-              {renderAttachments(
-                attachmentArray,
-                fileViewerHandler,
-                sandboxId,
-                project,
-                'document' // Use document layout for assistant message attachments
+              {attachmentArray && attachmentArray.length > 0 && (
+                <ThreadFilesDisplay
+                  attachments={attachmentArray}
+                  onFileClick={fileViewerHandler}
+                  sandboxId={sandboxId}
+                  project={project}
+                  className="mt-3"
+                  rightAlignGrid={false}
+                />
               )}
             </div>,
           );
@@ -209,12 +188,15 @@ export function renderMarkdownContent(
                 content={completeText}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
-              {renderAttachments(
-                attachmentArray,
-                fileViewerHandler,
-                sandboxId,
-                project,
-                'document' // Use document layout for assistant message attachments
+              {attachmentArray && attachmentArray.length > 0 && (
+                <ThreadFilesDisplay
+                  attachments={attachmentArray}
+                  onFileClick={fileViewerHandler}
+                  sandboxId={sandboxId}
+                  project={project}
+                  className="mt-3"
+                  rightAlignGrid={false}
+                />
               )}
             </div>,
           );
@@ -357,12 +339,15 @@ export function renderMarkdownContent(
             content={askContent}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
           />
-          {renderAttachments(
-            attachments,
-            fileViewerHandler,
-            sandboxId,
-            project,
-            'document' // Use document layout for assistant message attachments
+          {attachments && attachments.length > 0 && (
+            <ThreadFilesDisplay
+              attachments={attachments}
+              onFileClick={fileViewerHandler}
+              sandboxId={sandboxId}
+              project={project}
+              className="mt-3"
+              rightAlignGrid={false}
+            />
           )}
         </div>,
       );
@@ -385,13 +370,16 @@ export function renderMarkdownContent(
           <PipedreamUrlDetector
             content={completeContent}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
-          />
-          {renderAttachments(
-            attachments,
-            fileViewerHandler,
-            sandboxId,
-            project,
-            'document' // Use document layout for assistant message attachments
+              />
+          {attachments && attachments.length > 0 && (
+            <ThreadFilesDisplay
+              attachments={attachments}
+              onFileClick={fileViewerHandler}
+              sandboxId={sandboxId}
+              project={project}
+              className="mt-3"
+              rightAlignGrid={false}
+            />
           )}
         </div>,
       );
@@ -662,6 +650,51 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       }
     }
   }, [messages, scrollToBottom]);
+
+  // Auto-scroll behaviors for different streaming scenarios:
+  // - Use 'auto' for streaming content to ensure immediate visibility
+  // - Use 'smooth' for user interactions and status changes
+  // - This mimics ChatGPT/Claude behavior where content stays visible during generation
+  React.useEffect(() => {
+    if (streamingTextContent && (agentStatus === 'running' || agentStatus === 'connecting')) {
+      // Use immediate scroll for streaming content to ensure smooth experience
+      scrollToBottom('auto');
+    }
+  }, [streamingTextContent, agentStatus, scrollToBottom]);
+
+  // Auto-scroll to bottom when streaming text changes in playback mode
+  React.useEffect(() => {
+    if (streamingText && isStreamingText && readOnly) {
+      scrollToBottom('auto');
+    }
+  }, [streamingText, isStreamingText, readOnly, scrollToBottom]);
+
+  // Auto-scroll to bottom when streaming tool calls change
+  React.useEffect(() => {
+    if (streamingToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
+      scrollToBottom('auto');
+    }
+  }, [streamingToolCall, agentStatus, scrollToBottom]);
+
+  // Auto-scroll to bottom when new tool calls are added
+  React.useEffect(() => {
+    if (currentToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
+      scrollToBottom('auto');
+    }
+  }, [currentToolCall, agentStatus, scrollToBottom]);
+
+  // Auto-scroll to bottom when streaming starts
+  React.useEffect(() => {
+    if (streamHookStatus === 'streaming') {
+      scrollToBottom('auto');
+    }
+  }, [streamHookStatus, scrollToBottom]);
+
+  // Complete auto-scroll strategy:
+  // 1. Smooth scroll for user interactions (new messages, status changes)
+  // 2. Immediate scroll for streaming content (text, tool calls, streaming start)
+  // 3. Always auto-scroll during streaming regardless of user scroll position
+  // 4. This ensures content stays visible during generation like ChatGPT/Claude
 
   // Preload all message attachments when messages change or sandboxId is provided
   React.useEffect(() => {
@@ -948,19 +981,19 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                     return (
                       <div
                         key={group.key}
-                        className="flex justify-end group transition-all duration-300 ease-in-out"
+                        className="flex justify-end group transition-all duration-300 ease-in-out w-full"
                         data-message-id={group.key}
                       >
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1 items-end max-w-[85%]">
                           <div
-                            className={cn('flex max-w-[100%]')}
+                            className={cn('flex w-fit')}
                           >
                             <div
                               style={{
                                 background: '#FFFFFF',
                                 color: 'black',
                               }}
-                              className="break-words overflow-hidden border border-black/10 rounded-l-2xl rounded-tr-2xl rounded-br-sm px-4 py-2"
+                              className="break-words overflow-hidden border border-black/5 rounded-l-2xl rounded-tr-2xl rounded-br-sm px-4 py-2 w-full"
                             >
                               <div className="space-y-4 min-w-0 flex-1">
                                 {cleanContent && (
@@ -1000,18 +1033,31 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                     />
                                   </div>
                                 )}
-                                {renderAttachments(
-                                  attachments as string[],
-                                  handleOpenFileViewer,
-                                  sandboxId,
-                                  project,
-                                )}
+
                               </div>
                             </div>
                           </div>
+                          
+                          {/* Files Display - Below the message content */}
+                          {attachments && attachments.length > 0 && (
+                            <div className="w-full flex justify-end">
+                              <div className="max-w-[85%]">
+                                <ThreadFilesDisplay
+                                  attachments={attachments as string[]}
+                                  onFileClick={handleOpenFileViewer}
+                                  sandboxId={sandboxId}
+                                  project={project}
+                                  className="mt-1"
+                                  rightAlignGrid={false}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
                           {/* Copy and Edit buttons for user prompt - OUTSIDE the message box */}
                           {!readOnly && (
-                            <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out">
+                            <div className="w-full flex justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out">
+                              <div className="max-w-[85%] flex justify-end">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -1156,7 +1202,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 </Tooltip>
                               )}
                             </div>
-                          )}
+                          </div>
+                        )}
                         </div>
                       </div>
                     );

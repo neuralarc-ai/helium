@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ChevronDown, User, LogIn, Lock, Bot, Zap, Code, FileText } from 'lucide-react'
+import { ChevronDown, User, Lock, Bot, Zap, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
     DropdownMenu,

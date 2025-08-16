@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, CheckCircle, Check } from 'lucide-react';
+import { ChevronUp, Check, ListTodo } from 'lucide-react';
 import { getUserFriendlyToolName } from '@/components/thread/utils';
 import { cn } from '@/lib/utils';
 
@@ -34,8 +34,89 @@ interface FloatingToolPreviewProps {
 const FLOATING_LAYOUT_ID = 'tool-panel-float';
 const CONTENT_LAYOUT_ID = 'tool-panel-content';
 
+// Function to extract task list data from tool call content
+const extractTaskListData = (toolCall: ToolCallInput): any => {
+  const content = toolCall.assistantCall?.content || toolCall.toolResult?.content;
+  if (!content) return null;
+
+  try {
+    const parsed = typeof content === 'string' ? JSON.parse(content) : content;
+    
+    // Check for tool_execution format
+    if (parsed.tool_execution?.result?.output) {
+      const output = parsed.tool_execution.result.output;
+      const outputData = typeof output === 'string' ? JSON.parse(output) : output;
+      
+      // Check for sections with tasks
+      if (outputData?.sections && Array.isArray(outputData.sections)) {
+        return {
+          sections: outputData.sections,
+          total_tasks: outputData.total_tasks || 0,
+          total_sections: outputData.total_sections || 0
+        };
+      }
+    }
+
+    // Check for direct sections array
+    if (parsed.sections && Array.isArray(parsed.sections)) {
+      return {
+        sections: parsed.sections,
+        total_tasks: parsed.total_tasks || 0,
+        total_sections: parsed.total_sections || 0
+      };
+    }
+
+    // Check for nested content
+    if (parsed.content) {
+      return extractTaskListData({ ...toolCall, assistantCall: { content: parsed.content } });
+    }
+
+    return null;
+  } catch (e) {
+    return null;
+  }
+};
+
+// Function to get current task progress information
+const getTaskProgressInfo = (toolCall: ToolCallInput): { currentTask: string | null; progress: number; totalTasks: number } => {
+  const taskData = extractTaskListData(toolCall);
+  if (!taskData || !taskData.sections) {
+    return { currentTask: null, progress: 0, totalTasks: 0 };
+  }
+
+  const allTasks = taskData.sections.flatMap((section: any) => section.tasks || []);
+  const totalTasks = allTasks.length;
+  
+  if (totalTasks === 0) {
+    return { currentTask: null, progress: 0, totalTasks: 0 };
+  }
+
+  // Find the first incomplete task
+  const currentTask = allTasks.find((task: any) => task.status !== 'completed');
+  
+  // Calculate progress based on completed tasks
+  const completedTasks = allTasks.filter((task: any) => task.status === 'completed').length;
+  const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  return {
+    currentTask: currentTask?.content || null,
+    progress,
+    totalTasks
+  };
+};
+
 // Function to extract meaningful task description from tool call content
 const extractTaskDescription = (toolCall: ToolCallInput): string => {
+  // First try to get task list data
+  const taskData = extractTaskListData(toolCall);
+  if (taskData && taskData.sections && taskData.sections.length > 0) {
+    const allTasks = taskData.sections.flatMap((section: any) => section.tasks || []);
+    if (allTasks.length > 0) {
+      // Return the first task as the main description
+      return allTasks[0].content || 'Task List';
+    }
+  }
+
   const content = toolCall.assistantCall?.content;
   if (!content) return 'Tool Call';
 
@@ -124,6 +205,8 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
 
   const taskDescription = extractTaskDescription(currentToolCall);
   const isCompleted = isTaskCompleted(currentToolCall);
+  const taskProgress = getTaskProgressInfo(currentToolCall);
+  const hasTaskList = taskProgress.totalTasks > 0;
 
   const handleClick = () => {
     setIsExpanding(true);
@@ -155,7 +238,7 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
             style={{ opacity: isExpanding ? 0 : 1 }}
           >
             <div className="flex items-center justify-between">
-              {/* Task description - full width, no truncation */}
+              {/* Task description and progress */}
               <div className="flex-1 min-w-0" style={{ opacity: isExpanding ? 0 : 1 }}>
                 <motion.div layoutId="tool-title" className="flex items-center gap-2">
                   {isCompleted && (
@@ -163,9 +246,29 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
                       <Check className="h-3 w-3 text-white" />
                     </div>
                   )}
-                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-tight">
-                    {isCompleted ? "Task Completed" : taskDescription}
-                  </h4>
+                  {!isCompleted && hasTaskList && (
+                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                      <ListTodo className="h-3 w-3 text-white" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-tight">
+                      {isCompleted ? "Task Completed" : hasTaskList ? taskProgress.currentTask || 'Processing tasks...' : taskDescription}
+                    </h4>
+                    {hasTaskList && !isCompleted && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                          <div 
+                            className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                            style={{ width: `${taskProgress.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                          {taskProgress.progress}%
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </motion.div>
               </div>
 

@@ -154,25 +154,25 @@ export function SheetsToolView({
   );
 
   return (
-    <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 rounded-xl mx-2 mt-2 mb-1 flex flex-row items-center justify-between">
-        <div className="flex items-center gap-2 mt-4">
-          <Table2 className="w-5 h-5 text-white" />
-          <CardTitle className="text-base font-medium text-white update-text">
+    <Card className="gap-0 flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
+      <CardHeader className="h-9 w-full justify-between flex bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 space-y-2 rounded-t-lg">
+        <div className="flex items-center gap-2">
+          <Table2 className="w-4 h-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-semibold text-muted-foreground">
             {sheetTitle}
           </CardTitle>
         </div>
-        <div className="flex items-center gap-2 mt-4">
+        <div className="flex items-center gap-2 -mt-1">
           {primaryXlsx && (
             <div className="flex items-center gap-2">
-              <Label className="update-text">CSV</Label>
+              <Label className="update-text text-xs">CSV</Label>
               <Switch checked={showFormatted} onCheckedChange={setShowFormatted} />
-              <Label className="update-text">XLSX</Label>
+              <Label className="update-text text-xs">XLSX</Label>
             </div>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" className="h-7 px-1 text-xs rounded-md bg-white backdrop-blur-3xl font-medium">
                 <Download className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -185,7 +185,7 @@ export function SheetsToolView({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          {!isStreaming && (
+          {/* {!isStreaming && (
             <Badge
               variant="secondary"
               className={
@@ -197,7 +197,7 @@ export function SheetsToolView({
               {isSuccess ? <CheckCircle className="h-3.5 w-3.5 mr-1" /> : <AlertTriangle className="h-3.5 w-3.5 mr-1" />}
               {isSuccess ? 'Success' : 'Failed'}
             </Badge>
-          )}
+          )} */}
         </div>
       </CardHeader>
 

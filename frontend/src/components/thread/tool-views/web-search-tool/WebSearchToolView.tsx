@@ -76,13 +76,13 @@ export function WebSearchToolView({
   };
 
   return (
-    <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-lg mx-4 mt-3">
+    <Card className="gap-0 flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
+      <CardHeader className="h-9 bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 space-y-2 rounded-t-lg">
         <div className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Search className="w-5 h-5 text-white" />
+          <div className="flex items-center w-full justify-center gap-1">
+            <Search className="w-4 h-4 text-muted-foreground" />
             <div>
-              <CardTitle className="text-base font-medium text-white">
+              <CardTitle className="text-sm font-semibold text-muted-foreground">
                 {toolTitle}
               </CardTitle>
             </div>
@@ -120,7 +120,7 @@ export function WebSearchToolView({
           />
         ) : searchResults.length > 0 || answer ? (
           <ScrollArea className="h-full w-full">
-            <div className="p-4 py-0 my-4">
+            <div className="p-4 px-0 py-0">
 
               <div className="space-y-0">
                 {searchResults.map((result, idx) => {
@@ -130,7 +130,7 @@ export function WebSearchToolView({
 
                   return (
                     <div key={idx} className="relative">
-                      <div className="p-4 px-1">
+                      <div className="p-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             {favicon && (
@@ -190,7 +190,7 @@ export function WebSearchToolView({
         )}
       </CardContent>
 
-      <div className="px-4 py-2 h-10 bg-gradient-to-r from-zinc-50/90 to-zinc-100/90 dark:from-zinc-900/90 dark:to-zinc-800/90 backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4">
+      <div className="px-4 py-2 h-fit bg-white backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4 rounded-b-lg">
         <div className="h-full flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
           {!isStreaming && searchResults.length > 0 && (
             <Badge variant="outline" className="h-6 py-0.5">
