@@ -74,6 +74,14 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   // Keep a ref of state to avoid stale closures in event handlers
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
+  // Guard to detect intentional user stop and avoid auto-restarts
+  const userStoppingRef = useRef(false);
+  // Ignore late results when stopping
+  const ignoreResultsRef = useRef(false);
+  // Track when the recognizer actually starts
+  const recognitionStartedRef = useRef(false);
+  // Track restart attempts to avoid surfacing transient errors
+  const restartAttemptsRef = useRef(0);
 
   const recognitionRef = useRef<any>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -85,6 +93,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
   // Process queue function to handle speech recognition results
   const processQueue = () => {
+    if (ignoreResultsRef.current) return;
     if (updateQueue.current.length === 0 || isProcessing.current) return;
     
     const now = Date.now();
@@ -95,6 +104,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     
     isProcessing.current = true;
     const { transcript, isFinal } = updateQueue.current.shift()!;
+    if (ignoreResultsRef.current) { isProcessing.current = false; return; }
     
     if (isFinal) {
       // For final results, update the final transcript and keep it in the chat
@@ -122,7 +132,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     isProcessing.current = false;
     
     // Process next in queue if available
-    if (updateQueue.current.length > 0) {
+    if (!ignoreResultsRef.current && updateQueue.current.length > 0) {
       requestAnimationFrame(processQueue);
     }
   };
@@ -149,6 +159,11 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     // @ts-ignore - experimental feature for faster response
     recognitionRef.current.continuous = true;
 
+    recognitionRef.current.onstart = () => {
+      recognitionStartedRef.current = true;
+      restartAttemptsRef.current = 0; // reset attempts on successful start
+    };
+
     recognitionRef.current.onspeechstart = () => {
       setIsSpeaking(true);
     };
@@ -158,6 +173,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     };
 
     recognitionRef.current.onresult = (event: VoiceRecognitionEvent) => {
+      if (ignoreResultsRef.current) return;
       const result = event.results[event.resultIndex];
       if (!result || !result[0]) return;
       
@@ -216,23 +232,32 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     };
 
     recognitionRef.current.onend = () => {
+      if (userStoppingRef.current) return; // don't auto-restart if user requested stop
       if (stateRef.current === 'recording') {
         console.log('Speech recognition ended, restarting...');
         // Add a small delay before restarting to prevent rapid restarts
-        setTimeout(() => {
-          if (stateRef.current === 'recording' && recognitionRef.current) {
+        const attemptRestart = (delay: number) => {
+          setTimeout(() => {
+            if (userStoppingRef.current || stateRef.current !== 'recording' || !recognitionRef.current) return;
             try {
               recognitionRef.current.start();
             } catch (e) {
               console.error('Error restarting speech recognition:', e);
-              // Only show error if we're still supposed to be recording
-              if (stateRef.current === 'recording') {
-                setError('Error with voice recognition. Please try again.');
-                stopRecording();
+              restartAttemptsRef.current += 1;
+              if (restartAttemptsRef.current < 3) {
+                // Exponential-ish backoff
+                attemptRestart(200 + restartAttemptsRef.current * 200);
+              } else {
+                if (stateRef.current === 'recording') {
+                  setError('Error with voice recognition. Please try again.');
+                  stopRecording();
+                }
               }
+              return;
             }
-          }
-        }, 300);
+          }, delay);
+        };
+        attemptRestart(300);
       }
     };
 
@@ -269,7 +294,10 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     if (state !== 'idle') return;
 
     try {
-      setState('recording');
+      // Reset the user stop guard, since this is a fresh start
+      userStoppingRef.current = false;
+      // Allow results again for a fresh session
+      ignoreResultsRef.current = false;
       setError(null);
       setRecordingTime(0);
       // Don't clear final transcript when starting a new recording
@@ -279,10 +307,6 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       updateQueue.current = [];
       isProcessing.current = false;
       lastUpdateTime.current = 0;
-      setIsTimerRunning(true);
-      
-      // Request animation frame for smooth updates
-      requestAnimationFrame(processQueue);
       
       // Clear any previous recognition
       if (recognitionRef.current) {
@@ -311,8 +335,35 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         }
       }
 
-      // Request microphone access (will prompt if needed)
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request microphone access
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('MediaDevices API not supported');
+      }
+
+      // Small delay to allow device to release after previous stop (Chrome quirk)
+      await new Promise((r) => setTimeout(r, 100));
+
+      // Backoff retry for transient errors like NotReadableError / AbortError
+      const acquireStream = async (): Promise<MediaStream> => {
+        let lastErr: any;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            return await navigator.mediaDevices.getUserMedia({ audio: true });
+          } catch (e: any) {
+            lastErr = e;
+            const name = e?.name || '';
+            if (name === 'NotReadableError' || name === 'AbortError') {
+              await new Promise((r) => setTimeout(r, 150 + attempt * 150));
+              continue;
+            }
+            // For other errors, don't retry
+            throw e;
+          }
+        }
+        throw lastErr || new Error('Unknown getUserMedia error');
+      };
+
+      const stream = await acquireStream();
       mediaStreamRef.current = stream;
       // If the audio input device goes away (USB unplug, OS revoke), try to recover
       const [track] = stream.getAudioTracks();
@@ -375,16 +426,40 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       // Start volume analysis
       animationFrameRef.current = requestAnimationFrame(analyzeVolume);
 
-      // Start speech recognition
+      // Start speech recognition and wait for actual start
       if (recognitionRef.current) {
-        recognitionRef.current.start();
+        recognitionRef.current.lang = spokenLanguageCode || 'en-US';
+        recognitionStartedRef.current = false;
+        try {
+          recognitionRef.current.start();
+        } catch (e) {
+          // Some browsers throw invalid-state if rapidly restarted; small delay then retry once
+          await new Promise((r) => setTimeout(r, 120));
+          recognitionRef.current.start();
+        }
+        // Wait up to ~600ms for onstart
+        for (let i = 0; i < 12 && !recognitionStartedRef.current; i++) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        if (!recognitionStartedRef.current) {
+          throw new Error('recognition-did-not-start');
+        }
       }
 
-          // Removed auto-stop to keep mic on until user stops it
-      // Recording can be manually stopped by the user
+      // Only mark as recording after successful mic + recognition start
+      setState('recording');
+      setIsTimerRunning(true);
+
+      // Request animation frame for smooth updates
+      requestAnimationFrame(processQueue);
 
       // Listen for device changes (e.g., mic unplugged/replugged) and try to recover
       if (navigator.mediaDevices && 'addEventListener' in navigator.mediaDevices) {
+        // Defensively remove any stale listener from a previous session
+        if (deviceChangeHandlerRef.current) {
+          try { navigator.mediaDevices.removeEventListener('devicechange', deviceChangeHandlerRef.current); } catch {}
+          deviceChangeHandlerRef.current = null;
+        }
         const handler = async () => {
           if (stateRef.current !== 'recording') return;
           console.warn('Media devices changed; attempting to re-acquire microphone...');
@@ -438,9 +513,18 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       } else if (name === 'SecurityError') {
         message = 'Microphone requires a secure context (HTTPS) or localhost. Open the app over https:// or use localhost and try again.';
       } else if (name === 'NotReadableError') {
-        message = 'Microphone is in use by another application. Close other apps using the mic and try again.';
+        message = 'Microphone is busy. Close other apps using the mic and try again, or wait a moment and retry.';
+      } else if (name === 'AbortError') {
+        message = 'Microphone request was interrupted. Please try again.';
       }
       setError(message);
+      // Ensure nothing keeps capturing after failure
+      userStoppingRef.current = true;
+      try { recognitionRef.current?.stop(); } catch {}
+      if (animationFrameRef.current) { cancelAnimationFrame(animationFrameRef.current); animationFrameRef.current = null; }
+      if (mediaStreamRef.current) { try { mediaStreamRef.current.getTracks().forEach(t => t.stop()); } catch {} mediaStreamRef.current = null; }
+      if (audioContextRef.current) { try { await audioContextRef.current.close(); } catch {} audioContextRef.current = null; }
+      setIsTimerRunning(false);
       setState('idle');
     }
   };
@@ -449,7 +533,19 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     if (state !== 'recording') return;
 
     console.log('Stopping recording...');
-    setState('processing');
+    // Set guard first to prevent onend auto-restart
+    userStoppingRef.current = true;
+    ignoreResultsRef.current = true;
+    // Stop recognition explicitly
+    try { (recognitionRef.current as any)?.abort?.(); } catch {}
+    try { recognitionRef.current?.stop(); } catch {}
+    // Clear any queued updates and stop processing
+    updateQueue.current = [];
+    isProcessing.current = false;
+    // Immediate UI feedback
+    setIsTimerRunning(false);
+    setIsSpeaking(false);
+    setState('idle');
     setIsTimerRunning(false);
 
     // Stop all media tracks
@@ -482,19 +578,9 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
       recordingTimeoutRef.current = null;
     }
 
-    // Finalize any remaining interim text
-    if (interimTranscript) {
-      const combinedTranscript = finalTranscript 
-        ? `${finalTranscript} ${interimTranscript}`
-        : interimTranscript;
-      
-      setFinalTranscript(combinedTranscript);
-      onTranscription(combinedTranscript.trim());
-      setInterimTranscript('');
-    }
-
-    // Reset state but don't clear the final transcript
-    setState('idle');
+    // Do not finalize interim on manual stop to keep stop immediate
+    setInterimTranscript('');
+    // Reset but don't clear the final transcript
     setVolume(0);
   };
 

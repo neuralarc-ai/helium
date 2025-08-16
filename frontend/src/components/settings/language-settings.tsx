@@ -39,6 +39,37 @@ const availableLanguages = [
   { code: 'en_GB' as LanguageCode, name: 'English (UK)' },
 ];
 
+// Map interface language codes to Web Speech API BCP-47 codes
+const interfaceToSpeechCode: Record<LanguageCode, string> = {
+  en: 'en-US',
+  en_GB: 'en-GB',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  de: 'de-DE',
+  zh: 'zh-CN',
+  ja: 'ja-JP',
+  hi: 'hi-IN',
+  ar: 'ar-SA',
+  ru: 'ru-RU',
+  pt: 'pt-PT',
+  it: 'it-IT',
+  ko: 'ko-KR',
+  ur: 'ur-PK',
+  bn: 'bn-IN',
+  ms: 'ms-MY',
+};
+
+// Resolve a human-readable name for a given speech code
+const getNameForSpeechCode = (speechCode: string, fallbackName: string): string => {
+  // Try exact match against availableLanguages codes
+  const exact = availableLanguages.find(l => l.code === (speechCode as LanguageCode));
+  if (exact) return exact.name;
+  // Fallback: match base language (e.g., hi from hi-IN)
+  const base = speechCode.split('-')[0] as LanguageCode;
+  const byBase = availableLanguages.find(l => l.code === base);
+  return byBase?.name || fallbackName;
+};
+
 interface LanguageSettingsProps {
   asPage?: boolean;
 }
@@ -62,8 +93,10 @@ export default function LanguageSettings({ asPage = false }: LanguageSettingsPro
   // Get current language display names
   const currentLanguageName = availableLanguages.find(lang => lang.code === currentLanguage)?.name || t('language.english', { defaultValue: 'English' });
   const pendingLanguageName = availableLanguages.find(lang => lang.code === pendingLanguage)?.name || currentLanguageName;
-  const currentSpokenLanguageName = availableLanguages.find(lang => lang.code === spokenLanguageCode)?.name || 
-    spokenLanguage || t('language.english', { defaultValue: 'English' });
+  const currentSpokenLanguageName = getNameForSpeechCode(
+    spokenLanguageCode,
+    spokenLanguage || t('language.english', { defaultValue: 'English' })
+  );
   
   // Handle interface language change
   const handleLanguageChange = (langCode: LanguageCode) => {
@@ -107,7 +140,8 @@ export default function LanguageSettings({ asPage = false }: LanguageSettingsPro
   // Handle spoken language change
   const handleSpokenLanguageChange = (langCode: LanguageCode, langName: string) => {
     setPendingSpokenLanguage({ code: langCode, name: langName });
-    setHasSpokenChanges(langCode !== spokenLanguageCode);
+    const newSpeechCode = interfaceToSpeechCode[langCode] || langCode;
+    setHasSpokenChanges(newSpeechCode !== spokenLanguageCode);
   };
   
   // Handle save spoken language
@@ -116,7 +150,9 @@ export default function LanguageSettings({ asPage = false }: LanguageSettingsPro
     
     try {
       setIsSaving(true);
-      setSpokenLanguage(pendingSpokenLanguage.name);
+      // Store a valid BCP-47 speech recognition code in context
+      const speechCode = interfaceToSpeechCode[pendingSpokenLanguage.code] || pendingSpokenLanguage.code;
+      setSpokenLanguage(speechCode);
       setHasSpokenChanges(false);
       setHasChanges(!!pendingLanguage && pendingLanguage !== currentLanguage); // Only keep interface language changes
       toast.success(t('language.spokenLanguageUpdated') || 'Spoken language updated');
@@ -134,8 +170,10 @@ export default function LanguageSettings({ asPage = false }: LanguageSettingsPro
     const englishLang = availableLanguages.find(lang => lang.code === 'en');
     if (!englishLang) return;
     
-    // Check if already in English
-    const isAlreadyEnglish = spokenLanguageCode === 'en' && !pendingSpokenLanguage;
+    // Check if already in English (accept en, en-US, en-GB)
+    const isAlreadyEnglish = (!pendingSpokenLanguage) && (
+      spokenLanguageCode === 'en' || spokenLanguageCode === 'en-US' || spokenLanguageCode === 'en-GB'
+    );
     
     if (isAlreadyEnglish) {
       toast.info(t('language.alreadyInEnglish') || 'Spoken language is already set to English');
@@ -143,9 +181,9 @@ export default function LanguageSettings({ asPage = false }: LanguageSettingsPro
     }
     
     // Reset to English
-    setSpokenLanguage(englishLang.name);
+    setSpokenLanguage(interfaceToSpeechCode['en']);
     setPendingSpokenLanguage(null);
-    setHasSpokenChanges(spokenLanguageCode !== 'en');
+    setHasSpokenChanges(!(spokenLanguageCode === 'en' || spokenLanguageCode === 'en-US'));
     // Don't modify hasChanges here as it's for interface language
     
     // Show success message
