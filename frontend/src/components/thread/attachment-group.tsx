@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, FileText, FileSpreadsheet, FileImage, FileArchive, File, Eye, FolderOpen, FileIcon } from 'lucide-react';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { FileAttachment } from './file-attachment';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,8 @@ import {
     DialogTitle
 } from '@/components/ui/dialog';
 
-type LayoutStyle = 'inline' | 'grid';
+
+type LayoutStyle = 'inline' | 'grid' | 'document';
 
 interface UploadedFile {
     name: string;
@@ -21,6 +22,7 @@ interface UploadedFile {
     type: string;
     localUrl?: string;
 }
+
 
 interface AttachmentGroupProps {
     // Support both path strings and full file objects
@@ -197,7 +199,74 @@ export function AttachmentGroup({
 
     // Now continue with the fully conditional rendering but with pre-computed values
     const renderContent = () => {
-        if (layout === 'grid') {
+        // If there are no files, don't render anything
+        if (uniqueFiles.length === 0) {
+            return null;
+        }
+
+        // Sort files to show images first, then other files
+        const sortedFiles = [...uniqueFiles].sort((a, b) => {
+            const aPath = getFilePath(a);
+            const bPath = getFilePath(b);
+            const aExt = aPath.split('.').pop()?.toLowerCase() || '';
+            const bExt = bPath.split('.').pop()?.toLowerCase() || '';
+            const isAImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(aExt);
+            const isBImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(bExt);
+            
+            if (isAImage && !isBImage) return -1;
+            if (!isAImage && isBImage) return 1;
+            return 0;
+        });
+
+        // For document layout (used in thread responses)
+        if (layout === 'document') {
+            const showViewAll = sortedFiles.length > 3; // Show "View all" if more than 4 files
+            const visibleFiles = showViewAll ? sortedFiles.slice(0, 3) : sortedFiles;
+            
+            return (
+                <div className={cn("flex flex-wrap gap-2 w-full", className)}>
+                    {visibleFiles.map((file, index) => {
+                        const path = getFilePath(file);
+                        return (
+                            <FileAttachment
+                                key={index}
+                                filepath={path}
+                                onClick={handleFileClick}
+                                sandboxId={sandboxId}
+                                showPreview={showPreviews}
+                                localPreviewUrl={getLocalPreviewUrl(file)}
+                                className="w-full sm:w-[calc(50%-0.25rem)]"
+                                project={project}
+                                variant="card"
+                            />
+                        );
+                    })}
+                    {showViewAll && (
+                        <div className="w-full sm:w-[calc(50%-0.25rem)] h-[54px] flex items-center">
+                            <button
+                               onClick={(e) => {
+                                   e.stopPropagation();
+                                   onFileClick?.(undefined);
+                               }}
+                                className={cn(
+                                    "w-full h-full flex flex-col items-center justify-center gap-0.5 p-1 rounded-xl",
+                                    "bg-sidebar hover:bg-accent/10 transition-colors",
+                                    "text-sm font-medium text-foreground",
+                                    "border border-black/10 dark:border-white/10"
+                                )}
+                            >
+                                <div className="flex items-center gap-1.5">
+                                    <FolderOpen className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                    <div className="flex flex-col items-start">
+                                        <span className="text-[11px] leading-none">View all</span>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        } else if (layout === 'grid') {
             const shouldLastItemSpanFull = sortedFiles.length % 2 === 1 && sortedFiles.length > 1;
 
             return (

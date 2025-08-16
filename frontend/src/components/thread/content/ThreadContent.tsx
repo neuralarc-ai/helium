@@ -83,12 +83,13 @@ const HIDE_STREAMING_XML_TAGS = new Set([
   'execute-data-provider-endpoint',
 ]);
 
-// Helper function to render attachments (keeping original implementation for now)
+// Helper function to render attachments with configurable layout
 export function renderAttachments(
   attachments: string[],
   fileViewerHandler?: (filePath?: string, filePathList?: string[]) => void,
   sandboxId?: string,
   project?: Project,
+  layout: 'grid' | 'document' = 'grid' // 'document' layout for assistant messages, 'grid' for others by default
 ) {
   if (!attachments || attachments.length === 0) return null;
 
@@ -102,6 +103,8 @@ export function renderAttachments(
       showPreviews={true}
       sandboxId={sandboxId}
       project={project}
+      layout={layout}
+      className={layout === 'document' ? 'mt-2' : ''}
     />
   );
 }
@@ -183,6 +186,7 @@ export function renderMarkdownContent(
                 fileViewerHandler,
                 sandboxId,
                 project,
+                'document' // Use document layout for assistant message attachments
               )}
             </div>,
           );
@@ -210,6 +214,7 @@ export function renderMarkdownContent(
                 fileViewerHandler,
                 sandboxId,
                 project,
+                'document' // Use document layout for assistant message attachments
               )}
             </div>,
           );
@@ -357,6 +362,7 @@ export function renderMarkdownContent(
             fileViewerHandler,
             sandboxId,
             project,
+            'document' // Use document layout for assistant message attachments
           )}
         </div>,
       );
@@ -385,6 +391,7 @@ export function renderMarkdownContent(
             fileViewerHandler,
             sandboxId,
             project,
+            'document' // Use document layout for assistant message attachments
           )}
         </div>,
       );

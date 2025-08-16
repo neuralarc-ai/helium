@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-    FileText, FileImage, FileCode, FileSpreadsheet, FileVideo,
+    FileText, FileImage, FileCode, FileSpreadsheet, FileVideo, Eye,
     FileAudio, FileType, Database, Archive, File, ExternalLink,
     Loader2
 } from 'lucide-react';
@@ -19,7 +19,7 @@ export type FileType =
     | 'image' | 'code' | 'text' | 'pdf'
     | 'audio' | 'video' | 'spreadsheet'
     | 'archive' | 'database' | 'markdown'
-    | 'csv'
+    | 'csv' | 'html'
     | 'document'
     | 'other';
 
@@ -28,7 +28,8 @@ function getFileType(filename: string): FileType {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
 
     if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) return 'image';
-    if (['js', 'jsx', 'ts', 'tsx', 'html', 'css', 'json', 'py', 'java', 'c', 'cpp'].includes(ext)) return 'code';
+    if (['html', 'htm'].includes(ext)) return 'html';
+    if (['js', 'jsx', 'ts', 'tsx', 'css', 'json', 'py', 'java', 'c', 'cpp'].includes(ext)) return 'code';
     if (['txt', 'log', 'env'].includes(ext)) return 'text';
     if (['md', 'markdown'].includes(ext)) return 'markdown';
     if (ext === 'pdf') return 'pdf';
@@ -52,6 +53,7 @@ function getFileIcon(type: FileType): React.ElementType {
         markdown: FileText,
         pdf: FileType,
         document: FileText,
+        html: FileText,
         audio: FileAudio,
         video: FileVideo,
         spreadsheet: FileSpreadsheet,
@@ -76,6 +78,7 @@ function getTypeLabel(type: FileType, extension?: string): string {
         text: 'Text',
         markdown: 'Markdown',
         pdf: 'PDF',
+        html: 'HTML',
         audio: 'Audio',
         video: 'Video',
         spreadsheet: 'Spreadsheet',
@@ -108,7 +111,8 @@ function getFileSize(filepath: string, type: FileType): string {
         archive: 5.0,
         database: 4.0,
         document: 2.0,
-        other: 1.0
+        other: 1.0,
+        html: 0
     };
 
     const size = base * multipliers[type];
@@ -146,6 +150,8 @@ function getFileUrl(sandboxId: string | undefined, path: string): string {
     return url.toString();
 }
 
+type FileVariant = 'default' | 'card' | 'grid';
+
 interface FileAttachmentProps {
     filepath: string;
     onClick?: (path: string) => void;
@@ -161,6 +167,13 @@ interface FileAttachmentProps {
      */
     collapsed?: boolean;
     project?: Project;
+    /**
+     * Controls the visual style of the file attachment
+     * - 'default': Original style (compact)
+     * - 'card': Card style with icon and metadata
+     * - 'grid': Grid layout for images and previews
+     */
+    variant?: FileVariant;
 }
 
 // Cache fetched content between mounts to avoid duplicate fetches
@@ -177,7 +190,8 @@ export function FileAttachment({
     localPreviewUrl,
     customStyle,
     collapsed = true,
-    project
+    project,
+    variant = 'default'
 }: FileAttachmentProps) {
     // Authentication 
     const { session } = useAuth();
@@ -199,9 +213,111 @@ export function FileAttachment({
     const isHtmlOrMd = extension === 'html' || extension === 'htm' || extension === 'md' || extension === 'markdown';
     const isCsv = extension === 'csv' || extension === 'tsv';
     const isPdf = extension === 'pdf';
+    const isDocument = isPdf || isHtmlOrMd || isCsv || ['doc', 'docx', 'txt', 'xls', 'xlsx'].includes(extension);
+    
+    // Click handler - moved up to avoid temporal dead zone error
+    const handleClick = () => {
+        if (onClick) {
+            onClick(filepath);
+        }
+    };
+
+     // Get the appropriate icon path based on file type
+     const getIconPath = () => {
+        switch (fileType) {
+            case 'pdf':
+                return '/pdf.png';
+            case 'markdown':
+                return '/html.png';
+            case 'csv':
+                return '/csv.png';
+            case 'document':
+                return '/doc.png';
+            case 'html':
+                return '/html.png';
+            case 'spreadsheet':
+                return '/csv.png';
+            case 'image':
+                return '/icons/image-icon.svg';
+            case 'code':
+                return '/icons/code-icon.svg';
+            default:
+                return '/icons/file-icon.svg';
+        }
+    };
+    // Handle image loading errors
+    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+        const target = e.target as HTMLImageElement;
+        target.src = '/file.png';
+    };
     const isGridLayout = customStyle?.gridColumn === '1 / -1' || Boolean(customStyle && ('--attachment-height' in customStyle));
     // Define isInlineMode early, before any hooks
     const isInlineMode = !isGridLayout;
+
+    // Handle click events for the image preview
+    const handleImagePreviewClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onClick?.(filepath);
+    };
+
+    // Render document card layout
+    if (variant === 'card') {
+        if (isImage) {
+            return (
+                <div className={cn("w-[calc(50%-0.25rem)] h-auto", className)}>
+                    <FileAttachment
+                        filepath={filepath}
+                        onClick={onClick}
+                        sandboxId={sandboxId}
+                        showPreview={showPreview}
+                        localPreviewUrl={localPreviewUrl}
+                        className="w-full h-auto"
+                        project={project}
+                        variant="default"
+                    />
+                </div>
+            );
+        }
+
+        return (
+            <button
+                onClick={handleClick}
+                className={cn(
+                    "group flex rounded-xl transition-all duration-200 h-[54px] overflow-hidden cursor-pointer",
+                    "border border-black/10 dark:border-white/10",
+                    "bg-sidebar",
+                    "text-left",
+                    "w-full sm:w-[calc(50%-0.25rem)] h-[54px] min-h-[54px]",
+                    className
+                )}
+                title={filename}
+            >
+                <div className="relative min-w-[47px] h-[54px] flex-shrink-0 flex items-center justify-center">
+                    <img 
+                        src={getIconPath()}
+                        alt={typeLabel} 
+                        className="h-9 w-9 object-contain opacity-70"
+                        onError={handleImageError}
+                    />
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col justify-center p-2 pl-3 overflow-hidden">
+                    <div className="text-sm font-medium text-foreground truncate max-w-full">
+                        {filename}
+                    </div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                        <span className="text-black/60 dark:text-white/60 truncate">{typeLabel}</span>
+                        <span className="text-black/40 dark:text-white/40 flex-shrink-0">·</span>
+                        <span className="text-black/60 dark:text-white/60 flex-shrink-0">{fileSize}</span>
+                    </div>
+                </div>
+                {isDocument && (
+                    <div className="ml-2 mr-2 opacity-0 group-hover:opacity-70 transition-opacity flex items-center">
+                        <Eye className="h-5 w-5 text-muted-foreground m-1" />
+                    </div>
+                )}
+            </button>
+        );
+    }
     const shouldShowPreview = (isHtmlOrMd || isCsv || isPdf) && showPreview && collapsed === false;
 
     // Use the React Query hook to fetch file content
@@ -241,11 +357,7 @@ export function FileAttachment({
         }
     }, [fileContentError, imageError, pdfError]);
 
-    const handleClick = () => {
-        if (onClick) {
-            onClick(filepath);
-        }
-    };
+
 
     // Images are displayed with their natural aspect ratio
     if (isImage && showPreview) {
@@ -553,6 +665,7 @@ interface FileAttachmentGridProps {
     showPreviews?: boolean;
     collapsed?: boolean;
     project?: Project;
+    layout?: 'grid' | 'document';
 }
 
 export function FileAttachmentGrid({
@@ -562,7 +675,8 @@ export function FileAttachmentGrid({
     sandboxId,
     showPreviews = true,
     collapsed = false,
-    project
+    project,
+    layout = 'grid'
 }: FileAttachmentGridProps) {
     if (!attachments || attachments.length === 0) return null;
 
@@ -573,8 +687,8 @@ export function FileAttachmentGrid({
             className={className}
             sandboxId={sandboxId}
             showPreviews={showPreviews}
-            layout="grid"
-            gridImageHeight={150} // Use larger height for grid layout
+            layout={layout}
+            gridImageHeight={layout === 'grid' ? 150 : undefined} // Only set height for grid layout
             collapsed={collapsed}
             project={project}
         />
