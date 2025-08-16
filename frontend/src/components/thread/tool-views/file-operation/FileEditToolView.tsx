@@ -1,20 +1,15 @@
 import React, { useState } from 'react';
 import {
   FileDiff,
-  CheckCircle,
   AlertTriangle,
   Loader2,
   File,
-  ChevronDown,
-  ChevronUp,
   Minus,
   Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   extractFileEditData,

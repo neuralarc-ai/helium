@@ -26,6 +26,9 @@ import { isLocalMode } from '@/lib/config';
 import { BillingModal } from '@/components/billing/billing-modal';
 import { useRouter } from 'next/navigation';
 import { BorderBeam } from '@/components/magicui/border-beam';
+import { FaGoogle, FaDiscord } from 'react-icons/fa';
+import { SiNotion } from 'react-icons/si';
+import { Brain, Database, Zap, Workflow } from 'lucide-react';
 
 // Helper function to check if we're in production mode
 const isProductionMode = (): boolean => {
@@ -377,7 +380,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             isVisible={showToolPreview || !!showSnackbar}
           />
           <Card
-            className={`-mb-2 p-0 mt-4 shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] w-full max-w-4xl mx-auto bg-transparent border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-4xl' : 'rounded-4xl'} relative`}
+            className={`-mb-2 p-0 mt-4 bg-white shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] w-full max-w-4xl mx-auto border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-4xl' : 'rounded-4xl'} relative`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={(e) => {
@@ -398,12 +401,79 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
               }
             }}
           >
-            <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
-              <CardContent className={`w-full border border-black/10 p-2 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${bgColor} border-0 ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl' : 'rounded-3xl'} overflow-hidden relative`}>
-              <div className="absolute inset-0 rounded-[inherit] border border-black/10 overflow-hidden">
-                <BorderBeam duration={3} borderWidth={1.5} size={200} className="from-transparent via-helium-teal to-transparent"/>
-                <BorderBeam duration={3} borderWidth={1.5} delay={1.5} size={200} className="from-transparent via-helium-pink to-transparent"/>
+            <div className="w-full text-sm flex flex-col justify-between items-start rounded-4xl">
+              <CardContent className={`w-full border border-black/10 rounded-4xl p-2 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl' : 'rounded-3xl'} overflow-hidden relative`}>
+              <div className="absolute inset-0 overflow-hidden rounded-3xl bg-white">
+                <BorderBeam duration={6} borderWidth={1} size={200} className="from-transparent via-helium-teal to-transparent"/>
+                <BorderBeam duration={6} borderWidth={1} delay={3} size={200} className="from-transparent via-helium-pink to-transparent"/>
               </div>
+                {/* Action Buttons - Moved above MessageInput */}
+                {enableAdvancedConfig && selectedAgentId && (
+                  <div className="w-full border-b border-muted/20 px-4 py-1.5 mb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none">
+                        <button
+                          onClick={() => setRegistryDialogOpen(true)}
+                          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-all duration-200 px-2.5 py-1.5 rounded-md hover:bg-muted/50 border border-transparent hover:border-border/30 flex-shrink-0"
+                        >
+                          <div className="flex items-center -space-x-0.5">
+                            <div className="w-5 h-5 bg-white dark:bg-muted border border-border rounded-full flex items-center justify-center shadow-sm">
+                              <FaGoogle className="w-3 h-3" />
+                            </div>
+                            <div className="w-5 h-5 bg-white dark:bg-muted border border-border rounded-full flex items-center justify-center shadow-sm">
+                              <FaDiscord className="w-3 h-3" />
+                            </div>
+                            <div className="w-5 h-5 bg-white dark:bg-muted border border-border rounded-full flex items-center justify-center shadow-sm">
+                              <SiNotion className="w-3 h-3" />
+                            </div>
+                          </div>
+                          <span className="text-xs font-medium">Integrations</span>
+                        </button>
+                        
+                        <div className="w-px h-4 bg-border/60" />
+                        
+                        <button
+                          onClick={() => router.push(`/agents/config/${selectedAgentId}?tab=configuration&accordion=instructions`)}
+                          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-all duration-200 px-2.5 py-1.5 rounded-md hover:bg-muted/50 border border-transparent hover:border-border/30 flex-shrink-0"
+                        >
+                          <Brain className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="text-xs font-medium">Instructions</span>
+                        </button>
+                        
+                        <div className="w-px h-4 bg-border/60" />
+                        
+                        <button
+                          onClick={() => router.push(`/agents/config/${selectedAgentId}?tab=configuration&accordion=knowledge`)}
+                          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-all duration-200 px-2.5 py-1.5 rounded-md hover:bg-muted/50 border border-transparent hover:border-border/30 flex-shrink-0"
+                        >
+                          <Database className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="text-xs font-medium">Knowledge</span>
+                        </button>
+                        
+                        <div className="w-px h-4 bg-border/60" />
+                        
+                        <button
+                          onClick={() => router.push(`/agents/config/${selectedAgentId}?tab=configuration&accordion=triggers`)}
+                          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-all duration-200 px-2.5 py-1.5 rounded-md hover:bg-muted/50 border border-transparent hover:border-border/30 flex-shrink-0"
+                        >
+                          <Zap className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="text-xs font-medium">Triggers</span>
+                        </button>
+                        
+                        <div className="w-px h-4 bg-border/60" />
+                        
+                        <button
+                          onClick={() => router.push(`/agents/config/${selectedAgentId}?tab=configuration&accordion=workflows`)}
+                          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-all duration-200 px-2.5 py-1.5 rounded-md hover:bg-muted/50 border border-transparent hover:border-border/30 flex-shrink-0"
+                        >
+                          <Workflow className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="text-xs font-medium">Workflows</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <AttachmentGroup
                   files={uploadedFiles || []}
                   sandboxId={sandboxId}
@@ -411,6 +481,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                   layout="inline"
                   maxHeight="216px"
                   showPreviews={false}
+                  isChatInput={true}
                 />
                 <MessageInput
                   ref={textareaRef}
