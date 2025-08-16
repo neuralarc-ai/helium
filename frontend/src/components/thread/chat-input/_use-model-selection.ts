@@ -9,7 +9,7 @@ export const STORAGE_KEY_MODEL = 'suna-preferred-model-v3';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
 export const DEFAULT_PREMIUM_MODEL_ID = 'helio-o1';
 // export const DEFAULT_FREE_MODEL_ID = 'moonshotai/kimi-k2';
-export const DEFAULT_FREE_MODEL_ID = 'helio-o1';
+export const DEFAULT_FREE_MODEL_ID = 'openrouter/z-ai/glm-4.5-air:free';
 
 export type SubscriptionStatus = 'no_subscription' | 'active';
 
@@ -369,7 +369,7 @@ export const useModelSelection = () => {
             }
           ];
         } else {
-          // In local mode, show all models
+          // In local mode, show only free models
           models = [
             { 
               id: DEFAULT_FREE_MODEL_ID, 
@@ -377,12 +377,17 @@ export const useModelSelection = () => {
               requiresSubscription: false,
               priority: MODELS[DEFAULT_FREE_MODEL_ID]?.priority || 50
             },
-            { 
-              id: DEFAULT_PREMIUM_MODEL_ID, 
-              label: 'Sonnet 4', 
-              requiresSubscription: false, 
-              priority: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.priority || 100
-            },
+            // Only include models with :free in their ID
+            ...Object.entries(MODELS)
+              .filter(([id, model]) => id.includes(':free'))
+              .map(([id, model]) => ({
+                id,
+                label: formatModelName(id),
+                requiresSubscription: false,
+                priority: model.priority || 50,
+                lowQuality: model.lowQuality || false,
+                recommended: model.recommended || false
+              }))
           ];
         }
       } else {
@@ -402,13 +407,17 @@ export const useModelSelection = () => {
             }
           ];
         } else {
-          // In local mode, process all API models
+          // In local mode, process only free API models (those with :free in their ID)
           const processedModelIds = new Set(); // Track processed models to avoid duplicates
           models = modelsData.models
             .filter(model => {
               const shortName = model.short_name || model.id;
               // Skip if we've already processed this model ID
               if (processedModelIds.has(shortName)) {
+                return false;
+              }
+              // Only include models with :free in their ID
+              if (!shortName.includes(':free')) {
                 return false;
               }
               processedModelIds.add(shortName);
@@ -540,8 +549,8 @@ export const useModelSelection = () => {
       // Fallback to default model based on environment
       let defaultModel: string;
       if (isLocalMode()) {
-        // Local mode: use subscription-based default
-        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+        // Local mode: always use free model default
+        defaultModel = DEFAULT_FREE_MODEL_ID;
       } else {
         // Production mode: use Helio o1 as default
         defaultModel = PRODUCTION_MODELS['helio-o1'].id;
@@ -558,8 +567,8 @@ export const useModelSelection = () => {
       // Fallback to default model based on environment
       let defaultModel: string;
       if (isLocalMode()) {
-        // Local mode: use subscription-based default
-        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+        // Local mode: always use free model default
+        defaultModel = DEFAULT_FREE_MODEL_ID;
       } else {
         // Production mode: use Helio o1 as default
         defaultModel = PRODUCTION_MODELS['helio-o1'].id;
@@ -593,8 +602,8 @@ export const useModelSelection = () => {
       // Reset to default model when the selected model is not found
       let defaultModel: string;
       if (isLocalMode()) {
-        // Local mode: use subscription-based default
-        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+        // Local mode: always use free model default
+        defaultModel = DEFAULT_FREE_MODEL_ID;
       } else {
         // Production mode: use Helio o1 as default
         defaultModel = PRODUCTION_MODELS['helio-o1'].id;

@@ -20,7 +20,7 @@ import {
   ParsedContent,
   ParsedMetadata,
 } from '@/components/thread/types';
-import { FileAttachmentGrid } from '@/components/thread/file-attachment';
+import { ThreadFilesDisplay } from '@/components/thread/file-attachment';
 import { useFilePreloader } from '@/hooks/react-query/files';
 import { useAuth } from '@/components/AuthProvider';
 import { Project } from '@/lib/api';
@@ -83,28 +83,7 @@ const HIDE_STREAMING_XML_TAGS = new Set([
   'execute-data-provider-endpoint',
 ]);
 
-// Helper function to render attachments (keeping original implementation for now)
-export function renderAttachments(
-  attachments: string[],
-  fileViewerHandler?: (filePath?: string, filePathList?: string[]) => void,
-  sandboxId?: string,
-  project?: Project,
-) {
-  if (!attachments || attachments.length === 0) return null;
 
-  // Note: Preloading is now handled by React Query in the main ThreadContent component
-  // to avoid duplicate requests with different content types
-
-  return (
-    <FileAttachmentGrid
-      attachments={attachments}
-      onFileClick={fileViewerHandler}
-      showPreviews={true}
-      sandboxId={sandboxId}
-      project={project}
-    />
-  );
-}
 
 // Render Markdown content while preserving XML tags that should be displayed as tool calls
 export function renderMarkdownContent(
@@ -178,11 +157,15 @@ export function renderMarkdownContent(
                 content={askText}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
-              {renderAttachments(
-                attachmentArray,
-                fileViewerHandler,
-                sandboxId,
-                project,
+              {attachmentArray && attachmentArray.length > 0 && (
+                <ThreadFilesDisplay
+                  attachments={attachmentArray}
+                  onFileClick={fileViewerHandler}
+                  sandboxId={sandboxId}
+                  project={project}
+                  className="mt-3"
+                  rightAlignGrid={false}
+                />
               )}
             </div>,
           );
@@ -205,11 +188,15 @@ export function renderMarkdownContent(
                 content={completeText}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
-              {renderAttachments(
-                attachmentArray,
-                fileViewerHandler,
-                sandboxId,
-                project,
+              {attachmentArray && attachmentArray.length > 0 && (
+                <ThreadFilesDisplay
+                  attachments={attachmentArray}
+                  onFileClick={fileViewerHandler}
+                  sandboxId={sandboxId}
+                  project={project}
+                  className="mt-3"
+                  rightAlignGrid={false}
+                />
               )}
             </div>,
           );
@@ -352,11 +339,15 @@ export function renderMarkdownContent(
             content={askContent}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
           />
-          {renderAttachments(
-            attachments,
-            fileViewerHandler,
-            sandboxId,
-            project,
+          {attachments && attachments.length > 0 && (
+            <ThreadFilesDisplay
+              attachments={attachments}
+              onFileClick={fileViewerHandler}
+              sandboxId={sandboxId}
+              project={project}
+              className="mt-3"
+              rightAlignGrid={false}
+            />
           )}
         </div>,
       );
@@ -379,12 +370,16 @@ export function renderMarkdownContent(
           <PipedreamUrlDetector
             content={completeContent}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
-          />
-          {renderAttachments(
-            attachments,
-            fileViewerHandler,
-            sandboxId,
-            project,
+              />
+          {attachments && attachments.length > 0 && (
+            <ThreadFilesDisplay
+              attachments={attachments}
+              onFileClick={fileViewerHandler}
+              sandboxId={sandboxId}
+              project={project}
+              className="mt-3"
+              rightAlignGrid={false}
+            />
           )}
         </div>,
       );
@@ -986,19 +981,19 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                     return (
                       <div
                         key={group.key}
-                        className="flex justify-end group transition-all duration-300 ease-in-out"
+                        className="flex justify-end group transition-all duration-300 ease-in-out w-full"
                         data-message-id={group.key}
                       >
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1 items-end max-w-[85%]">
                           <div
-                            className={cn('flex max-w-[100%]')}
+                            className={cn('flex w-fit')}
                           >
                             <div
                               style={{
                                 background: '#FFFFFF',
                                 color: 'black',
                               }}
-                              className="break-words overflow-hidden border border-black/10 rounded-l-2xl rounded-tr-2xl rounded-br-sm px-4 py-2"
+                              className="break-words overflow-hidden border border-black/5 rounded-l-2xl rounded-tr-2xl rounded-br-sm px-4 py-2 w-full"
                             >
                               <div className="space-y-4 min-w-0 flex-1">
                                 {cleanContent && (
@@ -1038,18 +1033,31 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                     />
                                   </div>
                                 )}
-                                {renderAttachments(
-                                  attachments as string[],
-                                  handleOpenFileViewer,
-                                  sandboxId,
-                                  project,
-                                )}
+
                               </div>
                             </div>
                           </div>
+                          
+                          {/* Files Display - Below the message content */}
+                          {attachments && attachments.length > 0 && (
+                            <div className="w-full flex justify-end">
+                              <div className="max-w-[85%]">
+                                <ThreadFilesDisplay
+                                  attachments={attachments as string[]}
+                                  onFileClick={handleOpenFileViewer}
+                                  sandboxId={sandboxId}
+                                  project={project}
+                                  className="mt-1"
+                                  rightAlignGrid={false}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
                           {/* Copy and Edit buttons for user prompt - OUTSIDE the message box */}
                           {!readOnly && (
-                            <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out">
+                            <div className="w-full flex justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out">
+                              <div className="max-w-[85%] flex justify-end">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -1194,7 +1202,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 </Tooltip>
                               )}
                             </div>
-                          )}
+                          </div>
+                        )}
                         </div>
                       </div>
                     );

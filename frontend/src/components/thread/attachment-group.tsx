@@ -36,6 +36,7 @@ interface AttachmentGroupProps {
     collapsed?: boolean; // Add new collapsed prop
     project?: Project; // Add project prop
     displayMode?: 'inline' | 'grid'; // Pass displayMode through
+    isChatInput?: boolean; // New prop to identify chat input mode
 }
 
 export function AttachmentGroup({
@@ -50,7 +51,8 @@ export function AttachmentGroup({
     gridImageHeight = 180, // Increased from 120 for better visibility
     collapsed = true, // By default, HTML/MD files are collapsed
     project,
-    displayMode = 'inline' // Add displayMode to props
+    displayMode = 'inline', // Add displayMode to props
+    isChatInput = false // Add isChatInput prop
 }: AttachmentGroupProps) {
     // State for modal
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,9 +93,23 @@ export function AttachmentGroup({
     }
 
     // Deduplicate attachments if they are strings - do this before any conditional rendering
-    const uniqueFiles = typeof files[0] === 'string'
-        ? [...new Set(files)] as string[]
-        : files;
+    const uniqueFiles = (() => {
+        if (typeof files[0] === 'string') {
+            // For string files, use Set to deduplicate
+            return [...new Set(files)] as string[];
+        } else {
+            // For UploadedFile objects, deduplicate by path
+            const seenPaths = new Set<string>();
+            return files.filter(file => {
+                const path = (file as UploadedFile).path;
+                if (seenPaths.has(path)) {
+                    return false;
+                }
+                seenPaths.add(path);
+                return true;
+            });
+        }
+    })();
 
     // Get filepath from either string or UploadedFile
     const getFilePath = (file: string | UploadedFile): string => {
@@ -199,6 +215,52 @@ export function AttachmentGroup({
 
     // Now continue with the fully conditional rendering but with pre-computed values
     const renderContent = () => {
+        // Chat input mode - show all files in a grid with cross buttons
+        if (isChatInput) {
+            return (
+                <div className="grid grid-cols-3 gap-2">
+                    {uniqueFiles.map((file, index) => (
+                        <div key={index} className="relative group">
+                            <FileAttachment
+                                displayMode="grid"
+                                filepath={getFilePath(file)}
+                                onClick={handleFileClick}
+                                sandboxId={sandboxId}
+                                showPreview={false}
+                                localPreviewUrl={getLocalPreviewUrl(file)}
+                                className="w-full h-fit rounded-lg bg-black/5"
+                                collapsed={true}
+                                project={project}
+                            />
+                            {onRemove && (
+                                <div
+                                    className="absolute top-2 right-2 h-4 w-4 rounded-full
+                                    bg-black/50
+                                    text-white flex items-center justify-center
+                                    z-30 cursor-pointer transition-colors
+                                    opacity-0 group-hover:opacity-100"
+                                    onClick={() => onRemove(index)}
+                                >
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <div className="flex items-center justify-center w-full h-full">
+                                                    <X size={8} strokeWidth={1} />
+                                                </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top">
+                                                <p>Remove file</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
         if (layout === 'grid') {
             const shouldLastItemSpanFull = sortedFiles.length % 2 === 1 && sortedFiles.length > 1;
 
@@ -361,109 +423,171 @@ export function AttachmentGroup({
             </AnimatePresence >
 
             {/* Modal dialog to show all files - conditionally rendered based on isModalOpen state */}
-            < Dialog open={isModalOpen} onOpenChange={setIsModalOpen} >
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader className="mb-1">
-                        <DialogTitle>
-                            <span>All Files ({uniqueFiles.length})</span>
-                        </DialogTitle>
-                    </DialogHeader>
+            {!isChatInput && (
+                <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                    <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader className="mb-1">
+                            <DialogTitle>
+                                <span>All Files ({uniqueFiles.length})</span>
+                            </DialogTitle>
+                        </DialogHeader>
 
-                    <div className={cn(
-                        "grid gap-3 sm:justify-start justify-center sm:max-w-full max-w-[300px] mx-auto sm:mx-0",
-                        uniqueFiles.length === 1 ? "grid-cols-1" :
-                            uniqueFiles.length > 4 ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3" :
-                                "grid-cols-1 sm:grid-cols-2",
-                    )}>
-                        {(() => {
-                            // Pre-compute all values needed for rendering to avoid hook conditionals
-                            const modalFilesWithMeta = (() => {
-                                // Create sorted files array (same logic as above)
-                                const sortedModalFiles = [...uniqueFiles].sort((a, b) => {
-                                    // Helper function to check if a file is an image
-                                    const isImage = (file: string | UploadedFile) => {
+                        <div className={cn(
+                            "grid gap-3 sm:justify-start justify-center sm:max-w-full max-w-[300px] mx-auto sm:mx-0",
+                            uniqueFiles.length === 1 ? "grid-cols-1" :
+                                uniqueFiles.length > 4 ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3" :
+                                    "grid-cols-1 sm:grid-cols-2",
+                        )}>
+                            {(() => {
+                                // Pre-compute all values needed for rendering to avoid hook conditionals
+                                const modalFilesWithMeta = (() => {
+                                    // Create sorted files array (same logic as above)
+                                    const sortedModalFiles = [...uniqueFiles].sort((a, b) => {
+                                        // Helper function to check if a file is an image
+                                        const isImage = (file: string | UploadedFile) => {
+                                            const path = getFilePath(file);
+                                            const filename = path.split('/').pop() || '';
+                                            return filename.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i) !== null;
+                                        };
+
+                                        // Sort images first
+                                        const aIsImage = isImage(a);
+                                        const bIsImage = isImage(b);
+
+                                        if (aIsImage && !bIsImage) return -1;
+                                        if (!aIsImage && bIsImage) return 1;
+                                        return 0;
+                                    });
+
+                                    // Create map of sorted indices to original indices
+                                    const indexMap = sortedModalFiles.map(file =>
+                                        uniqueFiles.findIndex(f =>
+                                            getFilePath(f) === getFilePath(file)
+                                        )
+                                    );
+
+                                    return sortedModalFiles.map((file, displayIndex) => {
+                                        // Get the original index for removal
+                                        const originalIndex = indexMap[displayIndex];
+                                        // File properties
                                         const path = getFilePath(file);
                                         const filename = path.split('/').pop() || '';
-                                        return filename.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i) !== null;
-                                    };
+                                        const isImage = filename.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i) !== null;
 
-                                    // Sort images first
-                                    const aIsImage = isImage(a);
-                                    const bIsImage = isImage(b);
+                                        return {
+                                            file,
+                                            path,
+                                            isImage,
+                                            originalIndex,
+                                            wrapperClassName: cn(
+                                                "relative group",
+                                                isImage ? "flex items-center justify-center h-full" : ""
+                                            ),
+                                            fileClassName: cn(
+                                                "w-full",
+                                                isImage ? "h-auto min-h-[54px]" : "h-[54px]"
+                                            ),
+                                            customStyle: isImage ? {
+                                                width: '100%',
+                                                height: 'auto',
+                                                ...(({ '--attachment-height': `${gridImageHeight}px` }) as React.CSSProperties)
+                                            } : {
+                                                width: '100%'
+                                            }
+                                        };
+                                    });
+                                })();
 
-                                    if (aIsImage && !bIsImage) return -1;
-                                    if (!aIsImage && bIsImage) return 1;
-                                    return 0;
-                                });
+                                return modalFilesWithMeta.map((item) => (
+                                    <div
+                                        key={item.originalIndex}
+                                        className={item.wrapperClassName}
+                                    >
+                                        <FileAttachment
+                                            displayMode={displayMode}
+                                            filepath={item.path}
+                                            onClick={(path) => {
+                                                handleFileClick(path);
+                                                setIsModalOpen(false);
+                                            }}
+                                            sandboxId={sandboxId}
+                                            showPreview={showPreviews}
+                                            localPreviewUrl={getLocalPreviewUrl(item.file)}
+                                            className={item.fileClassName}
+                                            customStyle={item.customStyle}
+                                            collapsed={true} // Force collapsed for all in modal
+                                            project={project}
+                                        />
+                                        {onRemove && (
+                                            <div
+                                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full
+                                                    bg-black/30
+                                                    text-white flex items-center justify-center
+                                                    z-30 cursor-pointer transition-colors"
+                                                onClick={() => {
+                                                    onRemove(item.originalIndex);
+                                                    if (uniqueFiles.length <= 1) {
+                                                        setIsModalOpen(false);
+                                                    }
+                                                }}
+                                            >
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="flex items-center justify-center w-full h-full">
+                                                                <X size={12} strokeWidth={3} />
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top">
+                                                            <p>Remove file</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
+                                        )}
+                                    </div>
+                                ));
+                            })()}
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
 
-                                // Create map of sorted indices to original indices
-                                const indexMap = sortedModalFiles.map(file =>
-                                    uniqueFiles.findIndex(f =>
-                                        getFilePath(f) === getFilePath(file)
-                                    )
-                                );
+            {/* Special modal for chat input mode */}
+            {isChatInput && (
+                <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader className="mb-1">
+                            <DialogTitle>
+                                <span>All Uploaded Files ({uniqueFiles.length})</span>
+                            </DialogTitle>
+                        </DialogHeader>
 
-                                return sortedModalFiles.map((file, displayIndex) => {
-                                    // Get the original index for removal
-                                    const originalIndex = indexMap[displayIndex];
-                                    // File properties
-                                    const path = getFilePath(file);
-                                    const filename = path.split('/').pop() || '';
-                                    const isImage = filename.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i) !== null;
-
-                                    return {
-                                        file,
-                                        path,
-                                        isImage,
-                                        originalIndex,
-                                        wrapperClassName: cn(
-                                            "relative group",
-                                            isImage ? "flex items-center justify-center h-full" : ""
-                                        ),
-                                        fileClassName: cn(
-                                            "w-full",
-                                            isImage ? "h-auto min-h-[54px]" : "h-[54px]"
-                                        ),
-                                        customStyle: isImage ? {
-                                            width: '100%',
-                                            height: 'auto',
-                                            ...(({ '--attachment-height': `${gridImageHeight}px` }) as React.CSSProperties)
-                                        } : {
-                                            width: '100%'
-                                        }
-                                    };
-                                });
-                            })();
-
-                            return modalFilesWithMeta.map((item) => (
-                                <div
-                                    key={item.originalIndex}
-                                    className={item.wrapperClassName}
-                                >
+                        <div className="grid grid-cols-4 gap-3">
+                            {uniqueFiles.map((file, index) => (
+                                <div key={index} className="relative group">
                                     <FileAttachment
-                                displayMode={displayMode}
-                                        filepath={item.path}
+                                        displayMode="grid"
+                                        filepath={getFilePath(file)}
                                         onClick={(path) => {
                                             handleFileClick(path);
                                             setIsModalOpen(false);
                                         }}
                                         sandboxId={sandboxId}
-                                        showPreview={showPreviews}
-                                        localPreviewUrl={getLocalPreviewUrl(item.file)}
-                                        className={item.fileClassName}
-                                        customStyle={item.customStyle}
-                                        collapsed={true} // Force collapsed for all in modal
+                                        showPreview={false}
+                                        localPreviewUrl={getLocalPreviewUrl(file)}
+                                        className="w-full h-[80px] rounded-lg bg-black/5"
+                                        collapsed={true}
                                         project={project}
                                     />
                                     {onRemove && (
                                         <div
-                                            className="absolute -top-1 -right-1 h-5 w-5 rounded-full
-                                                bg-black dark:bg-white
-                                                border-3 border-sidebar
-                                                text-white dark:text-black flex items-center justify-center
-                                                z-30 cursor-pointer"
+                                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full
+                                                bg-black/30
+                                                text-white flex items-center justify-center
+                                                z-30 cursor-pointer transition-colors"
                                             onClick={() => {
-                                                onRemove(item.originalIndex);
+                                                onRemove(index);
                                                 if (uniqueFiles.length <= 1) {
                                                     setIsModalOpen(false);
                                                 }
@@ -473,7 +597,7 @@ export function AttachmentGroup({
                                                 <Tooltip>
                                                     <TooltipTrigger asChild>
                                                         <div className="flex items-center justify-center w-full h-full">
-                                                            <X size={10} strokeWidth={3} />
+                                                            <X size={12} strokeWidth={3} />
                                                         </div>
                                                     </TooltipTrigger>
                                                     <TooltipContent side="top">
@@ -484,11 +608,11 @@ export function AttachmentGroup({
                                         </div>
                                     )}
                                 </div>
-                            ));
-                        })()}
-                    </div>
-                </DialogContent>
-            </Dialog >
+                            ))}
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
         </>
     );
 } 
