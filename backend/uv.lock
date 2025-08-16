@@ -876,7 +876,6 @@ dependencies = [
     { name = "openpyxl" },
     { name = "packaging" },
     { name = "pdfminer-six" },
-    { name = "pika" },
     { name = "pillow" },
     { name = "prisma" },
     { name = "prometheus-client" },
@@ -942,7 +941,6 @@ requires-dist = [
     { name = "openpyxl", specifier = "==3.1.2" },
     { name = "packaging", specifier = "==24.1" },
     { name = "pdfminer-six", specifier = ">=20250506" },
-    { name = "pika", specifier = "==1.3.2" },
     { name = "pillow", specifier = ">=10.4.0" },
     { name = "prisma", specifier = "==0.15.0" },
     { name = "prometheus-client", specifier = "==0.21.1" },
@@ -1727,15 +1725,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/78/46/5223d613ac4963e1f7c07b2660fe0e9e770102ec6bda8c038400113fb215/pdfminer_six-20250506.tar.gz", hash = "sha256:b03cc8df09cf3c7aba8246deae52e0bca7ebb112a38895b5e1d4f5dd2b8ca2e7", size = 7387678, upload-time = "2025-05-06T16:17:00.787Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/73/16/7a432c0101fa87457e75cb12c879e1749c5870a786525e2e0f42871d6462/pdfminer_six-20250506-py3-none-any.whl", hash = "sha256:d81ad173f62e5f841b53a8ba63af1a4a355933cfc0ffabd608e568b9193909e3", size = 5620187, upload-time = "2025-05-06T16:16:58.669Z" },
-]
-
-[[package]]
-name = "pika"
-version = "1.3.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/db/db/d4102f356af18f316c67f2cead8ece307f731dd63140e2c71f170ddacf9b/pika-1.3.2.tar.gz", hash = "sha256:b2a327ddddf8570b4965b3576ac77091b850262d34ce8c1d8cb4e4146aa4145f", size = 145029, upload-time = "2023-05-05T14:25:43.368Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f9/f3/f412836ec714d36f0f4ab581b84c491e3f42c6b5b97a6c6ed1817f3c16d0/pika-1.3.2-py3-none-any.whl", hash = "sha256:0779a7c1fafd805672796085560d290213a465e4f6f76a6fb19e378d8041a14f", size = 155415, upload-time = "2023-05-05T14:25:41.484Z" },
 ]
 
 [[package]]

@@ -656,6 +656,51 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     }
   }, [messages, scrollToBottom]);
 
+  // Auto-scroll behaviors for different streaming scenarios:
+  // - Use 'auto' for streaming content to ensure immediate visibility
+  // - Use 'smooth' for user interactions and status changes
+  // - This mimics ChatGPT/Claude behavior where content stays visible during generation
+  React.useEffect(() => {
+    if (streamingTextContent && (agentStatus === 'running' || agentStatus === 'connecting')) {
+      // Use immediate scroll for streaming content to ensure smooth experience
+      scrollToBottom('auto');
+    }
+  }, [streamingTextContent, agentStatus, scrollToBottom]);
+
+  // Auto-scroll to bottom when streaming text changes in playback mode
+  React.useEffect(() => {
+    if (streamingText && isStreamingText && readOnly) {
+      scrollToBottom('auto');
+    }
+  }, [streamingText, isStreamingText, readOnly, scrollToBottom]);
+
+  // Auto-scroll to bottom when streaming tool calls change
+  React.useEffect(() => {
+    if (streamingToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
+      scrollToBottom('auto');
+    }
+  }, [streamingToolCall, agentStatus, scrollToBottom]);
+
+  // Auto-scroll to bottom when new tool calls are added
+  React.useEffect(() => {
+    if (currentToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
+      scrollToBottom('auto');
+    }
+  }, [currentToolCall, agentStatus, scrollToBottom]);
+
+  // Auto-scroll to bottom when streaming starts
+  React.useEffect(() => {
+    if (streamHookStatus === 'streaming') {
+      scrollToBottom('auto');
+    }
+  }, [streamHookStatus, scrollToBottom]);
+
+  // Complete auto-scroll strategy:
+  // 1. Smooth scroll for user interactions (new messages, status changes)
+  // 2. Immediate scroll for streaming content (text, tool calls, streaming start)
+  // 3. Always auto-scroll during streaming regardless of user scroll position
+  // 4. This ensures content stays visible during generation like ChatGPT/Claude
+
   // Preload all message attachments when messages change or sandboxId is provided
   React.useEffect(() => {
     if (!sandboxId) return;
