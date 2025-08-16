@@ -1,12 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  CheckCircle,
-  AlertTriangle,
-  ExternalLink,
   Loader2,
-  Code,
-  Eye,
-  File,
+  Globe,
 } from 'lucide-react';
 import {
   extractFilePath,
@@ -14,7 +9,6 @@ import {
   extractStreamingFileContent,
   formatTimestamp,
   getToolTitle,
-  normalizeContentToString,
   extractToolData,
 } from '../utils';
 import {
@@ -186,8 +180,8 @@ export function FileOperationToolView({
     }
 
     return (
-      <div className="p-4">
-        <div className="w-full h-full bg-muted/20 border rounded-xl px-4 py-2 pb-6">
+      <div>
+        <div className="w-full h-full p-4">
           <pre className="text-sm font-mono text-zinc-800 dark:text-zinc-300 whitespace-pre-wrap break-words">
             {processUnicodeContent(fileContent)}
           </pre>
@@ -265,7 +259,7 @@ export function FileOperationToolView({
             key={idx}
             className={cn('table-row transition-colors', config.hoverColor)}
           >
-            <div className="table-cell text-right pr-3 pl-6 py-0.5 text-xs font-mono text-zinc-500 dark:text-zinc-500 select-none w-12 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
+            <div className="table-cell text-right pr-3 py-0.5 text-xs font-mono text-zinc-500 dark:text-zinc-500 select-none w-12 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900">
               {idx + 1}
             </div>
             <div className="table-cell pl-3 py-0.5 pr-4 text-xs font-mono whitespace-pre-wrap text-zinc-800 dark:text-zinc-300">
@@ -281,18 +275,22 @@ export function FileOperationToolView({
   return (
     <Card className="flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
       <Tabs defaultValue={'preview'} className="w-full h-full">
-        <CardHeader className="h-10 flex flex-row items-center justify-between bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 rounded-t-lg">
-          <div className="flex items-center gap-2 h-10 justify-center mt-4">
-            <Icon className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-base font-medium text-muted-foreground">
+        <CardHeader className="h-9 flex flex-row items-center justify-between bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 rounded-t-lg">
+          <div className="flex w-full justify-center items-center gap-1 mt-4">
+            <Icon className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-semibold text-muted-foreground">
               {toolTitle}
             </CardTitle>
           </div>
-          <div className="flex items-center gap-x-2 mt-4">
-            {isHtml && htmlPreviewUrl && !isStreaming && (
+        </CardHeader>
+
+        <CardContent className="p-0 -my-2 h-full flex-1 overflow-hidden relative">
+          {/* Open in Browser button positioned at top left of card content */}
+          {isHtml && htmlPreviewUrl && !isStreaming && (
+            <div className="absolute top-2 left-4 z-10">
               <Button
                 variant="outline"
-                className="h-7 px-5 text-xs rounded-full bg-white dark:bg-muted/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-none font-medium"
+                className="h-7 px-3 text-xs rounded-md bg-muted/50 backdrop-blur-3xl font-medium"
                 asChild
               >
                 <a
@@ -300,31 +298,31 @@ export function FileOperationToolView({
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <ExternalLink className="h-4 w-4 mr-1" />
+                  <Globe className="h-3 w-3" />
                   Open in Browser
                 </a>
               </Button>
-            )}
-            <TabsList className="h-7 bg-foreground/20 p-1 gap-x-2 rounded-full flex items-center">
+            </div>
+          )}
+
+          {/* Tab triggers positioned at top right of card content */}
+          <div className="absolute top-2 right-4 z-10">
+            <TabsList className="h-7 bg-muted/50 backdrop-blur-3xl p-0.5 gap-x-1 rounded-md flex items-center">
               <TabsTrigger
                 value="code"
-                className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full transition-all [&[data-state=active]]:bg-white [&[data-state=active]]:dark:bg-primary/10 [&[data-state=active]]:text-foreground hover:bg-background/50 text-muted-foreground shadow-none"
+                className="cursor-pointer flex items-center px-3 sm:py-1 text-xs font-medium rounded-sm transition-all [&[data-state=active]]:bg-white [&[data-state=active]]:text-black [&[data-state=inactive]]:bg-transparent [&[data-state=inactive]]:text-muted-foreground hover:bg-white/20 text-muted-foreground shadow-none"
               >
-                <Code className="h-4 w-4" />
                 Source
               </TabsTrigger>
               <TabsTrigger
                 value="preview"
-                className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full transition-all [&[data-state=active]]:bg-white [&[data-state=active]]:dark:bg-primary/10 [&[data-state=active]]:text-foreground hover:bg-background/50 text-muted-foreground shadow-none"
+                className="cursor-pointer flex items-center px-3 sm:py-1 text-xs font-medium rounded-sm transition-all [&[data-state=active]]:bg-white [&[data-state=active]]:text-black [&[data-state=inactive]]:bg-transparent [&[data-state=inactive]]:text-muted-foreground hover:bg-white/20 text-muted-foreground shadow-none"
               >
-                <Eye className="h-4 w-4" />
                 Preview
               </TabsTrigger>
             </TabsList>
           </div>
-        </CardHeader>
 
-        <CardContent className="p-0 -my-2 h-full flex-1 overflow-hidden relative">
           <TabsContent
             value="code"
             className="flex-1 h-full mt-0 p-0 overflow-hidden"
@@ -397,7 +395,7 @@ export function FileOperationToolView({
           </TabsContent>
         </CardContent>
 
-        <div className="px-4 py-2 h-10 bg-gradient-to-r from-zinc-50/90 to-zinc-100/90 dark:from-zinc-900/90 dark:to-zinc-800/90 backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4">
+        <div className="px-4 py-2 h-fit bg-white backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4 rounded-b-lg">
           <div className="h-full flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
             <Badge variant="outline" className="py-0.5 h-6">
               <FileIcon className="h-3 w-3" />
