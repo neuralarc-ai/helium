@@ -218,7 +218,7 @@ class Configuration:
     AWS_REGION_NAME: Optional[str] = None
     
     # Model configuration
-    MODEL_TO_USE: Optional[str] = "moonshot/moonshot-v1-8k"
+    MODEL_TO_USE: Optional[str] = "openrouterf/z-ai/glm-4.5:free"
     
     # Supabase configuration
     SUPABASE_URL: str

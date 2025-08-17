@@ -814,6 +814,8 @@ export function ThreadFilesDisplay({
                             key={`${filepath}-${index}`} 
                             className={cn(
                                 "w-full",
+                                // When there is only 1 item, place it in the second column (right side)
+                                visibleAttachments.length === 1 && "col-start-2",
                                 // When there are exactly 3 items and rightAlignGrid is true, make the 3rd item align to the right
                                 rightAlignGrid && visibleAttachments.length === 3 && index === 2 && "col-start-2"
                             )}

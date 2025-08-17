@@ -362,9 +362,8 @@ class SandboxFilesTool(SandboxToolsBase):
             # Define models in order of preference
             models = [
                 "openrouter/qwen/qwen3-coder:free",
+                "openrouter/mistralai/devstral-small-2505:free",
                 "openrouter/z-ai/glm-4.5-air:free", 
-                "moonshot/kimi-k2-0711-preview",
-                "moonshot/moonshot-v1-8k"
             ]
             
             last_error = None
@@ -448,14 +447,14 @@ class SandboxFilesTool(SandboxToolsBase):
         <parameter name="target_file">todo.md</parameter>
         <parameter name="instructions">I am marking the research and setup tasks as complete in my todo list.</parameter>
         <parameter name="code_edit">
-// ... existing code ...
-- [x] Research topic A
-- [ ] Research topic B
-- [x] Research topic C
-// ... existing code ...
-- [x] Setup database
-- [x] Configure server
-// ... existing code ...
+        // ... existing code ...
+        - [x] Research topic A
+        - [ ] Research topic B
+        - [x] Research topic C
+        // ... existing code ...
+        - [x] Setup database
+        - [x] Configure server
+        // ... existing code ...
         </parameter>
         </invoke>
         </function_calls>
@@ -466,27 +465,27 @@ class SandboxFilesTool(SandboxToolsBase):
         <parameter name="target_file">src/main.py</parameter>
         <parameter name="instructions">I am adding error handling and logging to the user authentication function</parameter>
         <parameter name="code_edit">
-// ... existing imports ...
-from my_app.logging import logger
-from my_app.exceptions import DatabaseError
-// ... existing code ...
-def authenticate_user(username, password):
-    try:
-        user = get_user(username)
-        if user and verify_password(password, user.password_hash):
-            return user
-        return None
-    except DatabaseError as e:
-        logger.error(f"Database error during authentication: {e}")
-        return None
-    except Exception as e:
-        logger.error(f"Unexpected error during authentication: {e}")
-        return None
-// ... existing code ...
-        </parameter>
-        </invoke>
-        </function_calls>
-        ''')
+        // ... existing imports ...
+        from my_app.logging import logger
+        from my_app.exceptions import DatabaseError
+        // ... existing code ...
+        def authenticate_user(username, password):
+        try:
+            user = get_user(username)
+            if user and verify_password(password, user.password_hash):
+                return user
+            return None
+            except DatabaseError as e:
+                logger.error(f"Database error during authentication: {e}")
+                return None
+            except Exception as e:
+                logger.error(f"Unexpected error during authentication: {e}")
+                return None
+            // ... existing code ...
+            </parameter>
+            </invoke>
+            </function_calls>
+            ''')
     async def edit_file(self, target_file: str, instructions: str, code_edit: str) -> ToolResult:
         """Edit a file using AI-powered intelligent editing with fallback to string replacement"""
         try:

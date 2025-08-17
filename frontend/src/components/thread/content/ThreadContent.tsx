@@ -99,6 +99,7 @@ export function renderMarkdownContent(
   debugMode?: boolean,
   streamingTextContent?: string,
   streamHookStatus?: string,
+  validateFiles?: (attachments: string[]) => string[], // Add file validation function
 ) {
   // If in debug mode, just display raw content in a pre tag
   if (debugMode) {
@@ -150,6 +151,9 @@ export function renderMarkdownContent(
               ? attachments.split(',').map((a) => a.trim())
               : [];
 
+          // Validate attachments if validation function is provided
+          const validAttachments = validateFiles ? validateFiles(attachmentArray) : attachmentArray;
+
           // Render ask tool content with attachment UI
           contentParts.push(
             <div key={`ask-${match.index}-${index}`} className="space-y-4">
@@ -157,9 +161,9 @@ export function renderMarkdownContent(
                 content={askText}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
-              {attachmentArray && attachmentArray.length > 0 && (
+              {validAttachments && validAttachments.length > 0 && (
                 <ThreadFilesDisplay
-                  attachments={attachmentArray}
+                  attachments={validAttachments}
                   onFileClick={fileViewerHandler}
                   sandboxId={sandboxId}
                   project={project}
@@ -181,6 +185,9 @@ export function renderMarkdownContent(
               ? attachments.split(',').map((a) => a.trim())
               : [];
 
+          // Validate attachments if validation function is provided
+          const validAttachments = validateFiles ? validateFiles(attachmentArray) : attachmentArray;
+
           // Render complete tool content with attachment UI
           contentParts.push(
             <div key={`complete-${match.index}-${index}`} className="space-y-4">
@@ -188,9 +195,9 @@ export function renderMarkdownContent(
                 content={completeText}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
-              {attachmentArray && attachmentArray.length > 0 && (
+              {validAttachments && validAttachments.length > 0 && (
                 <ThreadFilesDisplay
-                  attachments={attachmentArray}
+                  attachments={validAttachments}
                   onFileClick={fileViewerHandler}
                   sandboxId={sandboxId}
                   project={project}
@@ -328,6 +335,9 @@ export function renderMarkdownContent(
         ? attachmentsMatch[1].split(',').map((a) => a.trim())
         : [];
 
+      // Validate attachments if validation function is provided
+      const validAttachments = validateFiles ? validateFiles(attachments) : attachments;
+
       // Extract content from the ask tag
       const contentMatch = rawXml.match(/<ask[^>]*>([\s\S]*?)<\/ask>/i);
       const askContent = contentMatch ? contentMatch[1] : '';
@@ -339,9 +349,9 @@ export function renderMarkdownContent(
             content={askContent}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
           />
-          {attachments && attachments.length > 0 && (
+          {validAttachments && validAttachments.length > 0 && (
             <ThreadFilesDisplay
-              attachments={attachments}
+              attachments={validAttachments}
               onFileClick={fileViewerHandler}
               sandboxId={sandboxId}
               project={project}
@@ -358,6 +368,9 @@ export function renderMarkdownContent(
         ? attachmentsMatch[1].split(',').map((a) => a.trim())
         : [];
 
+      // Validate attachments if validation function is provided
+      const validAttachments = validateFiles ? validateFiles(attachments) : attachments;
+
       // Extract content from the complete tag
       const contentMatch = rawXml.match(
         /<complete[^>]*>([\s\S]*?)<\/complete>/i,
@@ -371,9 +384,9 @@ export function renderMarkdownContent(
             content={completeContent}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
-          {attachments && attachments.length > 0 && (
+          {validAttachments && validAttachments.length > 0 && (
             <ThreadFilesDisplay
-              attachments={attachments}
+              attachments={validAttachments}
               onFileClick={fileViewerHandler}
               sandboxId={sandboxId}
               project={project}
@@ -506,8 +519,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   threadMetadata,
   isSidePanelOpen = false,
   onSubmit,
-  isFloatingToolPreviewVisible = false,
   setInputValue,
+  isFloatingToolPreviewVisible = false,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -531,9 +544,78 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   const [streamingFeedback, setStreamingFeedback] = useState<
     'up' | 'down' | null
   >(null);
+  const [isFloatingToolPreviewOpen, setIsFloatingToolPreviewOpen] = useState(false);
 
   // React Query file preloader
   const { preloadFiles } = useFilePreloader();
+  
+  // File validation state - will be populated per message
+  const [fileValidationMap, setFileValidationMap] = React.useState<Map<string, { valid: string[], isValidating: boolean }>>(new Map());
+  
+  // Track which messages have been validated to prevent infinite loops
+  const validatedMessages = React.useRef<Set<string>>(new Set());
+  
+  // Function to validate files for a specific message
+  const validateMessageFiles = React.useCallback(async (messageId: string, attachments: string[]) => {
+    if (!sandboxId || !attachments || attachments.length === 0) {
+      setFileValidationMap(prev => new Map(prev).set(messageId, { valid: [], isValidating: false }));
+      return;
+    }
+    
+    setFileValidationMap(prev => new Map(prev).set(messageId, { valid: [], isValidating: true }));
+    
+    try {
+      // Get list of files in workspace
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sandboxes/${sandboxId}/files?path=/workspace`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const workspaceFiles = data.files?.map((f: any) => f.path) || [];
+        
+        // Filter attachments to only include files that exist
+        const valid = attachments.filter(attachment => {
+          const normalizedAttachment = attachment.replace('/workspace/', '').replace('/workspace', '');
+          return workspaceFiles.some((workspaceFile: string) => 
+            workspaceFile.includes(normalizedAttachment) || 
+            workspaceFile.endsWith(normalizedAttachment)
+          );
+        });
+        
+        setFileValidationMap(prev => new Map(prev).set(messageId, { valid, isValidating: false }));
+      } else {
+        // If validation fails, show all attachments (fallback)
+        setFileValidationMap(prev => new Map(prev).set(messageId, { valid: attachments, isValidating: false }));
+      }
+    } catch (error) {
+      console.error('File validation failed:', error);
+      // Fallback to showing all attachments
+      setFileValidationMap(prev => new Map(prev).set(messageId, { valid: attachments, isValidating: false }));
+    }
+  }, [sandboxId, session?.access_token]);
+  
+  // Clear validation cache when sandboxId changes
+  React.useEffect(() => {
+    validatedMessages.current.clear();
+    setFileValidationMap(new Map());
+  }, [sandboxId]);
+  
+  // Create a validation function that matches the expected signature for renderMarkdownContent
+  const validateFilesForRendering = React.useCallback((attachments: string[]): string[] => {
+    if (!sandboxId || !attachments || attachments.length === 0) {
+      return [];
+    }
+    
+    console.log('File validation called for attachments:', attachments);
+    console.log('Current sandboxId:', sandboxId);
+    
+    // For now, return all attachments - validation will happen asynchronously
+    // This is a temporary solution until we can implement proper synchronous validation
+    return attachments;
+  }, [sandboxId]);
 
   const containerClassName = isPreviewMode
     ? 'flex-1 overflow-y-auto scrollbar-thin scrollbar-track-secondary/0 scrollbar-thumb-primary/10 scrollbar-thumb-rounded-full hover:scrollbar-thumb-primary/10 px-6 py-4 pb-86'
@@ -631,6 +713,13 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     setUserHasScrolled(isScrolledUp);
   };
 
+  // Check if user is near bottom (within 200px)
+  const isNearBottom = useCallback(() => {
+    if (!messagesContainerRef.current) return true;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    return scrollHeight - scrollTop - clientHeight < 200;
+  }, []);
+
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   }, []);
@@ -638,9 +727,15 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   // Auto-scroll to bottom when new messages arrive or agent status changes
   React.useEffect(() => {
     if (agentStatus === 'running' || agentStatus === 'connecting') {
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('smooth');
+      }
+    } else if (agentStatus === 'idle' || agentStatus === 'error') {
+      // When process completes, always scroll to bottom smoothly
       scrollToBottom('smooth');
     }
-  }, [agentStatus, scrollToBottom]);
+  }, [agentStatus, scrollToBottom, isNearBottom]);
 
   React.useEffect(() => {
     if (messages.length > 0) {
@@ -652,49 +747,63 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   }, [messages, scrollToBottom]);
 
   // Auto-scroll behaviors for different streaming scenarios:
+  // - Only auto-scroll if user is near bottom to respect user scroll position
   // - Use 'auto' for streaming content to ensure immediate visibility
   // - Use 'smooth' for user interactions and status changes
-  // - This mimics ChatGPT/Claude behavior where content stays visible during generation
   React.useEffect(() => {
     if (streamingTextContent && (agentStatus === 'running' || agentStatus === 'connecting')) {
-      // Use immediate scroll for streaming content to ensure smooth experience
-      scrollToBottom('auto');
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('auto');
+      }
     }
-  }, [streamingTextContent, agentStatus, scrollToBottom]);
+  }, [streamingTextContent, agentStatus, scrollToBottom, isNearBottom]);
 
   // Auto-scroll to bottom when streaming text changes in playback mode
   React.useEffect(() => {
     if (streamingText && isStreamingText && readOnly) {
-      scrollToBottom('auto');
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('auto');
+      }
     }
-  }, [streamingText, isStreamingText, readOnly, scrollToBottom]);
+  }, [streamingText, isStreamingText, readOnly, scrollToBottom, isNearBottom]);
 
   // Auto-scroll to bottom when streaming tool calls change
   React.useEffect(() => {
     if (streamingToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
-      scrollToBottom('auto');
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('auto');
+      }
     }
-  }, [streamingToolCall, agentStatus, scrollToBottom]);
+  }, [streamingToolCall, agentStatus, scrollToBottom, isNearBottom]);
 
   // Auto-scroll to bottom when new tool calls are added
   React.useEffect(() => {
     if (currentToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
-      scrollToBottom('auto');
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('auto');
+      }
     }
-  }, [currentToolCall, agentStatus, scrollToBottom]);
+  }, [currentToolCall, agentStatus, scrollToBottom, isNearBottom]);
 
   // Auto-scroll to bottom when streaming starts
   React.useEffect(() => {
     if (streamHookStatus === 'streaming') {
-      scrollToBottom('auto');
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('auto');
+      }
     }
-  }, [streamHookStatus, scrollToBottom]);
+  }, [streamHookStatus, scrollToBottom, isNearBottom]);
 
-  // Complete auto-scroll strategy:
+  // Smart auto-scroll strategy:
   // 1. Smooth scroll for user interactions (new messages, status changes)
   // 2. Immediate scroll for streaming content (text, tool calls, streaming start)
-  // 3. Always auto-scroll during streaming regardless of user scroll position
-  // 4. This ensures content stays visible during generation like ChatGPT/Claude
+  // 3. Only auto-scroll if user is near bottom to respect user scroll position
+  // 4. This ensures content stays visible during generation while allowing users to scroll up
 
   // Preload all message attachments when messages change or sandboxId is provided
   React.useEffect(() => {
@@ -731,6 +840,36 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       });
     }
   }, [displayMessages, sandboxId, session?.access_token, preloadFiles]);
+
+  // Validate file attachments for all messages when sandboxId changes
+  React.useEffect(() => {
+    if (!sandboxId) return;
+
+    // Process all messages with attachments
+    displayMessages.forEach((message) => {
+      if (message.type === 'user') {
+        try {
+          const content = typeof message.content === 'string' ? message.content : '';
+          const attachmentsMatch = content.match(/\[Uploaded File: (.*?)\]/g);
+          if (attachmentsMatch) {
+            const attachments = attachmentsMatch
+              .map((match) => {
+                const pathMatch = match.match(/\[Uploaded File: (.*?)\]/);
+                return pathMatch ? pathMatch[1] : null;
+              })
+              .filter(Boolean) as string[];
+
+            if (attachments.length > 0 && !validatedMessages.current.has(message.message_id || '')) {
+              validatedMessages.current.add(message.message_id || '');
+              validateMessageFiles(message.message_id || '', attachments);
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing message attachments for validation:', e);
+        }
+      }
+    });
+  }, [displayMessages, sandboxId, validateMessageFiles]);
 
   return (
     <>
@@ -973,6 +1112,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                           .filter(Boolean)
                       : [];
 
+
+
                     // Remove attachment info from the message content
                     const cleanContent = messageContent
                       .replace(/\[Uploaded File: .*?\]/g, '')
@@ -1043,7 +1184,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                             <div className="w-full flex justify-end">
                               <div className="max-w-[85%]">
                                 <ThreadFilesDisplay
-                                  attachments={attachments as string[]}
+                                  attachments={fileValidationMap.get(group.key)?.valid || attachments}
                                   onFileClick={handleOpenFileViewer}
                                   sandboxId={sandboxId}
                                   project={project}
@@ -1051,6 +1192,20 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                   rightAlignGrid={false}
                                 />
                               </div>
+                            </div>
+                          )}
+                          
+                          {/* Show validation status if needed */}
+                          {fileValidationMap.get(group.key)?.isValidating && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Validating files...
+                            </div>
+                          )}
+                          
+                          {/* Show warning if some attachments were filtered out */}
+                          {attachments && attachments.length > 0 && fileValidationMap.get(group.key)?.valid && fileValidationMap.get(group.key)?.valid.length < attachments.length && (
+                            <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                              {attachments.length - (fileValidationMap.get(group.key)?.valid.length || 0)} file(s) not found in workspace
                             </div>
                           )}
                           
@@ -1309,6 +1464,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                         debugMode,
                                         streamingTextContent,
                                         streamHookStatus,
+                                        validateFilesForRendering, // Pass the validation function
                                       );
 
                                     elements.push(

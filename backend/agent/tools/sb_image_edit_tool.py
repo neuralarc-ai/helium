@@ -7,10 +7,12 @@ from io import BytesIO
 import uuid
 from litellm import aimage_generation, aimage_edit
 import base64
+import os
+from utils.config import config
 
 
 class SandboxImageEditTool(SandboxToolsBase):
-    """Tool for generating or editing images using OpenAI GPT Image 1 via OpenAI SDK (no mask support)."""
+    """Tool for generating or editing images using Mistral Small 3.2 24B Instruct model via OpenRouter (no mask support)."""
 
     def __init__(self, project_id: str, thread_id: str, thread_manager: ThreadManager):
         super().__init__(project_id, thread_manager)
@@ -22,7 +24,7 @@ class SandboxImageEditTool(SandboxToolsBase):
             "type": "function",
             "function": {
                 "name": "image_edit_or_generate",
-                "description": "Generate a new image from a prompt, or edit an existing image (no mask support) using OpenAI GPT Image 1 via OpenAI SDK. Stores the result in the thread context.",
+                "description": "Generate a new image from a prompt, or edit an existing image (no mask support) using Mistral Small 3.2 24B Instruct model via OpenRouter. Stores the result in the thread context.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -37,7 +39,7 @@ class SandboxImageEditTool(SandboxToolsBase):
                         },
                         "image_path": {
                             "type": "string",
-                            "description": "(edit mode only) Path to the image file to edit, relative to /workspace. Required for 'edit'.",
+                            "description": "(edit mode only) Path to the image file to edit. Can be: 1) Relative path to /workspace (e.g., 'generated_image_abc123.png'), or 2) Full URL (e.g., 'https://example.com/image.png'). Required when mode='edit'.",
                         },
                     },
                     "required": ["mode", "prompt"],
@@ -46,12 +48,27 @@ class SandboxImageEditTool(SandboxToolsBase):
         }
     )
     @usage_example("""
+        Generate mode example (new image):
         <function_calls>
         <invoke name="image_edit_or_generate">
         <parameter name="mode">generate</parameter>
         <parameter name="prompt">A futuristic cityscape at sunset</parameter>
         </invoke>
         </function_calls>
+        
+        Edit mode example (modifying existing):
+        <function_calls>
+        <invoke name="image_edit_or_generate">
+        <parameter name="mode">edit</parameter>
+        <parameter name="prompt">Add a red hat to the person in the image</parameter>
+        <parameter name="image_path">generated_image_abc123.png</parameter>
+        </invoke>
+        </function_calls>
+        
+        Multi-turn workflow (follow-up edits):
+        1. User: "Create a logo" → generate mode
+        2. User: "Make it more colorful" → edit mode (automatic)
+        3. User: "Add text to it" → edit mode (automatic)
         """)
     async def image_edit_or_generate(
         self,
@@ -59,16 +76,24 @@ class SandboxImageEditTool(SandboxToolsBase):
         prompt: str,
         image_path: Optional[str] = None,
     ) -> ToolResult:
-        """Generate or edit images using OpenAI GPT Image 1 via OpenAI SDK (no mask support)."""
+        """Generate or edit images using Mistral Small 3.2 24B Instruct model via OpenRouter (no mask support)."""
         try:
             await self._ensure_sandbox()
 
+            # Get OpenRouter API key
+            openrouter_key = getattr(config, 'OPENROUTER_API_KEY', None) or os.getenv('OPENROUTER_API_KEY')
+            
+            if not openrouter_key:
+                return self.fail_response("No OpenRouter API key found. Please set OPENROUTER_API_KEY environment variable.")
+
             if mode == "generate":
                 response = await aimage_generation(
-                    model="gpt-image-1",
+                    model="openrouter/mistralai/mistral-small-3.2-24b-instruct:free",
                     prompt=prompt,
                     n=1,
                     size="1024x1024",
+                    api_key=openrouter_key,
+                    api_base="https://openrouter.ai/api/v1"
                 )
             elif mode == "edit":
                 if not image_path:
@@ -87,9 +112,11 @@ class SandboxImageEditTool(SandboxToolsBase):
                 response = await aimage_edit(
                     image=[image_io],  # Type in the LiteLLM SDK is wrong
                     prompt=prompt,
-                    model="gpt-image-1",
+                    model="openrouter/mistralai/mistral-small-3.2-24b-instruct:free",
                     n=1,
                     size="1024x1024",
+                    api_key=openrouter_key,
+                    api_base="https://openrouter.ai/api/v1"
                 )
             else:
                 return self.fail_response("Invalid mode. Use 'generate' or 'edit'.")

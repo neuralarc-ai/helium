@@ -131,6 +131,14 @@ Based on the searches, I'm going to compile information to create your itinerary
 - [x] Research transportation options within Japan
 - [ ] Research accommodation options within budget
 - [x] Research proposal location options
+
+## Flight & Transportation Recommendations
+- **Flights**: Seattle to Tokyo flights range from $800-1,200 roundtrip
+- **JR Pass**: 14-day pass recommended for $435 (covers most transportation)
+- **Recommended Route**: Tokyo → Kyoto → Nara → Osaka for optimal cultural experience
+- **Local Transport**: IC cards (Suica/Pasmo) for city transportation
+
+## Itinerary Creation
 // ... existing code ...
 </parameter>
 </invoke>
