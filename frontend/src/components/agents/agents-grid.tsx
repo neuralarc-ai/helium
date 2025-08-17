@@ -53,6 +53,7 @@ interface AgentsGridProps {
   onDeleteAgent: (agentId: string) => void;
   onToggleDefault: (agentId: string, currentDefault: boolean) => void;
   deleteAgentMutation: { isPending: boolean };
+  isDeletingAgent?: (agentId: string) => boolean;
   onPublish?: (agent: Agent) => void;
   publishingId?: string | null;
 }
@@ -223,6 +224,7 @@ export const AgentsGrid: React.FC<AgentsGridProps> = ({
   onDeleteAgent, 
   onToggleDefault,
   deleteAgentMutation,
+  isDeletingAgent,
   onPublish,
   publishingId: externalPublishingId
 }) => {
@@ -285,18 +287,36 @@ export const AgentsGrid: React.FC<AgentsGridProps> = ({
             ...agent,
             id: agent.agent_id
           };
-          
+          const isDeleting = isDeletingAgent?.(agent.agent_id) || false;
+          const isGloballyDeleting = deleteAgentMutation?.isPending || false;
           return (
             <div key={agent.agent_id} className="relative group flex flex-col h-full">
-              <AgentCard
+              {/* <AgentCard
                 mode="agent"
                 data={agentData}
                 styling={getAgentStyling(agent)}
                 onClick={() => handleAgentClick(agent)}
-              />
+              /> */}
+              {isDeleting && (
+                <div className="absolute inset-0 bg-destructive/10 backdrop-blur-sm rounded-lg z-20 flex items-center justify-center">
+                  <div className="bg-background/95 backdrop-blur-sm rounded-lg px-4 py-3 flex items-center gap-2 shadow-lg border">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-destructive border-t-transparent" />
+                    <span className="text-sm font-medium text-destructive">Deleting...</span>
+                  </div>
+                </div>
+              )}
+              
+              <div className={`transition-all duration-200 ${isDeleting ? 'opacity-60 scale-95' : ''}`}>
+                <AgentCard
+                  mode="agent"
+                  data={agentData}
+                  styling={getAgentStyling(agent)}
+                  onClick={() => !isDeleting && handleAgentClick(agent)}
+                />
+              </div>
               
               {/* Delete button overlay */}
-              <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className={`absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity ${isDeleting ? 'pointer-events-none' : ''}`}>
                 {!agent.is_default && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -304,11 +324,15 @@ export const AgentsGrid: React.FC<AgentsGridProps> = ({
                         variant="ghost" 
                         size="sm"
                         className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive text-muted-foreground"
-                        disabled={deleteAgentMutation.isPending}
+                        disabled={isDeleting || isGloballyDeleting}
                         title="Delete agent"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        {isDeleting ? (
+                          <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-destructive border-t-transparent" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent className="max-w-md">
@@ -332,10 +356,18 @@ export const AgentsGrid: React.FC<AgentsGridProps> = ({
                             e.stopPropagation();
                             onDeleteAgent(agent.agent_id);
                           }}
-                          disabled={deleteAgentMutation.isPending}
+                          disabled={isDeleting || isGloballyDeleting}
                           className="bg-destructive hover:bg-destructive/90 text-white"
                         >
-                          {deleteAgentMutation.isPending ? 'Deleting...' : 'Delete'}
+                          {/* {deleteAgentMutation.isPending ? 'Deleting...' : 'Delete'} */}
+                          {isDeleting ? (
+                            <>
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />
+                              Deleting...
+                            </>
+                          ) : (
+                            'Delete'
+                          )}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

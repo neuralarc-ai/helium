@@ -6,8 +6,11 @@ import { MCPConfigurationProps, MCPConfiguration as MCPConfigurationType } from 
 import { ConfiguredMcpList } from './configured-mcp-list';
 import { CustomMCPDialog } from './custom-mcp-dialog';
 import { PipedreamRegistry } from '@/components/agents/pipedream/pipedream-registry';
+import { ComposioRegistry } from '../composio/composio-registry';
+import { ComposioToolsManager } from '../composio/composio-tools-manager';
 import { ToolsManager } from './tools-manager';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 export const MCPConfigurationNew: React.FC<MCPConfigurationProps> = ({
   configuredMCPs,
@@ -21,9 +24,11 @@ export const MCPConfigurationNew: React.FC<MCPConfigurationProps> = ({
   const [showRegistryDialog, setShowRegistryDialog] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showPipedreamToolsManager, setShowPipedreamToolsManager] = useState(false);
+  const [showComposioToolsManager, setShowComposioToolsManager] = useState(false);
   const [showCustomToolsManager, setShowCustomToolsManager] = useState(false);
   const [selectedMCPForTools, setSelectedMCPForTools] = useState<MCPConfigurationType | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>(agentId);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setSelectedAgentId(agentId);

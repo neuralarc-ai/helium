@@ -14,11 +14,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ConditionalStep } from '@/components/agents/workflows/conditional-workflow-builder';
 import { getStepIconAndColor } from './workflow-definitions';
 import { PipedreamRegistry } from '@/components/agents/pipedream/pipedream-registry';
+import { ComposioRegistry } from '@/components/agents/composio/composio-registry';
 import { CustomMCPDialog } from '@/components/agents/mcp/custom-mcp-dialog';
 import { useAgent, useUpdateAgent } from '@/hooks/react-query/agents/use-agents';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { composioApi } from '@/hooks/react-query/composio/utils';
+import { backendApi } from '@/lib/api-client';
 
 interface StepType {
     id: string;
@@ -72,6 +75,7 @@ export function WorkflowSidePanel({
     onToolsUpdate
 }: WorkflowSidePanelProps) {
     const [showPipedreamRegistry, setShowPipedreamRegistry] = useState(false);
+    const [showComposioRegistry, setShowComposioRegistry] = useState(false);
     const [showCustomMCPDialog, setShowCustomMCPDialog] = useState(false);
     const queryClient = useQueryClient();
     const { data: agent } = useAgent(agentId || '');
@@ -105,7 +109,7 @@ export function WorkflowSidePanel({
 
     const handleStepTypeClick = (stepType: StepType) => {
         if (stepType.id === 'credentials_profile') {
-            setShowPipedreamRegistry(true);
+            setShowComposioRegistry(true);
         } else if (stepType.id === 'mcp_configuration') {
             setShowCustomMCPDialog(true);
         } else {
@@ -113,88 +117,25 @@ export function WorkflowSidePanel({
         }
     };
 
-    const handlePipedreamToolsSelected = async (profileId: string, selectedTools: string[], appName: string, appSlug: string) => {
-        try {
-            const pipedreamMCP = {
-                name: appName,
-                qualifiedName: `pipedream_${appSlug}_${profileId}`,
-                config: {
-                    url: 'https://remote.mcp.pipedream.net',
-                    headers: {
-                        'x-pd-app-slug': appSlug,
-                    },
-                    profile_id: profileId
-                },
-                enabledTools: selectedTools,
-                selectedProfileId: profileId
-            };
-
-            // Update agent with new MCP
-            const existingCustomMCPs = agent?.custom_mcps || [];
-            const nonPipedreamMCPs = existingCustomMCPs.filter((mcp: any) =>
-                mcp.type !== 'pipedream' || mcp.config?.profile_id !== profileId
-            );
-
-            await updateAgentMutation.mutateAsync({
-                agentId: agentId!,
-                custom_mcps: [
-                    ...nonPipedreamMCPs,
-                    {
-                        name: appName,
-                        type: 'pipedream',
-                        config: pipedreamMCP.config,
-                        enabledTools: selectedTools
-                    } as any
-                ]
-            });
-
-            // Create a step for the credentials profile
-            const credentialsStep: ConditionalStep = {
-                id: `credentials-${Date.now()}`,
-                name: `${appName} Credentials`,
-                description: `Credentials profile for ${appName} integration`,
-                type: 'instruction',
-                config: {
-                    step_type: 'credentials_profile',
-                    tool_name: selectedTools[0] || `${appName} Profile`,
-                    profile_id: profileId,
-                    app_name: appName,
-                    app_slug: appSlug
-                },
-                order: 0,
-                enabled: true,
-                children: []
-            };
-
-            onCreateStep({
-                id: 'credentials_profile',
-                name: credentialsStep.name,
-                description: credentialsStep.description,
-                icon: 'Key',
-                category: 'configuration',
-                config: credentialsStep.config
-            });
-
-            // Invalidate queries to refresh tools
-            queryClient.invalidateQueries({ queryKey: ['agent', agentId] });
-            queryClient.invalidateQueries({ queryKey: ['agent-tools', agentId] });
-
-            // Trigger parent tools update
-            if (onToolsUpdate) {
-                onToolsUpdate();
-            }
-
-            setShowPipedreamRegistry(false);
-            toast.success(`Added ${appName} credentials profile!`);
-        } catch (error) {
-            toast.error('Failed to add integration');
+    const handleComposioToolsSelected = (profileId: string, selectedTools: string[], appName: string, appSlug: string) => {
+        console.log('Tools selected:', { profileId, selectedTools, appName, appSlug });
+        setShowComposioRegistry(false);
+        // ComposioRegistry handles all the actual configuration internally
+        // We need to refresh the agent data to show updated configuration
+        queryClient.invalidateQueries({ queryKey: ['agents'] });
+        queryClient.invalidateQueries({ queryKey: ['agent', agentId] });
+        queryClient.invalidateQueries({ queryKey: ['composio', 'profiles'] });
+        
+        if (onToolsUpdate) {
+            onToolsUpdate();
         }
+        
+        toast.success(`Connected ${appName} integration!`);
     };
 
     const handleCustomMCPSave = async (customConfig: any) => {
         try {
             const existingCustomMCPs = agent?.custom_mcps || [];
-
             await updateAgentMutation.mutateAsync({
                 agentId: agentId!,
                 custom_mcps: [
@@ -208,7 +149,6 @@ export function WorkflowSidePanel({
                 ]
             });
 
-            // Create a step for the MCP configuration
             const mcpStep: ConditionalStep = {
                 id: `mcp-${Date.now()}`,
                 name: `${customConfig.name} MCP`,
@@ -302,7 +242,7 @@ export function WorkflowSidePanel({
                                                 onClick={() => handleStepTypeClick(stepType)}
                                                 className="w-full p-3 text-left border border-border rounded-2xl hover:bg-muted/50 transition-colors"
                                             >
-                                                <div className="flex items-start gap-3">
+                                                <div className="flex items-center gap-3">
                                                     <div className={`relative p-2 rounded-lg bg-gradient-to-br ${color} border`}>
                                                         <IconComponent className="w-5 h-5" />
                                                     </div>
@@ -463,7 +403,7 @@ export function WorkflowSidePanel({
                         'fixed top-2 right-2 bottom-4 border border-zinc-200 dark:border-zinc-800 rounded-3xl flex flex-col z-30 bg-card',
                         isMobile
                             ? 'left-2'
-                            : 'w-[50vw] sm:w-[50vw] md:w-[50vw] lg:w-[50vw] xl:w-[50vw]',
+                            : 'w-[40vw] sm:w-[450px] md:w-[500px] lg:w-[550px] xl:w-[645px]',
                     )}
                     style={{
                         overflow: 'hidden',
@@ -472,30 +412,18 @@ export function WorkflowSidePanel({
                     {renderContent()}
                 </motion.div>
             </AnimatePresence>
-
-            {/* Pipedream Registry Dialog */}
-            <Dialog open={showPipedreamRegistry} onOpenChange={setShowPipedreamRegistry}>
-                <DialogContent className="p-0 max-w-6xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader className="hidden">
-                        <DialogTitle></DialogTitle>
+            <Dialog open={showComposioRegistry} onOpenChange={setShowComposioRegistry}>
+                <DialogContent className="p-0 max-w-6xl h-[90vh] overflow-hidden">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>App Integrations</DialogTitle>
                     </DialogHeader>
-                    <PipedreamRegistry
-                        showAgentSelector={false}
+                    <ComposioRegistry
                         selectedAgentId={agentId}
-                        onAgentChange={() => { }}
-                        onToolsSelected={handlePipedreamToolsSelected}
-                        versionData={versionData ? {
-                            configured_mcps: versionData.configured_mcps || [],
-                            custom_mcps: versionData.custom_mcps || [],
-                            system_prompt: versionData.system_prompt || '',
-                            agentpress_tools: versionData.agentpress_tools || {}
-                        } : undefined}
-                        versionId={versionData?.version_id || 'current'}
+                        onClose={() => setShowComposioRegistry(false)}
+                        onToolsSelected={handleComposioToolsSelected}
                     />
                 </DialogContent>
             </Dialog>
-
-            {/* Custom MCP Dialog */}
             <CustomMCPDialog
                 open={showCustomMCPDialog}
                 onOpenChange={setShowCustomMCPDialog}

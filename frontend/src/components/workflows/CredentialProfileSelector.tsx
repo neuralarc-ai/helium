@@ -69,7 +69,11 @@ const InlineCreateProfileDialog: React.FC<InlineCreateProfileDialogProps> = ({
     is_default: false
   });
 
-  const { data: serverDetails, isLoading: isLoadingDetails } = useMCPServerDetails(mcpQualifiedName);
+  // const { data: serverDetails, isLoading: isLoadingDetails } = useMCPServerDetails(mcpQualifiedName);
+  const { data: serverDetails, isLoading: isLoadingDetails } = useMCPServerDetails(
+    mcpQualifiedName,
+    !mcpQualifiedName?.startsWith('composio.')
+  );
   const createProfileMutation = useCreateCredentialProfile();
 
   const getConfigProperties = () => {

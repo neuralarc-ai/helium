@@ -338,7 +338,7 @@ export const AgentPreview = ({ agent, agentMetadata }: AgentPreviewProps) => {
   return (
     <div className="h-full flex flex-col bg-muted dark:bg-muted/30 overflow-hidden">
       <div className="flex-shrink-0 flex items-center gap-3 p-8">
-        {isSunaAgent ? (
+        {/* {isSunaAgent ? (
           <div className="h-10 w-10 bg-background rounded-lg border-border flex items-center justify-center">
             <HeliumLogo size={16} />
           </div>
@@ -349,9 +349,9 @@ export const AgentPreview = ({ agent, agentMetadata }: AgentPreviewProps) => {
           >
             {avatar}
           </div>
-        )}
+        )} */}
         <div className="flex-1">
-          <h3 className="font-semibold">{agent.name || 'Unnamed Agent'}</h3>
+          {/* <h3 className="font-semibold">{agent.name || 'Unnamed Agent'}</h3> */}
         </div>
         <Badge variant="highlight" className="text-sm">Preview Mode</Badge>
       </div>

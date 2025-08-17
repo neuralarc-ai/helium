@@ -1,5 +1,6 @@
 export interface MarketplaceTemplate {
   id: string;
+  creator_id: string;
   name: string;
   description: string;
   tags: string[];
@@ -16,7 +17,7 @@ export interface MarketplaceTemplate {
     display_name: string;
     enabled_tools?: string[];
     required_config: string[];
-    custom_type?: 'sse' | 'http' | 'pipedream';
+    custom_type?: 'sse' | 'http' | 'pipedream' | 'composio';
   }>;
   metadata?: {
     source_agent_id?: string;
@@ -29,7 +30,7 @@ export interface SetupStep {
   id: string;
   title: string;
   description: string;
-  type: 'credential_profile' | 'custom_server' | 'pipedream_profile';
+  type: 'credential_profile' | 'custom_server' | 'pipedream_profile' | 'composio_profile';
   service_name: string;
   qualified_name: string;
   required_fields?: Array<{
@@ -39,7 +40,7 @@ export interface SetupStep {
     placeholder: string;
     description?: string;
   }>;
-  custom_type?: 'sse' | 'http' | 'pipedream'; 
+  custom_type?: 'sse' | 'http' | 'pipedream' | 'composio'; 
   app_slug?: string;
   app_name?: string;
 } 

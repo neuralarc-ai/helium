@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { DEFAULT_AGENTPRESS_TOOLS } from './tools';
 
 interface AgentConfigModalProps {
   isOpen: boolean;
@@ -169,7 +170,8 @@ export const AgentConfigModal: React.FC<AgentConfigModalProps> = ({
               <div className="h-full">
                 {selectedAgentId ? (
                   <AgentToolsConfiguration
-                    tools={agent?.agentpress_tools || {}}
+                    // tools={agent?.agentpress_tools || {}}
+                    tools={agent?.agentpress_tools || DEFAULT_AGENTPRESS_TOOLS}
                     onToolsChange={handleToolsChange}
                   />
                 ) : (

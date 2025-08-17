@@ -6,6 +6,7 @@ import { Agent, AgentUpdateRequest, AgentsParams, createAgent, deleteAgent, getA
 import { useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateRandomAvatar } from '@/lib/utils/_avatar-generator';
+import { AGENTPRESS_TOOL_DEFINITIONS } from '@/components/agents/tools';
 import { DEFAULT_AGENTPRESS_TOOLS } from '@/components/agents/tools';
 
 export const useAgents = (params: AgentsParams = {}) => {
@@ -62,7 +63,7 @@ export const useCreateNewAgent = () => {
         avatar_color,
         configured_mcps: [],
         agentpress_tools: Object.fromEntries(
-          Object.entries(DEFAULT_AGENTPRESS_TOOLS).map(([key, value]) => [
+          Object.entries(AGENTPRESS_TOOL_DEFINITIONS).map(([key, value]) => [
             key, 
             { enabled: value.enabled, description: value.description }
           ])

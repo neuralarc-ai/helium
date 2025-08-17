@@ -98,19 +98,46 @@ export function useThreadData(threadId: string, projectId: string): UseThreadDat
           console.log('[PAGE] Checking for active agent runs...');
           agentRunsCheckedRef.current = true;
 
-          const activeRun = agentRunsQuery.data.find((run) => run.status === 'running');
-          if (activeRun && isMounted) {
-            console.log('[PAGE] Found active run on load:', activeRun.id);
-            setAgentRunId(activeRun.id);
+          // Only check for very recent agent runs (last 30 seconds) to avoid false positives
+          const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+          const recentActiveRun = agentRunsQuery.data.find((run) => {
+            const runCreatedAt = new Date(run.started_at || 0);
+            return run.status === 'running' && runCreatedAt > thirtySecondsAgo;
+          });
+          
+          if (recentActiveRun && isMounted) {
+            console.log('[PAGE] Found recent active run on load:', recentActiveRun.id);
+            setAgentRunId(recentActiveRun.id);
+            setAgentStatus('running');
           } else {
-            console.log('[PAGE] No active agent runs found');
-            if (isMounted) setAgentStatus('idle');
+            console.log('[PAGE] No recent active agent runs found');
+            if (isMounted) {
+              setAgentStatus('idle');
+              setAgentRunId(null);
+            }
           }
         }
 
         if (threadQuery.data && messagesQuery.data && agentRunsQuery.data) {
           initialLoadCompleted.current = true;
           setIsLoading(false);
+          
+          // Final safety check: if no recent active runs found, ensure status is idle
+          if (agentRunsCheckedRef.current) {
+            const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+            const hasRecentActiveRun = agentRunsQuery.data.find((run) => {
+              const runCreatedAt = new Date(run.started_at || 0);
+              return run.status === 'running' && runCreatedAt > thirtySecondsAgo;
+            });
+            
+            if (!hasRecentActiveRun) {
+              console.log('[PAGE] Final check: No recent active runs, ensuring idle status');
+              if (isMounted) {
+                setAgentStatus('idle');
+                setAgentRunId(null);
+              }
+            }
+          }
         }
 
       } catch (err) {
@@ -142,9 +169,12 @@ export function useThreadData(threadId: string, projectId: string): UseThreadDat
     agentRunsQuery.data
   ]);
 
+  // Disabled automatic message replacement to prevent optimistic message deletion
+  // Messages are now only loaded on initial page load and updated via streaming
   useEffect(() => {
     if (messagesQuery.data && messagesQuery.status === 'success') {
-      if (!isLoading && agentStatus !== 'running' && agentStatus !== 'connecting') {
+      // Only load messages on initial load, not when agent status changes
+      if (!isLoading && messages.length === 0) {
         const unifiedMessages = (messagesQuery.data || [])
           .filter((msg) => msg.type !== 'status')
           .map((msg: ApiMessageType) => ({
@@ -163,7 +193,7 @@ export function useThreadData(threadId: string, projectId: string): UseThreadDat
         setMessages(unifiedMessages);
       }
     }
-  }, [messagesQuery.data, messagesQuery.status, isLoading, agentStatus, threadId]);
+  }, [messagesQuery.data, messagesQuery.status, isLoading, messages.length, threadId]);
 
   return {
     messages,

@@ -4,19 +4,17 @@ export interface CredentialProfileItem {
   profile_id: string;
   profile_name: string;
   display_name: string;
-  app_slug: string;
-  app_name: string;
-  external_user_id: string;
+  toolkit_slug: string;
+  toolkit_name: string;
+  mcp_url: string;
   is_connected: boolean;
-  is_active: boolean;
   is_default: boolean;
-  enabled_tools: string[];
   created_at: string;
-  last_used_at?: string;
+  updated_at?: string;
 }
 
 export interface GetCredentialProfilesData {
-  app_slug: string | null;
+  toolkit_slug: string | null;
   message: string | null;
   profiles: CredentialProfileItem[];
   total_count: number;
@@ -40,7 +38,7 @@ const extractFromNewFormat = (content: any): GetCredentialProfilesData => {
   
   if (!parsedContent || typeof parsedContent !== 'object') {
     return { 
-      app_slug: null,
+      toolkit_slug: null,
       message: null,
       profiles: [],
       total_count: 0,
@@ -63,7 +61,7 @@ const extractFromNewFormat = (content: any): GetCredentialProfilesData => {
     parsedOutput = parsedOutput || {};
 
     const extractedData = {
-      app_slug: args.app_slug || null,
+      toolkit_slug: args.toolkit_slug || null,
       message: parsedOutput.message || null,
       profiles: Array.isArray(parsedOutput.profiles) ? parsedOutput.profiles : [],
       total_count: parsedOutput.total_count || 0,
@@ -76,7 +74,7 @@ const extractFromNewFormat = (content: any): GetCredentialProfilesData => {
 
   if ('parameters' in parsedContent && 'output' in parsedContent) {
     const extractedData = {
-      app_slug: parsedContent.parameters?.app_slug || null,
+      toolkit_slug: parsedContent.parameters?.toolkit_slug || null,
       message: parsedContent.output?.message || null,
       profiles: Array.isArray(parsedContent.output?.profiles) ? parsedContent.output.profiles : [],
       total_count: parsedContent.output?.total_count || 0,
@@ -92,7 +90,7 @@ const extractFromNewFormat = (content: any): GetCredentialProfilesData => {
   }
 
   return { 
-    app_slug: null,
+    toolkit_slug: null,
     message: null,
     profiles: [],
     total_count: 0,
@@ -108,7 +106,7 @@ const extractFromLegacyFormat = (content: any): Omit<GetCredentialProfilesData, 
     const args = toolData.arguments || {};
     
     return {
-      app_slug: args.app_slug || null,
+      toolkit_slug: args.toolkit_slug || null,
       message: null,
       profiles: [],
       total_count: 0
@@ -116,7 +114,7 @@ const extractFromLegacyFormat = (content: any): Omit<GetCredentialProfilesData, 
   }
   
   return {
-    app_slug: null,
+    toolkit_slug: null,
     message: null,
     profiles: [],
     total_count: 0
@@ -130,7 +128,7 @@ export function extractGetCredentialProfilesData(
   toolTimestamp?: string,
   assistantTimestamp?: string
 ): {
-  app_slug: string | null;
+  toolkit_slug: string | null;
   message: string | null;
   profiles: CredentialProfileItem[];
   total_count: number;
@@ -168,7 +166,7 @@ export function extractGetCredentialProfilesData(
   const assistantLegacy = extractFromLegacyFormat(assistantContent);
 
   const combinedData = {
-    app_slug: toolLegacy.app_slug || assistantLegacy.app_slug,
+    toolkit_slug: toolLegacy.toolkit_slug || assistantLegacy.toolkit_slug,
     message: toolLegacy.message || assistantLegacy.message,
     profiles: toolLegacy.profiles.length > 0 ? toolLegacy.profiles : assistantLegacy.profiles,
     total_count: toolLegacy.total_count || assistantLegacy.total_count,

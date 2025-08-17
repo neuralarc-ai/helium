@@ -23,13 +23,11 @@ import { useStartAgentMutation, useStopAgentMutation } from '@/hooks/react-query
 import { useSubscription } from '@/hooks/react-query/subscriptions/use-subscriptions';
 import { SubscriptionStatus } from '@/components/thread/chat-input/_use-model-selection';
 
-import { UnifiedMessage, ApiMessageType, ToolCallInput, Project } from '../_types';
+import { UnifiedMessage, ApiMessageType } from '../_types';
 import { useThreadData, useToolCalls, useBilling, useKeyboardShortcuts } from '../_hooks';
 import { ThreadError, UpgradeDialog, ThreadLayout } from '../_components';
 import { useVncPreloader } from '@/hooks/useVncPreloader';
 import { useThreadAgent } from '@/hooks/react-query/agents/use-agents';
-import { useSubscriptionWithStreaming } from '@/hooks/react-query/subscriptions/use-subscriptions';
-import { useModelSelection } from '@/components/thread/chat-input/_use-model-selection';
 
 // Helper function to check if we're in production mode
 const isProductionMode = (): boolean => {
