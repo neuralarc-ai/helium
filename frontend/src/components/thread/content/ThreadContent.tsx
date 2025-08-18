@@ -475,6 +475,9 @@ export interface ThreadContentProps {
   threadMetadata?: any; // Add thread metadata prop
   // Align content to the left edge of the content area (useful when side panel is open)
   isSidePanelOpen?: boolean;
+  // Sidebar state for proper positioning
+  leftSidebarState?: 'collapsed' | 'expanded';
+  isLeftSidebarExpanded?: boolean;
   onSubmit?: (
     message: string,
     options?: { model_name?: string; enable_thinking?: boolean },
@@ -505,6 +508,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   emptyStateComponent,
   threadMetadata,
   isSidePanelOpen = false,
+  leftSidebarState = 'collapsed',
+  isLeftSidebarExpanded = false,
   onSubmit,
   isFloatingToolPreviewVisible = false,
   setInputValue,
@@ -1899,12 +1904,23 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       {/* Scroll to bottom button */}
       {showScrollButton && (
         <Button
-          variant="outline"
           size="icon"
-          className="fixed bottom-[200px] left-[45%] z-50 h-8 w-8 rounded-full shadow-md"
+                      className={cn(
+              "fixed z-50 h-8 w-8 bg-white hover:bg-white/50 backdrop-blur-3xl border border-black/10 cursor-pointer rounded-full shadow-xs transition-all duration-300 ease-in-out",
+              // Position above chat input (pt-16 = 4rem, plus some buffer)
+              "bottom-50",
+              // Right positioning based on all possible sidebar states
+              leftSidebarState === 'expanded' && !isSidePanelOpen
+                ? 'right-[calc(50vw-156px)] bottom-62' // Left sidebar open, right side panel closed
+                : leftSidebarState === 'expanded' && isSidePanelOpen
+                  ? 'right-[calc(46vw+2rem)] bottom-52' // Left sidebar open, right side panel open
+                  : leftSidebarState === 'collapsed' && !isSidePanelOpen
+                    ? 'right-[calc(50vw-2rem)] bottom-62' // Left sidebar closed, right side panel closed
+                    : 'right-[calc(52vw+2rem)] bottom-52' // Left sidebar closed, right side panel open (default)
+            )}
           onClick={() => scrollToBottom('smooth')}
         >
-          <ArrowDown className="h-4 w-4" />
+          <ArrowDown className="h-4 w-4 text-black" />
         </Button>
       )}
     </>

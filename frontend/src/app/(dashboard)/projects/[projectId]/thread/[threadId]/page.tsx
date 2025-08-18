@@ -668,6 +668,8 @@ export default function ThreadPage({
           agentName={agent && agent.name}
           agentAvatar={agent && agent.avatar}
           isSidePanelOpen={isSidePanelOpen}
+          leftSidebarState={leftSidebarState}
+          isLeftSidebarExpanded={isLeftSidebarExpanded}
           isFloatingToolPreviewVisible={!isSidePanelOpen && toolCalls.length > 0}
           onSubmit={handleSubmitMessage}
         />
