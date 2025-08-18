@@ -35,6 +35,29 @@ import {
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
+
+const getFileIcon = (fileName: string, isDir: boolean) => {
+  if (isDir) return '/folder.png'; // You can add a folder.png to public if you want
+
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'html':
+    case 'htm':
+      return '/html.png';
+    case 'md':
+      return '/html.png';
+    case 'pdf':
+      return '/pdf.png';
+    case 'doc':
+    case 'docx':
+      return '/doc.png';
+    case 'csv':
+    case 'xlsx':
+      return '/csv.png';
+    default:
+      return '/file.png'; // You can add a generic file.png to public
+  }
+};
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -225,24 +248,33 @@ export function FileViewerModal({
     if (isDir) return '/folder.png';
     
     const extension = fileName.split('.').pop()?.toLowerCase();
-    
-    // Show html.png for HTML, CSS, and JS files
-    if (['html', 'htm', 'css', 'js'].includes(extension || '')) {
-      return '/html.png';
-    }
-    
-    const category = getFileTypeCategory(fileName);
-    switch (category) {
-      case 'documents':
-        return '/doc.png';
-      case 'images':
-        return '/image.png';
-      case 'code':
-        return '/code.png';
-      case 'links':
-        return '/link.png';
+
+    switch (extension) {
+      // Specific high-priority icons
+      case 'html':
+        case 'htm':
+          return '/html.png';
+        case 'md':
+          return '/html.png';
+      case 'pdf':
+        return '/pdf.png';
+      case 'csv':
+      case 'xlsx':
+        return '/csv.png';
+
+      // Fallback to category-based icons
       default:
-        return '/file.png';
+        const category = getFileTypeCategory(fileName);
+        switch (category) {
+          case 'images':
+            return '/image.png';
+          case 'code':
+            return '/code.png';
+          case 'documents':
+            return '/doc.png'; // General document icon
+          default:
+            return '/file.png'; // Generic file icon
+        }
     }
   };
 
@@ -1681,7 +1713,7 @@ export function FileViewerModal({
                                   }}
                                 />
                                 {!file.is_dir && (
-                                  <File className="h-8 w-8 text-muted-foreground hidden" />
+                                  <File className="h-7 w-7 text-muted-foreground hidden" />
                                 )}
                               </div>
                               <div className="flex-1 text-left min-w-0">
@@ -1701,26 +1733,6 @@ export function FileViewerModal({
                           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-3">
                             {files.map((file) => {
                               // Determine file type and icon
-                              const getFileIcon = (fileName: string, isDir: boolean) => {
-                                if (isDir) return '/folder.png'; // You can add a folder.png to public if you want
-                                
-                                const extension = fileName.split('.').pop()?.toLowerCase();
-                                switch (extension) {
-                                  case 'html':
-                                  case 'htm':
-                                    return '/html.png';
-                                  case 'pdf':
-                                    return '/pdf.png';
-                                  case 'doc':
-                                  case 'docx':
-                                    return '/doc.png';
-                                  case 'csv':
-                                    return '/csv.png';
-                                  default:
-                                    return '/file.png'; // You can add a generic file.png to public
-                                }
-                              };
-
                               const fileIcon = getFileIcon(file.name, file.is_dir);
 
                               return (

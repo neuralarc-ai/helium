@@ -2,9 +2,12 @@ import React from 'react';
 import { Markdown } from '@/components/ui/markdown';
 import { PipedreamConnectButton } from './pipedream-connect-button';
 
+import { Components } from 'react-markdown';
+
 interface PipedreamUrlDetectorProps {
   content: string;
   className?: string;
+  components?: Partial<Components>;
 }
 
 interface PipedreamUrl {
@@ -51,15 +54,16 @@ function hasConnectionLinkPattern(content: string, url: PipedreamUrl): boolean {
   return /Connection\s+Link:\s*$/i.test(beforeUrl);
 }
 
-export const PipedreamUrlDetector: React.FC<PipedreamUrlDetectorProps> = ({ 
-  content, 
-  className 
-}) => {
+export function PipedreamUrlDetector({
+  content,
+  className,
+  components,
+}: PipedreamUrlDetectorProps) {
   const pipedreamUrls = detectPipedreamUrls(content);
 
-  if (pipedreamUrls.length === 0) {
+    if (pipedreamUrls.length === 0) {
     return (
-      <Markdown className={className}>
+      <Markdown className={className} components={components}>
         {content}
       </Markdown>
     );
@@ -78,7 +82,7 @@ export const PipedreamUrlDetector: React.FC<PipedreamUrlDetectorProps> = ({
 
       if (cleanedTextBefore.trim()) {
         contentParts.push(
-          <Markdown key={`text-${index}`} className={className}>
+          <Markdown key={`text-${index}`} className={className} components={components}>
             {cleanedTextBefore}
           </Markdown>
         );
@@ -100,7 +104,7 @@ export const PipedreamUrlDetector: React.FC<PipedreamUrlDetectorProps> = ({
     const remainingText = content.substring(lastIndex);
     if (remainingText.trim()) {
       contentParts.push(
-        <Markdown key="text-end" className={className}>
+        <Markdown key="text-end" className={className} components={components}>
           {remainingText}
         </Markdown>
       );

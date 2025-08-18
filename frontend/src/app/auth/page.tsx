@@ -49,14 +49,15 @@ function LoginContent() {
   const mode = searchParams.get('mode');
   const returnUrl = searchParams.get('returnUrl');
   const message = searchParams.get('message');
-  const { enabled: customAgentsEnabled } = useFeatureFlag("custom_agents");
+  const { enabled: customAgentsEnabled } = useFeatureFlag('custom_agents');
 
   const isSignUp = mode === 'signup';
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [mounted, setMounted] = useState(false);
   const isProduction = isProductionMode();
 
-  const { wasLastMethod: wasEmailLastMethod, markAsUsed: markEmailAsUsed } = useAuthMethodTracking('email');
+  const { wasLastMethod: wasEmailLastMethod, markAsUsed: markEmailAsUsed } =
+    useAuthMethodTracking('email');
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -108,7 +109,7 @@ function LoginContent() {
       'success' in result &&
       result.success &&
       'redirectTo' in result
-      ) {
+    ) {
       window.location.href = result.redirectTo as string;
       return null;
     }
@@ -252,7 +253,8 @@ function LoginContent() {
 
             <div className="bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-900/50 rounded-lg p-4 mb-8">
               <p className="text-sm text-green-800 dark:text-green-400">
-                Click the link in the email to activate your account. If you don't see the email, check your spam folder.
+                Click the link in the email to activate your account. If you
+                don't see the email, check your spam folder.
               </p>
             </div>
 
@@ -277,105 +279,125 @@ function LoginContent() {
   }
 
   return (
-      <div className="min-h-screen bg-[#EDEDED] relative">
-        <div className="flex min-h-screen items-center justify-center gap-8">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ 
-              duration: 0.6, 
-              ease: [0.4, 0, 0.2, 1],
-              delay: 1.0
-            }}
-            className="hidden lg:flex items-center justify-center relative overflow-hidden h-[600px] w-[600px]"
-          >
-            <div className="absolute inset-0 flex items-center justify-center">
+    <div className="min-h-screen bg-[#EDEDED] relative">
+      <div className="flex min-h-screen items-center justify-center gap-8 px-4 sm:px-6 lg:px-0">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{
+            duration: 0.6,
+            ease: [0.4, 0, 0.2, 1],
+            delay: 1.0,
+          }}
+          className="hidden lg:flex items-center justify-center relative overflow-hidden h-[600px] w-[600px]"
+        >
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Image
+              src="/auth/login.png"
+              alt="Login illustration"
+              width={500}
+              height={600}
+              className="object-contain max-w-full h-full"
+              priority
+            />
+          </div>
+          <div className="absolute top-6 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-10">
+            <motion.div
+              initial={{ opacity: 0, rotate: -10 }}
+              animate={{ opacity: 1, rotate: 0 }}
+              transition={{
+                duration: 0.6,
+                ease: [0.4, 0, 0.2, 1],
+                delay: 1.2,
+              }}
+            >
               <Image
-                src="/auth/login.png"
-                alt="Login illustration"
-                width={500}
-                height={600}
-                className="object-contain max-w-full h-full"
-                priority
+                src="/helium-agent.png"
+                alt="Helium Logo"
+                width={40}
+                height={40}
+                className="mb-2"
               />
-            </div>
-            <div className="absolute top-6 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-10">
-              <motion.div
-                initial={{ opacity: 0, rotate: -10 }}
-                animate={{ opacity: 1, rotate: 0 }}
-                transition={{ 
-                  duration: 0.6, 
-                  ease: [0.4, 0, 0.2, 1],
-                  delay: 1.2
-                }}
-              >
+            </motion.div>
+            <motion.p
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{
+                duration: 0.6,
+                ease: [0.4, 0, 0.2, 1],
+                delay: 1.4,
+              }}
+              className="text-[42px] text-white mb-1"
+            >
+              Helium
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                duration: 0.6,
+                ease: [0.4, 0, 0.2, 1],
+                delay: 1.6,
+              }}
+              className="text-[12px] text-white/90"
+            >
+              Autonomous Intelligence
+            </motion.p>
+          </div>
+        </motion.div>
+        <div className="flex flex-col items-center justify-center h-[600px] w-full max-w-[500px]">
+          {/* Mobile Header - Only shows below 1024px */}
+          <Link href="/">
+            <div className="lg:hidden w-full mb-6 flex justify-center cursor-pointer">
+              <div className="flex items-center gap-2">
                 <Image
-                  src="/helium-agent.png"
+                  src="/helium-logo.png"
                   alt="Helium Logo"
                   width={40}
                   height={40}
-                  className="mb-2"
+                  className="mb-0"
                 />
-              </motion.div>
-              <motion.p 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ 
-                  duration: 0.6, 
-                  ease: [0.4, 0, 0.2, 1],
-                  delay: 1.4
-                }}
-                className="text-[42px] text-white mb-1"
-              >
-                Helium
-              </motion.p>
-              <motion.p 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ 
-                  duration: 0.6, 
-                  ease: [0.4, 0, 0.2, 1],
-                  delay: 1.6
-                }}
-                className="text-[12px] text-white/90"
-              >
-                Autonomous Intelligence
-              </motion.p>
+                <p className="text-xl text-black">Helium</p>
+              </div>
             </div>
+          </Link>
+
+          {/* Desktop Back Button - Only shows on 1024px and above */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{
+              duration: 0.6,
+              ease: [0.4, 0, 0.2, 1],
+              delay: 1.6,
+            }}
+            className="hidden lg:block mb-6 w-full text-center"
+          >
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-black transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to home
+            </Link>
           </motion.div>
-          <div className="flex flex-col items-center justify-center h-[600px]">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ 
-                duration: 0.6, 
-                ease: [0.4, 0, 0.2, 1],
-                delay: 1.6
-              }}
-              className="mb-6"
-            >
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-black transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to home
-              </Link>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 30, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ 
-                duration: 0.8, 
-                ease: [0.4, 0, 0.2, 1],
-                delay: 0.8
-              }}
-              layout
-              className="w-[500px] bg-white/77 rounded-[24px] p-8"
-            >
+          <motion.div
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{
+              duration: 0.8,
+              ease: [0.4, 0, 0.2, 1],
+              delay: 0.8,
+            }}
+            layout
+            className="w-full bg-white/77 rounded-[24px] p-6 sm:p-8"
+          >
             <form className="space-y-3 mb-4">
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-black">
+                <label
+                  htmlFor="email"
+                  className="text-sm font-medium text-black"
+                >
                   Email
                 </label>
                 <Input
@@ -389,7 +411,10 @@ function LoginContent() {
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <label htmlFor="password" className="text-sm font-medium text-black">
+                  <label
+                    htmlFor="password"
+                    className="text-sm font-medium text-black"
+                  >
                     Password
                   </label>
                   {!isSignUp && !isProduction && (
@@ -413,7 +438,10 @@ function LoginContent() {
               </div>
               {isSignUp && (
                 <div className="space-y-2">
-                  <label htmlFor="confirmPassword" className="text-sm font-medium text-black">
+                  <label
+                    htmlFor="confirmPassword"
+                    className="text-sm font-medium text-black"
+                  >
                     Confirm Password
                   </label>
                   <Input
@@ -421,7 +449,7 @@ function LoginContent() {
                     name="confirmPassword"
                     type="password"
                     placeholder="Confirm password"
-                    className="h-14 py-3 rounded-lg dark:bg-transparent text-black placeholder:text-black/70"
+                    className="h-12 sm:h-14 py-3 rounded-lg dark:bg-transparent text-black placeholder:text-black/70 text-sm sm:text-base"
                     required
                   />
                 </div>
@@ -430,10 +458,14 @@ function LoginContent() {
                 <div className="relative">
                   <SubmitButton
                     formAction={isSignUp ? handleSignUp : handleSignIn}
-                    className="w-full h-12 bg-gradient-to-r from-helium-pink to-helium-teal text-white hover:opacity-90 transition-opacity rounded-lg"
-                    pendingText={isSignUp ? "Creating account..." : "Initiating..."}
+                    className="w-full h-11 sm:h-12 bg-gradient-to-r from-helium-pink to-helium-teal text-white hover:opacity-90 transition-opacity rounded-lg text-sm sm:text-base"
+                    pendingText={
+                      isSignUp ? 'Creating account...' : 'Initiating...'
+                    }
                   >
-                    {isSignUp ? 'Create account' : 'Ready to Initiate Intelligence'}
+                    {isSignUp
+                      ? 'Create account'
+                      : 'Ready to Initiate Intelligence'}
                   </SubmitButton>
                   {/* {wasEmailLastMethod && (
                     <div className="absolute -top-1 -right-1 w-3 h-3 bg-black rounded-full border-2 border-background shadow-sm">
@@ -443,7 +475,7 @@ function LoginContent() {
                 </div>
               </div>
             </form>
-            
+
             {/* Social login section - only show if not in production */}
             {!isProduction && (
               <>
@@ -457,33 +489,33 @@ function LoginContent() {
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="space-y-3">
                   <GoogleSignIn returnUrl={returnUrl || undefined} />
                   <GitHubSignIn returnUrl={returnUrl || undefined} />
                 </div>
               </>
             )}
-            
+
             {/* Sign up/Sign in link - only show if not in production */}
             {!isProduction && (
               <div className="mt-4 text-center text-sm">
                 <Link
-                  href={isSignUp 
-                    ? `/auth${returnUrl ? `?returnUrl=${returnUrl}` : ''}`
-                    : `/auth?mode=signup${returnUrl ? `&returnUrl=${returnUrl}` : ''}`
+                  href={
+                    isSignUp
+                      ? `/auth${returnUrl ? `?returnUrl=${returnUrl}` : ''}`
+                      : `/auth?mode=signup${returnUrl ? `&returnUrl=${returnUrl}` : ''}`
                   }
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {isSignUp 
-                    ? 'Already have an account? Sign in' 
-                    : "Don't have an account? Sign up"
-                  }
+                  {isSignUp
+                    ? 'Already have an account? Sign in'
+                    : "Don't have an account? Sign up"}
                 </Link>
               </div>
             )}
-            </motion.div>
-          </div>
+          </motion.div>
+        </div>
       </div>
       <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
         <DialogContent className="sm:max-w-md">
@@ -492,7 +524,8 @@ function LoginContent() {
               <DialogTitle>Reset Password</DialogTitle>
             </div>
             <DialogDescription>
-              Enter your email address and we'll send you a link to reset your password.
+              Enter your email address and we'll send you a link to reset your
+              password.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleForgotPassword} className="space-y-4">
