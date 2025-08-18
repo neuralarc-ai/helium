@@ -6,6 +6,7 @@ import React, {
   useEffect,
   forwardRef,
   useImperativeHandle,
+  useCallback,
 } from 'react';
 import { useAgents } from '@/hooks/react-query/agents/use-agents';
 
@@ -26,6 +27,9 @@ import { isLocalMode } from '@/lib/config';
 import { BillingModal } from '@/components/billing/billing-modal';
 import { useRouter } from 'next/navigation';
 import { BorderBeam } from '@/components/magicui/border-beam';
+import { VoiceModePopup } from './voice-mode-popup';
+import { Mic } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Helper function to check if we're in production mode
 const isProductionMode = (): boolean => {
@@ -53,6 +57,7 @@ export interface ChatInputProps {
   onChange?: (value: string) => void;
   onFileBrowse?: () => void;
   sandboxId?: string;
+  projectId?: string; // ✅ Add projectId for voice thread creation
   hideAttachments?: boolean;
   selectedAgentId?: string;
   onAgentSelect?: (agentId: string | undefined) => void;
@@ -98,6 +103,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       onChange: controlledOnChange,
       onFileBrowse,
       sandboxId,
+      projectId, // ✅ Add projectId
       hideAttachments = false,
       selectedAgentId,
       onAgentSelect,
@@ -137,6 +143,12 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const [showSnackbar, setShowSnackbar] = useState(defaultShowSnackbar);
     const [userDismissedUsage, setUserDismissedUsage] = useState(false);
     const [billingModalOpen, setBillingModalOpen] = useState(false);
+    
+    // ✅ Add voice mode state
+    const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
+    const [voiceThreadId, setVoiceThreadId] = useState<string | null>(null);
+
+
 
     const {
       selectedModel,
@@ -151,6 +163,21 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const { data: subscriptionData } = useSubscriptionWithStreaming(isAgentRunning);
     const deleteFileMutation = useFileDelete();
     const queryClient = useQueryClient();
+
+    // ✅ Add voice mode handlers
+    const handleVoiceThreadCreated = useCallback((newThreadId: string) => {
+      setVoiceThreadId(newThreadId);
+      console.log(`Voice thread created: ${newThreadId}`);
+    }, []);
+
+    const handleVoiceMessage = useCallback(async (message: string) => {
+      if (voiceThreadId) {
+        // Submit message to voice thread
+        // The voice agent handles thread context internally
+        console.log(`Voice message received for thread: ${voiceThreadId}`);
+        // For now, just log the message since the voice agent handles the backend communication
+      }
+    }, [voiceThreadId]);
 
     // Show usage preview logic:
     // - Disabled in production environment
@@ -243,6 +270,9 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
         localStorage.setItem('lastSelectedAgentId', keyToStore);
       }
     }, [selectedAgentId, agents]);
+
+    // Voice mode is now handled manually via the voice button
+    // No auto-opening to prevent infinite loops
 
     useEffect(() => {
       if (autoFocus && textareaRef.current) {
@@ -541,6 +571,29 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
           <BillingModal
             open={billingModalOpen}
             onOpenChange={setBillingModalOpen}
+          />
+          
+          {/* ✅ Voice Mode Button */}
+          {isLoggedIn && (
+            <div className="fixed bottom-20 right-4 z-50">
+              <Button
+                onClick={() => setIsVoiceModeOpen(true)}
+                size="icon"
+                className="rounded-full bg-helium-teal hover:bg-helium-teal/80 shadow-lg"
+                title="Start Voice Conversation"
+              >
+                <Mic className="h-5 w-5" />
+              </Button>
+            </div>
+          )}
+          
+          {/* ✅ Voice Mode Popup */}
+          <VoiceModePopup
+            isOpen={isVoiceModeOpen}
+            onClose={() => setIsVoiceModeOpen(false)}
+            projectId={projectId}
+            onThreadCreated={handleVoiceThreadCreated}
+            onSubmitMessage={handleVoiceMessage}
           />
         </div>
       </div>

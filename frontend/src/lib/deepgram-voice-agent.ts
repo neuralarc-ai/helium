@@ -13,6 +13,7 @@ interface DeepgramVoiceAgentConfig {
   model?: string;
   language?: string;
   voice?: string;
+  threadId?: string; // ✅ Add threadId support
 }
 
 interface WebSearchResult {
@@ -29,6 +30,8 @@ export class DeepgramVoiceAgent {
   private model: string;
   private language: string;
   private voice: string;
+  private threadId?: string; // ✅ Add threadId property
+  private conversationHistory: Array<{role: string, content: string}> = []; // ✅ Add conversation history
   private websocket: WebSocket | null = null;
   private mediaRecorder: MediaRecorder | null = null;
   private audioContext: AudioContext | null = null;
@@ -43,6 +46,19 @@ export class DeepgramVoiceAgent {
     this.model = config.model || 'nova-3';
     this.language = config.language || 'en-US';
     this.voice = config.voice || 'aura-asteria';
+    this.threadId = config.threadId; // ✅ Set threadId from config
+  }
+
+  // ✅ Add method to set thread ID after initialization
+  setThreadId(threadId: string) {
+    this.threadId = threadId;
+    this.conversationHistory = []; // Reset for new thread
+    console.log(`Voice agent thread ID set to: ${threadId}`);
+  }
+
+  // ✅ Add method to get current thread ID
+  getThreadId(): string | undefined {
+    return this.threadId;
   }
 
   /**
@@ -123,20 +139,78 @@ export class DeepgramVoiceAgent {
   }
 
   /**
-   * Process user input with AI-powered web search
+   * Process user input with AI-powered web search or thread context
    */
   private async processWithDeepSeek(userInput: string): Promise<string> {
     try {
-      console.log('Processing with AI web search:', userInput);
+      console.log('Processing voice input:', userInput);
       
-      // Use OpenRouter API for AI-powered responses
-      const response = await this.performAISearch(userInput);
-      console.log('AI search response:', response);
+      // Add user message to local history
+      this.conversationHistory.push({ role: 'user', content: userInput });
       
-      return response;
+      // If we have a thread ID, send to backend with context
+      if (this.threadId) {
+        console.log(`Processing with thread context: ${this.threadId}`);
+        return await this.processWithThreadContext(userInput);
+      } else {
+        console.log('No thread ID, using AI web search fallback');
+        // Use OpenRouter API for AI-powered responses
+        const response = await this.performAISearch(userInput);
+        console.log('AI search response:', response);
+        return response;
+      }
     } catch (error) {
-      console.error('Error processing with AI search:', error);
+      console.error('Error processing voice input:', error);
       return this.handleGeneralConversation(userInput);
+    }
+  }
+
+  /**
+   * Process voice input with thread context via backend
+   */
+  private async processWithThreadContext(userInput: string): Promise<string> {
+    try {
+      console.log(`Processing with thread context: ${this.threadId}`);
+      
+      // Get backend URL from environment
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000/api';
+      const apiUrl = `${backendUrl}/voice/process`;
+      
+      console.log('Calling backend voice API at:', apiUrl);
+      
+      // Send to backend with thread ID and conversation history
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          thread_id: this.threadId,
+          user_input: userInput,
+          conversation_history: this.conversationHistory,
+          is_first_message: this.conversationHistory.length === 1
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Backend voice processing failed:', response.status, errorText);
+        throw new Error(`Backend processing failed: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Backend voice processing response:', data);
+      
+      // Add AI response to local history
+      if (data.response) {
+        this.conversationHistory.push({ role: 'assistant', content: data.response });
+      }
+      
+      return data.response || 'I apologize, but I encountered an error processing your request.';
+      
+    } catch (error) {
+      console.error('Thread context processing failed:', error);
+      // Fallback to AI search
+      console.log('Falling back to AI search due to thread processing error');
+      return await this.performAISearch(userInput);
     }
   }
 

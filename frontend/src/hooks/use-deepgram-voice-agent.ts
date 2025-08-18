@@ -1,15 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { DeepgramVoiceAgent } from '@/lib/deepgram-voice-agent';
 import { toast } from 'sonner';
 
 interface UseDeepgramVoiceAgentProps {
   onTranscript?: (text: string) => void;
   onResponse?: (text: string) => void;
+  threadId?: string; // ✅ Add threadId support
 }
 
 export const useDeepgramVoiceAgent = ({
   onTranscript,
-  onResponse
+  onResponse,
+  threadId
 }: UseDeepgramVoiceAgentProps = {}) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -37,7 +39,8 @@ export const useDeepgramVoiceAgent = ({
       voiceAgentRef.current = new DeepgramVoiceAgent({
         model: 'nova-3',
         language: 'en-US',
-        voice: 'aura-asteria'
+        voice: 'aura-asteria',
+        threadId // ✅ Pass threadId to voice agent
       });
 
       const success = await voiceAgentRef.current.initialize();
@@ -50,6 +53,19 @@ export const useDeepgramVoiceAgent = ({
     };
 
     initializeAgent();
+  }, [threadId]); // ✅ Add threadId to dependency array
+
+  // ✅ Add method to set thread ID after initialization
+  const setThreadId = useCallback((newThreadId: string) => {
+    if (voiceAgentRef.current) {
+      voiceAgentRef.current.setThreadId(newThreadId);
+      console.log(`Voice agent thread ID updated to: ${newThreadId}`);
+    }
+  }, []);
+
+  // ✅ Add method to get current thread ID
+  const getThreadId = useCallback(() => {
+    return voiceAgentRef.current?.getThreadId();
   }, []);
 
   // Start conversation
@@ -118,6 +134,8 @@ export const useDeepgramVoiceAgent = ({
     startConversation,
     stopConversation,
     isCurrentlyRecording,
-    isCurrentlySpeaking
+    isCurrentlySpeaking,
+    setThreadId, // ✅ Expose setThreadId
+    getThreadId // ✅ Expose getThreadId
   };
 }; 

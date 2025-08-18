@@ -399,7 +399,6 @@ export const PlaybackControls = ({
   useEffect(() => {
     if (!isPlaying || messages.length === 0) return;
 
-    let playbackTimeout: NodeJS.Timeout;
     let cleanupStreaming: (() => void) | undefined;
 
     const playbackNextMessage = async () => {
@@ -476,7 +475,7 @@ export const PlaybackControls = ({
     };
 
     // Start playback with a small delay
-    playbackTimeout = setTimeout(playbackNextMessage, 500);
+    const playbackTimeout: NodeJS.Timeout = setTimeout(playbackNextMessage, 500);
 
     return () => {
       clearTimeout(playbackTimeout);

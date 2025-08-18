@@ -111,8 +111,11 @@ export const processThreadsWithProjects = (
       );
       continue;
     }
+    // Prefer a human-friendly name for voice conversations
     let displayName = project.name || 'Unnamed Project';
-    if (thread.metadata?.is_workflow_execution && thread.metadata?.workflow_run_name) {
+    if (thread.metadata?.type === 'voice_conversation' && thread.metadata?.name) {
+      displayName = thread.metadata.name;
+    } else if (thread.metadata?.is_workflow_execution && thread.metadata?.workflow_run_name) {
       displayName = thread.metadata.workflow_run_name;
     }
 

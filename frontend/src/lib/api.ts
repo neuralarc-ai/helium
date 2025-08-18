@@ -527,6 +527,59 @@ export const getThread = async (threadId: string): Promise<Thread> => {
   return data;
 };
 
+export const createVoiceThread = async (projectId?: string, name?: string): Promise<{thread_id: string, project_id: string, name: string}> => {
+  const supabase = createClient();
+
+  // If user is not logged in, redirect to login
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('You must be logged in to create a voice thread');
+  }
+
+  // Get the JWT token for backend authentication
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('No access token available');
+  }
+
+  // Get backend URL from environment
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000/api';
+  const apiUrl = `${backendUrl}/voice/threads`;
+  
+  console.log('createVoiceThread debug:', {
+    projectId,
+    name,
+    backendUrl,
+    apiUrl,
+    hasAccessToken: !!session.access_token,
+    tokenLength: session.access_token?.length
+  });
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify({
+      project_id: projectId,
+      name: name
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Voice thread creation failed:', response.status, errorText);
+    throw new Error(`Failed to create voice thread: ${errorText}`);
+  }
+
+  const result = await response.json();
+  console.log('Voice thread creation successful:', result);
+  return result;
+};
+
 export const createThread = async (projectId: string): Promise<Thread> => {
   const supabase = createClient();
 

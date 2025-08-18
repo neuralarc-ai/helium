@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Mic, Square, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,29 +29,6 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     const maxTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const transcriptionMutation = useTranscription();
-
-    // Auto-stop recording after 15 minutes
-    useEffect(() => {
-        if (state === 'recording') {
-            recordingStartTimeRef.current = Date.now();
-            maxTimeoutRef.current = setTimeout(() => {
-                console.log('Auto-stopping recording after 15 minutes');
-                stopRecording();
-            }, MAX_RECORDING_TIME);
-        } else {
-            recordingStartTimeRef.current = null;
-            if (maxTimeoutRef.current) {
-                clearTimeout(maxTimeoutRef.current);
-                maxTimeoutRef.current = null;
-            }
-        }
-
-        return () => {
-            if (maxTimeoutRef.current) {
-                clearTimeout(maxTimeoutRef.current);
-            }
-        };
-    }, [state]);
 
     const startRecording = async () => {
         try {
@@ -103,11 +80,34 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         }
     };
 
-    const stopRecording = () => {
+    const stopRecording = useCallback(() => {
         if (mediaRecorderRef.current && state === 'recording') {
             mediaRecorderRef.current.stop();
         }
-    };
+    }, [state]);
+
+    // Auto-stop recording after 15 minutes
+    useEffect(() => {
+        if (state === 'recording') {
+            recordingStartTimeRef.current = Date.now();
+            maxTimeoutRef.current = setTimeout(() => {
+                console.log('Auto-stopping recording after 15 minutes');
+                stopRecording();
+            }, MAX_RECORDING_TIME);
+        } else {
+            recordingStartTimeRef.current = null;
+            if (maxTimeoutRef.current) {
+                clearTimeout(maxTimeoutRef.current);
+                maxTimeoutRef.current = null;
+            }
+        }
+
+        return () => {
+            if (maxTimeoutRef.current) {
+                clearTimeout(maxTimeoutRef.current);
+            }
+        };
+    }, [state, stopRecording]);
 
     const cancelRecording = () => {
         if (mediaRecorderRef.current && state === 'recording') {

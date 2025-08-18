@@ -95,6 +95,9 @@ export default function ThreadPage({
     agentRunsQuery,
   } = useThreadData(threadId, projectId);
 
+  // Note: Voice mode is now handled manually via the voice button
+  // No auto-opening to prevent infinite loops
+
   const {
     toolCalls,
     setToolCalls,
@@ -702,6 +705,7 @@ export default function ThreadPage({
               autoFocus={!isLoading}
               onFileBrowse={handleOpenFileViewer}
               sandboxId={sandboxId || undefined}
+              projectId={projectId} // ✅ Add projectId for voice thread creation
               messages={messages}
               agentName={agent && agent.name}
               selectedAgentId={selectedAgentId}

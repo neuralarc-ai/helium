@@ -4,6 +4,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { X, Mic, MicOff, Volume2, VolumeX, AlertCircle, RotateCcw, Play, Square } from 'lucide-react';
 import { useDeepgramVoiceAgent } from '@/hooks/use-deepgram-voice-agent';
+import { createVoiceThread } from '@/lib/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import './voice-mode-popup.css';
@@ -11,6 +14,9 @@ import './voice-mode-popup.css';
 interface VoiceModePopupProps {
   isOpen: boolean;
   onClose: () => void;
+  projectId?: string; // ✅ Add projectId for thread creation
+  onThreadCreated?: (threadId: string) => void; // ✅ Callback when thread is created
+  onSubmitMessage?: (message: string) => void; // ✅ Callback for submitting messages
 }
 
 // Enhanced voice states for better UX
@@ -116,11 +122,12 @@ const VoiceInteractionAnimation: React.FC<{
     
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
-    let h = 0, s = 0, l = (max + min) / 2;
+    let h = 0, s = 0;
+    const lightness = (max + min) / 2;
 
     if (max !== min) {
       const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      s = lightness > 0.5 ? d / (2 - max - min) : d / (max + min);
       switch (max) {
         case r: h = (g - b) / d + (g < b ? 6 : 0); break;
         case g: h = (b - r) / d + 2; break;
@@ -129,7 +136,7 @@ const VoiceInteractionAnimation: React.FC<{
       h /= 6;
     }
     
-    return { h: h * 360, s: s * 100, l: l * 100 };
+    return { h: h * 360, s: s * 100, l: lightness * 100 };
   };
 
   const hslToHex = (h: number, s: number, l: number) => {
@@ -326,27 +333,102 @@ const VoiceInteractionAnimation: React.FC<{
   );
 };
 
-export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose }) => {
+export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ 
+  isOpen, 
+  onClose, 
+  projectId, 
+  onThreadCreated 
+}) => {
+  // Debug logging
+  console.log('VoiceModePopup props:', { isOpen, projectId, onThreadCreated });
+  const queryClient = useQueryClient();
+  const router = useRouter();
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [isMuted, setIsMuted] = useState(false);
   const [voiceLevel, setVoiceLevel] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [isCreatingThread, setIsCreatingThread] = useState(false);
   const voiceLevelRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const microphoneRef = useRef<MediaStreamAudioSourceNode | null>(null);
+
+  const createNewThread = useCallback(async () => {
+    try {
+      console.log('Starting thread creation...', { projectId });
+      console.log('VoiceModePopup state:', { isOpen, threadId, isCreatingThread });
+      setIsCreatingThread(true);
+      setVoiceState('initializing');
+      
+      // Create new thread via API
+      console.log('Calling createVoiceThread...');
+      const response = await createVoiceThread(
+        projectId, 
+        `Voice Conversation ${new Date().toLocaleTimeString()}`
+      );
+      
+      console.log('Thread creation response:', response);
+      
+      const newThreadId = response.thread_id;
+      console.log('New thread ID:', newThreadId);
+      
+      setThreadId(newThreadId);
+      onThreadCreated?.(newThreadId); // ✅ Notify parent component
+      
+      // Update the voice agent with the new thread ID
+      setVoiceAgentThreadId(newThreadId);
+      
+      // Invalidate threads query to refresh sidebar
+      queryClient.invalidateQueries({ queryKey: ['threads', 'list'] });
+      
+      // Also try to refetch immediately
+      queryClient.refetchQueries({ queryKey: ['threads', 'list'] });
+      
+      setVoiceState('idle');
+      toast.success('Voice conversation started!');
+      
+      console.log('Thread creation completed successfully');
+      
+      // Don't navigate away - stay in voice mode
+      // The thread is created and ready for conversation
+      
+    } catch (error) {
+      console.error('Failed to create thread:', error);
+      setVoiceState('error');
+      toast.error('Failed to start voice conversation');
+    } finally {
+      setIsCreatingThread(false);
+    }
+  }, [projectId, onThreadCreated, queryClient, router]);
+
+  // Don't auto-create thread - let user start conversation manually
+  // useEffect(() => {
+  //   if (isOpen && !threadId && !isCreatingThread) {
+  //     createNewThread();
+  //   }
+  // }, [isOpen, threadId, isCreatingThread, createNewThread]);
 
   const {
     isInitialized,
     isRecording,
     isSpeaking,
     startConversation,
-    stopConversation
+    stopConversation,
+    setThreadId: setVoiceAgentThreadId
   } = useDeepgramVoiceAgent({
-    onTranscript: () => {},
-    onResponse: () => {}
+    onTranscript: async (text: string) => {
+      if (threadId) {
+        // First user message - save to thread and get AI response
+        console.log('Voice transcript received:', text);
+        // The voice agent will handle sending to backend automatically
+      }
+    },
+    onResponse: (text: string) => {
+      console.log('AI Response:', text);
+    }
   });
 
   // Real-time audio analysis
@@ -420,7 +502,52 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
     }
   }, [voiceState]);
 
-  // Keyboard shortcuts
+
+
+  const handleStartConversation = useCallback(async () => {
+    if (!isInitialized) {
+      setError('Voice agent not initialized. Please check your API key.');
+      toast.error('Voice agent not initialized. Please check your API key.');
+      return;
+    }
+    
+    try {
+      setError(null);
+      setVoiceState('initializing');
+      
+      // Create thread only when user starts speaking
+      if (!threadId) {
+        await createNewThread();
+      }
+      
+      toast.info('Starting voice assistant...');
+      await startConversation();
+    } catch (error) {
+      console.error('Failed to start conversation:', error);
+      setError('Failed to start voice conversation');
+      toast.error('Failed to start voice conversation');
+      setVoiceState('error');
+    }
+  }, [isInitialized, startConversation, threadId, createNewThread]);
+
+  const handleStopConversation = useCallback(() => {
+    stopConversation();
+    setVoiceState('idle');
+    toast.info('Voice conversation stopped');
+  }, [stopConversation]);
+
+  const handleToggleMute = useCallback(() => {
+    setIsMuted(!isMuted);
+    toast.info(isMuted ? 'Voice unmuted' : 'Voice muted');
+  }, [isMuted]);
+
+  const handleRetry = useCallback(() => {
+    setRetryCount(prev => prev + 1);
+    setError(null);
+    handleStartConversation();
+  }, [handleStartConversation]);
+
+  // Keyboard shortcuts - moved after function declarations
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (!isOpen) return;
@@ -446,44 +573,7 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [isOpen, voiceState]);
-
-  const handleStartConversation = async () => {
-    if (!isInitialized) {
-      setError('Voice agent not initialized. Please check your API key.');
-      toast.error('Voice agent not initialized. Please check your API key.');
-      return;
-    }
-    
-    try {
-      setError(null);
-      setVoiceState('initializing');
-      toast.info('Starting voice assistant...');
-      await startConversation();
-    } catch (error) {
-      console.error('Failed to start conversation:', error);
-      setError('Failed to start voice conversation');
-      toast.error('Failed to start voice conversation');
-      setVoiceState('error');
-    }
-  };
-
-  const handleStopConversation = () => {
-    stopConversation();
-    setVoiceState('idle');
-    toast.info('Voice conversation stopped');
-  };
-
-  const handleToggleMute = () => {
-    setIsMuted(!isMuted);
-    toast.info(isMuted ? 'Voice unmuted' : 'Voice muted');
-  };
-
-  const handleRetry = () => {
-    setRetryCount(prev => prev + 1);
-    setError(null);
-    handleStartConversation();
-  };
+  }, [isOpen, voiceState, handleStartConversation, handleStopConversation, handleToggleMute, onClose]);
 
   if (!isOpen) return null;
 
@@ -587,7 +677,7 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
       </div>
 
       {/* Status indicator - top center */}
-      <div className="absolute top-8 left-1/2 -translate-x-1/2 z-[200]">
+      <div className="absolute top-8 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3">
         <div className="bg-gray-800/80 backdrop-blur-sm rounded-full px-4 py-2 border border-gray-700/30">
           <span className="text-white text-sm font-medium">
             {voiceState === 'idle' && 'Ready to listen'}
@@ -598,6 +688,20 @@ export const VoiceModePopup: React.FC<VoiceModePopupProps> = ({ isOpen, onClose 
             {voiceState === 'error' && 'Error occurred'}
           </span>
         </div>
+        
+        {/* Refresh button for debugging */}
+        <button
+          onClick={() => {
+            queryClient.refetchQueries({ queryKey: ['threads', 'list'] });
+            toast.success('Refreshing thread list...');
+          }}
+          className="bg-gray-800/80 backdrop-blur-sm rounded-full p-2 border border-gray-700/30 hover:bg-gray-700/80 transition-colors"
+          title="Refresh thread list in sidebar"
+        >
+          <RotateCcw className="w-4 h-4 text-white" />
+        </button>
+        
+
       </div>
 
       <VoiceInteractionAnimation 
