@@ -1,5 +1,5 @@
 """
-Simple encryption utilities for Pipedream credential profiles.
+Simple encryption utilities for Composio credential profiles.
 """
 
 import os

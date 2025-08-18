@@ -67,6 +67,11 @@ dependencies = [
   "PyYAML==6.0.1",
   "pymupdf>=1.26.3",
   "pdfminer-six>=20250506",
+  "fastapi-sso>=0.18.0",
+<<<<<<< HEAD
+  "composio-client>=1.6.0",
+=======
+>>>>>>> dfc2feced83e9e57d56dd2540ad1e2433a3fa780
 ]
 
 [project.urls]

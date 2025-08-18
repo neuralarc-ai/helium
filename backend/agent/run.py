@@ -161,11 +161,16 @@ class MCPManager:
                                 if profile:
                                     custom_mcp['config']['external_user_id'] = profile.external_user_id
                             except Exception as e:
-                                logger.error(f"Error retrieving external_user_id from profile {profile_id}: {e}")
+                                lcogger.error(f"Error retrieving external_user_id from profile {profile_id}: {e}")
                     
                     if 'headers' in custom_mcp['config'] and 'x-pd-app-slug' in custom_mcp['config']['headers']:
                         custom_mcp['config']['app_slug'] = custom_mcp['config']['headers']['x-pd-app-slug']
                 
+                elif custom_type == 'composio':
+                    qualified_name = custom_mcp.get('qualifiedName')
+                    if not qualified_name:
+                        qualified_name = f"composio.{custom_mcp['name'].replace(' ', '_').lower()}"
+
                 mcp_config = {
                     'name': custom_mcp['name'],
                     'qualifiedName': f"custom_{custom_type}_{custom_mcp['name'].replace(' ', '_').lower()}",
@@ -173,7 +178,8 @@ class MCPManager:
                     'enabledTools': custom_mcp.get('enabledTools', []),
                     'instructions': custom_mcp.get('instructions', ''),
                     'isCustom': True,
-                    'customType': custom_type
+                    'customType': custom_type,
+                    'customType': 'composio'
                 }
                 all_mcps.append(mcp_config)
         

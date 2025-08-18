@@ -3,7 +3,8 @@ import { Search, Settings2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { DEFAULT_AGENTPRESS_TOOLS, getToolDisplayName } from './tools';
+// import { DEFAULT_AGENTPRESS_TOOLS, getToolDisplayName } from './tools';
+import { AGENTPRESS_TOOL_DEFINITIONS, getToolDisplayName } from './tools';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -50,7 +51,8 @@ export const AgentToolsConfiguration = ({ tools, onToolsChange, disabled = false
   };
 
   const getFilteredTools = (): Array<[string, any]> => {
-    let toolEntries = Object.entries(DEFAULT_AGENTPRESS_TOOLS);
+    let toolEntries = Object.entries(AGENTPRESS_TOOL_DEFINITIONS);
+    // let toolEntries = Object.entries(AGENTPRESS_TOOL_DEFINITIONS);
     
     if (searchQuery) {
       toolEntries = toolEntries.filter(([toolName, toolInfo]) => 
@@ -80,7 +82,9 @@ export const AgentToolsConfiguration = ({ tools, onToolsChange, disabled = false
             >
               <div className={`w-10 h-10 rounded-lg ${toolInfo.color} flex items-center justify-center flex-shrink-0`}>
                 <span className="text-lg">{toolInfo.icon}</span>
-              </div>
+
+
+     </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                   <h4 className="font-medium text-sm">

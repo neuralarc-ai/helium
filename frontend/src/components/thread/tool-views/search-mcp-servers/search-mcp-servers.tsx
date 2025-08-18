@@ -53,28 +53,31 @@ export function SearchMcpServersToolView({
 
   const toolTitle = getToolTitle(name);
 
-  const getAuthTypeColor = (authType: string) => {
-    switch (authType?.toLowerCase()) {
-      case 'oauth':
-        return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800';
-      case 'api_key':
-        return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800';
-      case 'none':
-        return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800';
-      default:
-        return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800';
+  const getAuthSchemeColor = (authSchemes: string[]) => {
+    if (authSchemes?.includes('OAUTH2')) {
+      return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800';
+    } else if (authSchemes?.includes('API_KEY')) {
+      return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800';
+    } else if (authSchemes?.includes('BEARER_TOKEN')) {
+      return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800';
+    } else {
+      return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800';
     }
   };
 
-  const getAuthTypeIcon = (authType: string) => {
-    switch (authType?.toLowerCase()) {
-      case 'oauth':
-        return ShieldCheck;
-      case 'api_key':
-        return Shield;
-      default:
-        return Shield;
+  const getAuthSchemeIcon = (authSchemes: string[]) => {
+    if (authSchemes?.includes('OAUTH2')) {
+      return ShieldCheck;
+    } else {
+      return Shield;
     }
+  };
+
+  const getPrimaryAuthScheme = (authSchemes: string[]) => {
+    if (authSchemes?.includes('OAUTH2')) return 'OAuth2';
+    if (authSchemes?.includes('API_KEY')) return 'API Key';
+    if (authSchemes?.includes('BEARER_TOKEN')) return 'Bearer Token';
+    return authSchemes?.[0] || 'Unknown';
   };
 
   const toggleExpanded = (index: number) => {
@@ -134,7 +137,8 @@ export function SearchMcpServersToolView({
           <ScrollArea className="h-full w-full">
             <div className="p-4 space-y-3">
               {results.map((result: McpServerResult, index: number) => {
-                const AuthIcon = getAuthTypeIcon(result.auth_type);
+                const hasOAuth = result.auth_schemes?.includes('OAUTH2');
+                const AuthIcon = getAuthSchemeIcon(result.auth_schemes);
                 const isExpanded = expandedResults[index];
                 
                 return (
@@ -163,9 +167,9 @@ export function SearchMcpServersToolView({
                             <Server className="w-6 h-6 text-zinc-400" />
                           )}
                         </div>
-                        {result.is_verified && (
+                        {hasOAuth && (
                           <div className="absolute -top-1 -right-1">
-                            <div className="bg-blue-500 rounded-full p-1">
+                            <div className="bg-emerald-500 rounded-full p-1">
                               <Verified className="w-3 h-3 text-white" />
                             </div>
                           </div>
@@ -179,32 +183,32 @@ export function SearchMcpServersToolView({
                               <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
                                 {result.name}
                               </h3>
-                              {result.is_verified && (
+                              {hasOAuth && (
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger>
                                       <div className="flex items-center">
-                                        <Sparkles className="w-4 h-4 text-blue-500" />
+                                        <Sparkles className="w-4 h-4 text-emerald-500" />
                                       </div>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>Verified integration</p>
+                                      <p>OAuth2 supported</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
                               )}
                             </div>
                             <p className="text-sm text-zinc-600 dark:text-zinc-400 font-mono">
-                              {result.app_slug}
+                              {result.toolkit_slug}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge
                               variant="outline"
-                              className={cn("text-xs font-medium", getAuthTypeColor(result.auth_type))}
+                              className={cn("text-xs font-medium", getAuthSchemeColor(result.auth_schemes))}
                             >
-                              <AuthIcon className="w-3 h-3 " />
-                              {result.auth_type?.replace('_', ' ') || 'Unknown'}
+                              <AuthIcon className="w-3 h-3" />
+                              {getPrimaryAuthScheme(result.auth_schemes)}
                             </Badge>
                           </div>
                         </div>

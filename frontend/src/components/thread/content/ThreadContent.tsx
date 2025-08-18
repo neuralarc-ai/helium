@@ -20,7 +20,7 @@ import {
   ParsedContent,
   ParsedMetadata,
 } from '@/components/thread/types';
-import { FileAttachmentGrid } from '@/components/thread/file-attachment';
+import { ThreadFilesDisplay } from '@/components/thread/file-attachment';
 import { useFilePreloader } from '@/hooks/react-query/files';
 import { useAuth } from '@/components/AuthProvider';
 import { Project } from '@/lib/api';
@@ -37,7 +37,7 @@ import {
   isNewXmlFormat,
 } from '@/components/thread/tool-views/xml-parser';
 import { ShowToolStream } from './ShowToolStream';
-import { PipedreamUrlDetector } from './pipedream-url-detector';
+import { ComposioUrlDetector } from './composio-url-detector';
 import { ThinkingAccordion } from './ThinkingAccordion';
 import {
   Tooltip,
@@ -83,28 +83,7 @@ const HIDE_STREAMING_XML_TAGS = new Set([
   'execute-data-provider-endpoint',
 ]);
 
-// Helper function to render attachments (keeping original implementation for now)
-export function renderAttachments(
-  attachments: string[],
-  fileViewerHandler?: (filePath?: string, filePathList?: string[]) => void,
-  sandboxId?: string,
-  project?: Project,
-) {
-  if (!attachments || attachments.length === 0) return null;
 
-  // Note: Preloading is now handled by React Query in the main ThreadContent component
-  // to avoid duplicate requests with different content types
-
-  return (
-    <FileAttachmentGrid
-      attachments={attachments}
-      onFileClick={fileViewerHandler}
-      showPreviews={true}
-      sandboxId={sandboxId}
-      project={project}
-    />
-  );
-}
 
 // Render Markdown content while preserving XML tags that should be displayed as tool calls
 export function renderMarkdownContent(
@@ -120,6 +99,7 @@ export function renderMarkdownContent(
   debugMode?: boolean,
   streamingTextContent?: string,
   streamHookStatus?: string,
+  validateFiles?: (attachments: string[]) => string[], // Add file validation function
 ) {
   // If in debug mode, just display raw content in a pre tag
   if (debugMode) {
@@ -144,7 +124,7 @@ export function renderMarkdownContent(
         const textBeforeBlock = content.substring(lastIndex, match.index);
         if (textBeforeBlock.trim()) {
           contentParts.push(
-            <PipedreamUrlDetector
+            <ComposioUrlDetector
               key={`md-${lastIndex}`}
               content={textBeforeBlock}
               className="text-sm xl:text-base prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
@@ -171,18 +151,31 @@ export function renderMarkdownContent(
               ? attachments.split(',').map((a) => a.trim())
               : [];
 
+          // Validate attachments if validation function is provided
+          const validAttachments = validateFiles ? validateFiles(attachmentArray) : attachmentArray;
+
           // Render ask tool content with attachment UI
           contentParts.push(
             <div key={`ask-${match.index}-${index}`} className="space-y-4">
-              <PipedreamUrlDetector
+              <ComposioUrlDetector
                 content={askText}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
-              {renderAttachments(
-                attachmentArray,
-                fileViewerHandler,
-                sandboxId,
-                project,
+<<<<<<< HEAD
+              {validAttachments && validAttachments.length > 0 && (
+                <ThreadFilesDisplay
+                  attachments={validAttachments}
+=======
+              {attachmentArray && attachmentArray.length > 0 && (
+                <ThreadFilesDisplay
+                  attachments={attachmentArray}
+>>>>>>> dfc2feced83e9e57d56dd2540ad1e2433a3fa780
+                  onFileClick={fileViewerHandler}
+                  sandboxId={sandboxId}
+                  project={project}
+                  className="mt-3"
+                  rightAlignGrid={false}
+                />
               )}
             </div>,
           );
@@ -198,18 +191,31 @@ export function renderMarkdownContent(
               ? attachments.split(',').map((a) => a.trim())
               : [];
 
+          // Validate attachments if validation function is provided
+          const validAttachments = validateFiles ? validateFiles(attachmentArray) : attachmentArray;
+
           // Render complete tool content with attachment UI
           contentParts.push(
             <div key={`complete-${match.index}-${index}`} className="space-y-4">
-              <PipedreamUrlDetector
+              <ComposioUrlDetector
                 content={completeText}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
-              {renderAttachments(
-                attachmentArray,
-                fileViewerHandler,
-                sandboxId,
-                project,
+<<<<<<< HEAD
+              {validAttachments && validAttachments.length > 0 && (
+                <ThreadFilesDisplay
+                  attachments={validAttachments}
+=======
+              {attachmentArray && attachmentArray.length > 0 && (
+                <ThreadFilesDisplay
+                  attachments={attachmentArray}
+>>>>>>> dfc2feced83e9e57d56dd2540ad1e2433a3fa780
+                  onFileClick={fileViewerHandler}
+                  sandboxId={sandboxId}
+                  project={project}
+                  className="mt-3"
+                  rightAlignGrid={false}
+                />
               )}
             </div>,
           );
@@ -251,10 +257,10 @@ export function renderMarkdownContent(
             <div key={`tool-${match.index}-${index}`} className="my-1">
               <button
                 onClick={() => handleToolClick(messageId, toolName)}
-                className="inline-flex items-center gap-1.5 py-1 px-1 pr-1.5 text-xs text-muted-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors cursor-pointer border border-neutral-200 dark:border-neutral-700/50"
+                className="inline-flex items-center gap-1.5 py-1.5 px-2.5 pr-1.5 text-xs text-muted-foreground bg-muted/50 hover:bg-muted/80 rounded-full transition-colors cursor-pointer border border-neutral-200"
               >
-                <div className="border-2 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-800 flex items-center justify-center p-0.5 rounded-sm border-neutral-400/20 dark:border-neutral-600">
-                  <IconComponent className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <div className="border-[1.5px] bg-muted flex items-center justify-center p-0.5 rounded-sm">
+                  <IconComponent className="h-3 w-3 text-black/70 flex-shrink-0 stroke-[2.5px]" />
                 </div>
                 <span className="text-xs text-foreground/80">
                   {getUserFriendlyToolName(toolName)}
@@ -281,7 +287,7 @@ export function renderMarkdownContent(
       const remainingText = content.substring(lastIndex);
       if (remainingText.trim()) {
         contentParts.push(
-          <PipedreamUrlDetector
+          <ComposioUrlDetector
             key={`md-${lastIndex}`}
             content={remainingText}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
@@ -293,7 +299,7 @@ export function renderMarkdownContent(
     return contentParts.length > 0 ? (
       contentParts
     ) : (
-      <PipedreamUrlDetector
+      <ComposioUrlDetector
         content={content}
         className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
       />
@@ -310,7 +316,7 @@ export function renderMarkdownContent(
   // If no XML tags found, just return the full content as markdown
   if (!content.match(xmlRegex)) {
     return (
-      <PipedreamUrlDetector
+      <ComposioUrlDetector
         content={content}
         className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
       />
@@ -322,7 +328,7 @@ export function renderMarkdownContent(
     if (match.index > lastIndex) {
       const textBeforeTag = content.substring(lastIndex, match.index);
       contentParts.push(
-        <PipedreamUrlDetector
+        <ComposioUrlDetector
           key={`md-${lastIndex}`}
           content={textBeforeTag}
           className="text-sm xl:text-base prose prose-sm dark:prose-invert chat-markdown max-w-none inline-block mr-1 break-words"
@@ -341,6 +347,9 @@ export function renderMarkdownContent(
         ? attachmentsMatch[1].split(',').map((a) => a.trim())
         : [];
 
+      // Validate attachments if validation function is provided
+      const validAttachments = validateFiles ? validateFiles(attachments) : attachments;
+
       // Extract content from the ask tag
       const contentMatch = rawXml.match(/<ask[^>]*>([\s\S]*?)<\/ask>/i);
       const askContent = contentMatch ? contentMatch[1] : '';
@@ -348,15 +357,25 @@ export function renderMarkdownContent(
       // Render <ask> tag content with attachment UI (using the helper)
       contentParts.push(
         <div key={`ask-${match.index}`} className="space-y-4">
-          <PipedreamUrlDetector
+          <ComposioUrlDetector
             content={askContent}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
           />
-          {renderAttachments(
-            attachments,
-            fileViewerHandler,
-            sandboxId,
-            project,
+<<<<<<< HEAD
+          {validAttachments && validAttachments.length > 0 && (
+            <ThreadFilesDisplay
+              attachments={validAttachments}
+=======
+          {attachments && attachments.length > 0 && (
+            <ThreadFilesDisplay
+              attachments={attachments}
+>>>>>>> dfc2feced83e9e57d56dd2540ad1e2433a3fa780
+              onFileClick={fileViewerHandler}
+              sandboxId={sandboxId}
+              project={project}
+              className="mt-3"
+              rightAlignGrid={false}
+            />
           )}
         </div>,
       );
@@ -367,6 +386,9 @@ export function renderMarkdownContent(
         ? attachmentsMatch[1].split(',').map((a) => a.trim())
         : [];
 
+      // Validate attachments if validation function is provided
+      const validAttachments = validateFiles ? validateFiles(attachments) : attachments;
+
       // Extract content from the complete tag
       const contentMatch = rawXml.match(
         /<complete[^>]*>([\s\S]*?)<\/complete>/i,
@@ -376,15 +398,25 @@ export function renderMarkdownContent(
       // Render <complete> tag content with attachment UI (using the helper)
       contentParts.push(
         <div key={`complete-${match.index}`} className="space-y-4">
-          <PipedreamUrlDetector
+          <ComposioUrlDetector
             content={completeContent}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
-          />
-          {renderAttachments(
-            attachments,
-            fileViewerHandler,
-            sandboxId,
-            project,
+              />
+<<<<<<< HEAD
+          {validAttachments && validAttachments.length > 0 && (
+            <ThreadFilesDisplay
+              attachments={validAttachments}
+=======
+          {attachments && attachments.length > 0 && (
+            <ThreadFilesDisplay
+              attachments={attachments}
+>>>>>>> dfc2feced83e9e57d56dd2540ad1e2433a3fa780
+              onFileClick={fileViewerHandler}
+              sandboxId={sandboxId}
+              project={project}
+              className="mt-3"
+              rightAlignGrid={false}
+            />
           )}
         </div>,
       );
@@ -443,7 +475,7 @@ export function renderMarkdownContent(
   // Add text after the last tag
   if (lastIndex < content.length) {
     contentParts.push(
-      <PipedreamUrlDetector
+      <ComposioUrlDetector
         key={`md-${lastIndex}`}
         content={content.substring(lastIndex)}
         className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
@@ -480,6 +512,9 @@ export interface ThreadContentProps {
   threadMetadata?: any; // Add thread metadata prop
   // Align content to the left edge of the content area (useful when side panel is open)
   isSidePanelOpen?: boolean;
+  // Sidebar state for proper positioning
+  leftSidebarState?: 'collapsed' | 'expanded';
+  isLeftSidebarExpanded?: boolean;
   onSubmit?: (
     message: string,
     options?: { model_name?: string; enable_thinking?: boolean },
@@ -510,9 +545,11 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   emptyStateComponent,
   threadMetadata,
   isSidePanelOpen = false,
+  leftSidebarState = 'collapsed',
+  isLeftSidebarExpanded = false,
   onSubmit,
-  isFloatingToolPreviewVisible = false,
   setInputValue,
+  isFloatingToolPreviewVisible = false,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -536,9 +573,78 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   const [streamingFeedback, setStreamingFeedback] = useState<
     'up' | 'down' | null
   >(null);
+  const [isFloatingToolPreviewOpen, setIsFloatingToolPreviewOpen] = useState(false);
 
   // React Query file preloader
   const { preloadFiles } = useFilePreloader();
+  
+  // File validation state - will be populated per message
+  const [fileValidationMap, setFileValidationMap] = React.useState<Map<string, { valid: string[], isValidating: boolean }>>(new Map());
+  
+  // Track which messages have been validated to prevent infinite loops
+  const validatedMessages = React.useRef<Set<string>>(new Set());
+  
+  // Function to validate files for a specific message
+  const validateMessageFiles = React.useCallback(async (messageId: string, attachments: string[]) => {
+    if (!sandboxId || !attachments || attachments.length === 0) {
+      setFileValidationMap(prev => new Map(prev).set(messageId, { valid: [], isValidating: false }));
+      return;
+    }
+    
+    setFileValidationMap(prev => new Map(prev).set(messageId, { valid: [], isValidating: true }));
+    
+    try {
+      // Get list of files in workspace
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sandboxes/${sandboxId}/files?path=/workspace`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const workspaceFiles = data.files?.map((f: any) => f.path) || [];
+        
+        // Filter attachments to only include files that exist
+        const valid = attachments.filter(attachment => {
+          const normalizedAttachment = attachment.replace('/workspace/', '').replace('/workspace', '');
+          return workspaceFiles.some((workspaceFile: string) => 
+            workspaceFile.includes(normalizedAttachment) || 
+            workspaceFile.endsWith(normalizedAttachment)
+          );
+        });
+        
+        setFileValidationMap(prev => new Map(prev).set(messageId, { valid, isValidating: false }));
+      } else {
+        // If validation fails, show all attachments (fallback)
+        setFileValidationMap(prev => new Map(prev).set(messageId, { valid: attachments, isValidating: false }));
+      }
+    } catch (error) {
+      console.error('File validation failed:', error);
+      // Fallback to showing all attachments
+      setFileValidationMap(prev => new Map(prev).set(messageId, { valid: attachments, isValidating: false }));
+    }
+  }, [sandboxId, session?.access_token]);
+  
+  // Clear validation cache when sandboxId changes
+  React.useEffect(() => {
+    validatedMessages.current.clear();
+    setFileValidationMap(new Map());
+  }, [sandboxId]);
+  
+  // Create a validation function that matches the expected signature for renderMarkdownContent
+  const validateFilesForRendering = React.useCallback((attachments: string[]): string[] => {
+    if (!sandboxId || !attachments || attachments.length === 0) {
+      return [];
+    }
+    
+    console.log('File validation called for attachments:', attachments);
+    console.log('Current sandboxId:', sandboxId);
+    
+    // For now, return all attachments - validation will happen asynchronously
+    // This is a temporary solution until we can implement proper synchronous validation
+    return attachments;
+  }, [sandboxId]);
 
   const containerClassName = isPreviewMode
     ? 'flex-1 overflow-y-auto scrollbar-thin scrollbar-track-secondary/0 scrollbar-thumb-primary/10 scrollbar-thumb-rounded-full hover:scrollbar-thumb-primary/10 px-6 py-4 pb-86'
@@ -636,6 +742,13 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     setUserHasScrolled(isScrolledUp);
   };
 
+  // Check if user is near bottom (within 200px)
+  const isNearBottom = useCallback(() => {
+    if (!messagesContainerRef.current) return true;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    return scrollHeight - scrollTop - clientHeight < 200;
+  }, []);
+
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   }, []);
@@ -643,9 +756,15 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   // Auto-scroll to bottom when new messages arrive or agent status changes
   React.useEffect(() => {
     if (agentStatus === 'running' || agentStatus === 'connecting') {
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('smooth');
+      }
+    } else if (agentStatus === 'idle' || agentStatus === 'error') {
+      // When process completes, always scroll to bottom smoothly
       scrollToBottom('smooth');
     }
-  }, [agentStatus, scrollToBottom]);
+  }, [agentStatus, scrollToBottom, isNearBottom]);
 
   React.useEffect(() => {
     if (messages.length > 0) {
@@ -657,49 +776,63 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   }, [messages, scrollToBottom]);
 
   // Auto-scroll behaviors for different streaming scenarios:
+  // - Only auto-scroll if user is near bottom to respect user scroll position
   // - Use 'auto' for streaming content to ensure immediate visibility
   // - Use 'smooth' for user interactions and status changes
-  // - This mimics ChatGPT/Claude behavior where content stays visible during generation
   React.useEffect(() => {
     if (streamingTextContent && (agentStatus === 'running' || agentStatus === 'connecting')) {
-      // Use immediate scroll for streaming content to ensure smooth experience
-      scrollToBottom('auto');
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('auto');
+      }
     }
-  }, [streamingTextContent, agentStatus, scrollToBottom]);
+  }, [streamingTextContent, agentStatus, scrollToBottom, isNearBottom]);
 
   // Auto-scroll to bottom when streaming text changes in playback mode
   React.useEffect(() => {
     if (streamingText && isStreamingText && readOnly) {
-      scrollToBottom('auto');
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('auto');
+      }
     }
-  }, [streamingText, isStreamingText, readOnly, scrollToBottom]);
+  }, [streamingText, isStreamingText, readOnly, scrollToBottom, isNearBottom]);
 
   // Auto-scroll to bottom when streaming tool calls change
   React.useEffect(() => {
     if (streamingToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
-      scrollToBottom('auto');
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('auto');
+      }
     }
-  }, [streamingToolCall, agentStatus, scrollToBottom]);
+  }, [streamingToolCall, agentStatus, scrollToBottom, isNearBottom]);
 
   // Auto-scroll to bottom when new tool calls are added
   React.useEffect(() => {
     if (currentToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
-      scrollToBottom('auto');
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('auto');
+      }
     }
-  }, [currentToolCall, agentStatus, scrollToBottom]);
+  }, [currentToolCall, agentStatus, scrollToBottom, isNearBottom]);
 
   // Auto-scroll to bottom when streaming starts
   React.useEffect(() => {
     if (streamHookStatus === 'streaming') {
-      scrollToBottom('auto');
+      // Only auto-scroll if user is near bottom
+      if (isNearBottom()) {
+        scrollToBottom('auto');
+      }
     }
-  }, [streamHookStatus, scrollToBottom]);
+  }, [streamHookStatus, scrollToBottom, isNearBottom]);
 
-  // Complete auto-scroll strategy:
+  // Smart auto-scroll strategy:
   // 1. Smooth scroll for user interactions (new messages, status changes)
   // 2. Immediate scroll for streaming content (text, tool calls, streaming start)
-  // 3. Always auto-scroll during streaming regardless of user scroll position
-  // 4. This ensures content stays visible during generation like ChatGPT/Claude
+  // 3. Only auto-scroll if user is near bottom to respect user scroll position
+  // 4. This ensures content stays visible during generation while allowing users to scroll up
 
   // Preload all message attachments when messages change or sandboxId is provided
   React.useEffect(() => {
@@ -736,6 +869,36 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       });
     }
   }, [displayMessages, sandboxId, session?.access_token, preloadFiles]);
+
+  // Validate file attachments for all messages when sandboxId changes
+  React.useEffect(() => {
+    if (!sandboxId) return;
+
+    // Process all messages with attachments
+    displayMessages.forEach((message) => {
+      if (message.type === 'user') {
+        try {
+          const content = typeof message.content === 'string' ? message.content : '';
+          const attachmentsMatch = content.match(/\[Uploaded File: (.*?)\]/g);
+          if (attachmentsMatch) {
+            const attachments = attachmentsMatch
+              .map((match) => {
+                const pathMatch = match.match(/\[Uploaded File: (.*?)\]/);
+                return pathMatch ? pathMatch[1] : null;
+              })
+              .filter(Boolean) as string[];
+
+            if (attachments.length > 0 && !validatedMessages.current.has(message.message_id || '')) {
+              validatedMessages.current.add(message.message_id || '');
+              validateMessageFiles(message.message_id || '', attachments);
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing message attachments for validation:', e);
+        }
+      }
+    });
+  }, [displayMessages, sandboxId, validateMessageFiles]);
 
   return (
     <>
@@ -978,6 +1141,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                           .filter(Boolean)
                       : [];
 
+
+
                     // Remove attachment info from the message content
                     const cleanContent = messageContent
                       .replace(/\[Uploaded File: .*?\]/g, '')
@@ -986,19 +1151,19 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                     return (
                       <div
                         key={group.key}
-                        className="flex justify-end group transition-all duration-300 ease-in-out"
+                        className="flex justify-end group transition-all duration-300 ease-in-out w-full"
                         data-message-id={group.key}
                       >
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1 items-end max-w-[85%]">
                           <div
-                            className={cn('flex max-w-[100%]')}
+                            className={cn('flex w-fit')}
                           >
                             <div
                               style={{
                                 background: '#FFFFFF',
                                 color: 'black',
                               }}
-                              className="break-words overflow-hidden border border-black/10 rounded-l-2xl rounded-tr-2xl rounded-br-sm px-4 py-2"
+                              className="break-words overflow-hidden border border-black/5 rounded-l-2xl rounded-tr-2xl rounded-br-sm px-4 py-2 w-full"
                             >
                               <div className="space-y-4 min-w-0 flex-1">
                                 {cleanContent && (
@@ -1032,24 +1197,58 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                         : undefined
                                     }
                                   >
-                                    <PipedreamUrlDetector
+                                    <ComposioUrlDetector
                                       content={cleanContent}
                                       className="text-sm prose prose-sm chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere text-black xl:text-base"
                                     />
                                   </div>
                                 )}
-                                {renderAttachments(
-                                  attachments as string[],
-                                  handleOpenFileViewer,
-                                  sandboxId,
-                                  project,
-                                )}
+
                               </div>
                             </div>
                           </div>
+                          
+                          {/* Files Display - Below the message content */}
+                          {attachments && attachments.length > 0 && (
+                            <div className="w-full flex justify-end">
+                              <div className="max-w-[85%]">
+                                <ThreadFilesDisplay
+<<<<<<< HEAD
+                                  attachments={fileValidationMap.get(group.key)?.valid || attachments}
+=======
+                                  attachments={attachments as string[]}
+>>>>>>> dfc2feced83e9e57d56dd2540ad1e2433a3fa780
+                                  onFileClick={handleOpenFileViewer}
+                                  sandboxId={sandboxId}
+                                  project={project}
+                                  className="mt-1"
+                                  rightAlignGrid={false}
+                                />
+                              </div>
+                            </div>
+                          )}
+                          
+<<<<<<< HEAD
+                          {/* Show validation status if needed */}
+                          {fileValidationMap.get(group.key)?.isValidating && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Validating files...
+                            </div>
+                          )}
+                          
+                          {/* Show warning if some attachments were filtered out */}
+                          {attachments && attachments.length > 0 && fileValidationMap.get(group.key)?.valid && fileValidationMap.get(group.key)?.valid.length < attachments.length && (
+                            <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                              {attachments.length - (fileValidationMap.get(group.key)?.valid.length || 0)} file(s) not found in workspace
+                            </div>
+                          )}
+                          
+=======
+>>>>>>> dfc2feced83e9e57d56dd2540ad1e2433a3fa780
                           {/* Copy and Edit buttons for user prompt - OUTSIDE the message box */}
                           {!readOnly && (
-                            <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out">
+                            <div className="w-full flex justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out">
+                              <div className="max-w-[85%] flex justify-end">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -1194,7 +1393,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 </Tooltip>
                               )}
                             </div>
-                          )}
+                          </div>
+                        )}
                         </div>
                       </div>
                     );
@@ -1300,6 +1500,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                         debugMode,
                                         streamingTextContent,
                                         streamHookStatus,
+                                        validateFilesForRendering, // Pass the validation function
                                       );
 
                                     elements.push(
@@ -1606,7 +1807,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                       return (
                                         <>
                                           {textBeforeTag && (
-                                            <PipedreamUrlDetector
+                                            <ComposioUrlDetector
                                               content={textBeforeTag}
                                               className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                             />
@@ -1643,7 +1844,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                           
                                           {/* Show content after think tag if it exists */}
                                           {textAfterThink && (
-                                            <PipedreamUrlDetector
+                                            <ComposioUrlDetector
                                               content={textAfterThink}
                                               className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                             />
@@ -1730,7 +1931,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                           ) : (
                                             <>
                                               {textBeforeTag && (
-                                                <PipedreamUrlDetector
+                                                <ComposioUrlDetector
                                                   content={textBeforeTag}
                                                   className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                                 />
@@ -1760,7 +1961,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                               
                                               {/* Show content after think tag if it exists */}
                                               {textAfterThink && (
-                                                <PipedreamUrlDetector
+                                                <ComposioUrlDetector
                                                   content={textAfterThink}
                                                   className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                                 />
@@ -1800,7 +2001,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 !readOnly &&
                 (messages.length === 0 ||
                   messages[messages.length - 1].type === 'user') && (
-                  <div ref={latestMessageRef} className="w-full h-22 rounded">
+                  <div ref={latestMessageRef} className="w-full h-fit">
                     <div className="flex flex-col gap-4">
                       {/* Logo positioned above the loader */}
                       <div className="flex items-center gap-2">
@@ -1815,7 +2016,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                       </div>
 
                       {/* Loader content */}
-                                              <div className="space-y-4 w-full h-12">
+                      <div className="space-y-4 w-full h-12">
                         <AgentLoader />
                       </div>
                     </div>
@@ -1890,12 +2091,23 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       {/* Scroll to bottom button */}
       {showScrollButton && (
         <Button
-          variant="outline"
           size="icon"
-          className="fixed bottom-24 right-6 z-10 h-8 w-8 rounded-full shadow-md"
+                      className={cn(
+              "fixed z-50 h-8 w-8 bg-white hover:bg-white/50 backdrop-blur-3xl border border-black/10 cursor-pointer rounded-full shadow-xs transition-all duration-300 ease-in-out",
+              // Position above chat input (pt-16 = 4rem, plus some buffer)
+              "bottom-50",
+              // Right positioning based on all possible sidebar states
+              leftSidebarState === 'expanded' && !isSidePanelOpen
+                ? 'right-[calc(50vw-156px)] bottom-62' // Left sidebar open, right side panel closed
+                : leftSidebarState === 'expanded' && isSidePanelOpen
+                  ? 'right-[calc(46vw+2rem)] bottom-52' // Left sidebar open, right side panel open
+                  : leftSidebarState === 'collapsed' && !isSidePanelOpen
+                    ? 'right-[calc(50vw-2rem)] bottom-62' // Left sidebar closed, right side panel closed
+                    : 'right-[calc(52vw+2rem)] bottom-52' // Left sidebar closed, right side panel open (default)
+            )}
           onClick={() => scrollToBottom('smooth')}
         >
-          <ArrowDown className="h-4 w-4" />
+          <ArrowDown className="h-4 w-4 text-black" />
         </Button>
       )}
     </>

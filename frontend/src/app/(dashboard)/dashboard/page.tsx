@@ -14,7 +14,7 @@ export default async function DashboardPage() {
             <div className="flex-1 flex flex-col items-center justify-center px-4">
               <div className={cn(
                 "flex flex-col items-center text-center w-full space-y-8",
-                "max-w-[850px] sm:max-w-full sm:px-4"
+                "max-w-[750px] sm:max-w-full sm:px-4"
               )}>
                 <Skeleton className="h-10 w-40 sm:h-8 sm:w-32" />
                 <Skeleton className="h-7 w-56 sm:h-6 sm:w-48" />

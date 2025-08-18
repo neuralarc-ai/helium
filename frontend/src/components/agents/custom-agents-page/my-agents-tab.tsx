@@ -24,7 +24,8 @@ interface MyAgentsTabProps {
   onDeleteAgent: (agentId: string) => void;
   onToggleDefault: (agentId: string, currentDefault: boolean) => void;
   onClearFilters: () => void;
-  deleteAgentMutation: any;
+  deleteAgentMutation?: any;
+  isDeletingAgent?: (agentId: string) => boolean;
   setAgentsPage: (page: number) => void;
 
   myTemplates: any[];
@@ -37,6 +38,7 @@ interface MyAgentsTabProps {
 
   onPublishAgent?: (agent: any) => void;
   publishingAgentId?: string | null;
+  onDeleteTemplate?: (template: any) => Promise<void>;
 }
 
 const filterOptions = [
@@ -57,6 +59,7 @@ export const MyAgentsTab = ({
   onToggleDefault,
   onClearFilters,
   deleteAgentMutation,
+  isDeletingAgent,
   setAgentsPage,
   myTemplates,
   templatesLoading,
@@ -85,8 +88,6 @@ export const MyAgentsTab = ({
     setAgentFilter('all');
     onClearFilters();
   };
-
-
 
   const getCountForFilter = (filterValue: string) => {
     if (filterValue === 'templates') {
@@ -189,6 +190,7 @@ export const MyAgentsTab = ({
                 onDeleteAgent={onDeleteAgent}
                 onToggleDefault={onToggleDefault}
                 deleteAgentMutation={deleteAgentMutation}
+                isDeletingAgent={isDeletingAgent}
                 onPublish={onPublishAgent}
                 publishingId={publishingAgentId}
               />

@@ -4,23 +4,21 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-import { useAgents, useUpdateAgent, useDeleteAgent, useOptimisticAgentUpdate, useCreateNewAgent } from '@/hooks/react-query/agents/use-agents';
+import { useAgents, useUpdateAgent, useOptimisticAgentUpdate, useDeleteAgent } from '@/hooks/react-query/agents/use-agents';
 import { useMarketplaceTemplates, useInstallTemplate, useMyTemplates, useUnpublishTemplate, usePublishTemplate, useCreateTemplate } from '@/hooks/react-query/secure-mcp/use-secure-mcp';
 import { useFeatureFlag } from '@/lib/feature-flags';
-
+import { useAuth } from '@/components/AuthProvider';
+import { NewAgentDialog } from '@/components/agents/new-agent-dialog';
 import { StreamlinedInstallDialog } from '@/components/agents/installation/streamlined-install-dialog';
 import type { MarketplaceTemplate } from '@/components/agents/installation/types';
-
 import { getAgentAvatar } from '../../../lib/utils/get-agent-style';
 import { AgentsParams } from '@/hooks/react-query/agents/utils';
-
 import { AgentsPageHeader } from '@/components/agents/custom-agents-page/header';
 import { TabsNavigation } from '@/components/agents/custom-agents-page/tabs-navigation';
 import { MyAgentsTab } from '@/components/agents/custom-agents-page/my-agents-tab';
 import { MarketplaceTab } from '@/components/agents/custom-agents-page/marketplace-tab';
 import { PublishDialog } from '@/components/agents/custom-agents-page/publish-dialog';
 import { LoadingSkeleton } from '@/components/agents/custom-agents-page/loading-skeleton';
-
 
 type ViewMode = 'grid' | 'list';
 type AgentSortOption = 'name' | 'created_at' | 'updated_at' | 'tools_count';
@@ -37,10 +35,10 @@ interface FilterOptions {
 interface PublishDialogData {
   templateId: string;
   templateName: string;
-  currentTags: string[];
 }
 
 export default function AgentsPage() {
+  const { user } = useAuth();
   const { enabled: customAgentsEnabled, loading: agentsFlagLoading } = useFeatureFlag("custom_agents");
   const { enabled: agentMarketplaceEnabled, loading: marketplaceFlagLoading } = useFeatureFlag("agent_marketplace");
   const router = useRouter();
@@ -76,13 +74,15 @@ export default function AgentsPage() {
   const [installingItemId, setInstallingItemId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MarketplaceTemplate | null>(null);
   const [showInstallDialog, setShowInstallDialog] = useState(false);
-  const [marketplaceFilter, setMarketplaceFilter] = useState<'all' | 'kortix' | 'community'>('all');
-
+  const [marketplaceFilter, setMarketplaceFilter] = useState<'all' | 'kortix' | 'community' | 'mine'>('all');
   const [templatesActioningId, setTemplatesActioningId] = useState<string | null>(null);
   const [publishDialog, setPublishDialog] = useState<PublishDialogData | null>(null);
   const [publishTags, setPublishTags] = useState<string[]>([]);
   const [publishingAgentId, setPublishingAgentId] = useState<string | null>(null);
-  const [isCreatingNewAgent, setIsCreatingNewAgent] = useState(false);
+  const [showNewAgentDialog, setShowNewAgentDialog] = useState(false);
+
+  const deleteAgentMutation = useDeleteAgent();
+  const deleteTemplateMutation = useUnpublishTemplate();
 
   const activeTab = useMemo(() => {
     return searchParams.get('tab') || 'my-agents';
@@ -125,8 +125,6 @@ export default function AgentsPage() {
   const { data: myTemplates, isLoading: templatesLoading, error: templatesError } = useMyTemplates();
   
   const updateAgentMutation = useUpdateAgent();
-  const deleteAgentMutation = useDeleteAgent();
-  const createNewAgentMutation = useCreateNewAgent();
   const { optimisticallyUpdateAgent, revertOptimisticUpdate } = useOptimisticAgentUpdate();
   const installTemplateMutation = useInstallTemplate();
   const unpublishMutation = useUnpublishTemplate();
@@ -136,14 +134,16 @@ export default function AgentsPage() {
   const agents = agentsResponse?.agents || [];
   const agentsPagination = agentsResponse?.pagination;
 
-  const { kortixTeamItems, communityItems } = useMemo(() => {
+  const { kortixTeamItems, communityItems, mineItems } = useMemo(() => {
     const kortixItems: MarketplaceTemplate[] = [];
     const communityItems: MarketplaceTemplate[] = [];
+    const mineItems: MarketplaceTemplate[] = [];
 
     if (marketplaceTemplates) {
       marketplaceTemplates.forEach(template => {
         const item: MarketplaceTemplate = {
           id: template.template_id,
+          creator_id: template.creator_id,
           name: template.name,
           description: template.description,
           tags: template.tags || [],
@@ -159,6 +159,10 @@ export default function AgentsPage() {
           metadata: template.metadata,
         };
 
+        if (user?.id === template.creator_id) {
+          mineItems.push(item);
+        }
+        
         if (template.is_kortix_team) {
           kortixItems.push(item);
         } else {
@@ -186,25 +190,27 @@ export default function AgentsPage() {
 
     return {
       kortixTeamItems: sortItems(kortixItems),
-      communityItems: sortItems(communityItems)
+      communityItems: sortItems(communityItems),
+      mineItems: sortItems(mineItems)
     };
-  }, [marketplaceTemplates, marketplaceSortBy]);
+  }, [marketplaceTemplates, marketplaceSortBy, user?.id]);
 
   const allMarketplaceItems = useMemo(() => {
     if (marketplaceFilter === 'kortix') {
       return kortixTeamItems;
     } else if (marketplaceFilter === 'community') {
       return communityItems;
+    } else if (marketplaceFilter === 'mine') {
+      return mineItems;
     }
     return [...kortixTeamItems, ...communityItems];
-  }, [kortixTeamItems, communityItems, marketplaceFilter]);
+  }, [kortixTeamItems, communityItems, mineItems, marketplaceFilter]);
 
   const handleTabChange = (newTab: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', newTab);
     router.replace(`${pathname}?${params.toString()}`);
   };
-
 
   const clearAgentsFilters = () => {
     setAgentsSearchQuery('');
@@ -252,19 +258,31 @@ export default function AgentsPage() {
   };
 
   const handleCreateNewAgent = useCallback(() => {
-    if (isCreatingNewAgent || createNewAgentMutation.isPending) {
-      return; // Prevent multiple clicks
+    setShowNewAgentDialog(true);
+  }, []);
+
+  const handleDeleteTemplate = async (item: MarketplaceTemplate) => {
+    try {
+      setTemplatesActioningId(item.template_id);
+      await deleteTemplateMutation.mutateAsync(item.template_id);
+      toast.success(`"${item.name}" has been permanently deleted`, {
+        description: 'The template is no longer available for installation.'
+      });
+    } catch (error: any) {
+      toast.error('Failed to delete template', {
+        description: error.message || 'Please try again later.'
+      });
+    } finally {
+      setTemplatesActioningId(null);
     }
-    
-    setIsCreatingNewAgent(true);
-    
-    createNewAgentMutation.mutate(undefined, {
-      onSettled: () => {
-        // Reset the debounce state after mutation completes (success or error)
-        setTimeout(() => setIsCreatingNewAgent(false), 1000);
-      }
+  };
+
+  const handleAgentPublish = (agent: any) => {
+    setPublishDialog({
+      templateId: agent.agent_id,
+      templateName: agent.name
     });
-  }, [isCreatingNewAgent, createNewAgentMutation]);
+  };
 
   const handleInstallClick = (item: MarketplaceTemplate, e?: React.MouseEvent) => {
     if (e) {
@@ -394,29 +412,10 @@ export default function AgentsPage() {
     }
   };
 
-  const openPublishDialog = (template: any) => {
-    setPublishDialog({
-      templateId: template.template_id,
-      templateName: template.name,
-      currentTags: template.tags || []
-    });
-    setPublishTags(template.tags || []);
-  };
-
-  const handleAgentPublish = (agent: any) => {
-    setPublishDialog({
-      templateId: agent.agent_id,
-      templateName: agent.name,
-      currentTags: agent.tags || []
-    });
-    setPublishTags(agent.tags || []);
-  };
-
   const handlePublish = async () => {
     if (!publishDialog) return;
 
     try {
-      const tags = publishTags.filter(tag => tag.trim().length > 0);
       const isAgent = publishDialog.templateId.length > 20;
       
       if (isAgent) {
@@ -424,25 +423,21 @@ export default function AgentsPage() {
         
         const result = await createTemplateMutation.mutateAsync({
           agent_id: publishDialog.templateId,
-          make_public: true,
-          tags: tags.length > 0 ? tags : undefined
+          make_public: true
         });
         
         toast.success(`${publishDialog.templateName} has been published to the marketplace`);
       } else {
-        // Publishing an existing template
         setTemplatesActioningId(publishDialog.templateId);
         
         await publishMutation.mutateAsync({
-          template_id: publishDialog.templateId,
-          tags: tags.length > 0 ? tags : undefined
+          template_id: publishDialog.templateId
         });
         
         toast.success(`${publishDialog.templateName} has been published to the marketplace`);
       }
       
       setPublishDialog(null);
-      setPublishTags([]);
     } catch (error: any) {
       toast.error(error.message || 'Failed to publish template');
     } finally {
@@ -470,7 +465,11 @@ export default function AgentsPage() {
         
         <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/40 shadow-sm">
           <div className="container max-w-7xl mx-auto px-4 py-4">
-            <TabsNavigation activeTab={activeTab} onTabChange={handleTabChange} onCreateAgent={handleCreateNewAgent} />
+            <TabsNavigation 
+              activeTab={activeTab} 
+              onTabChange={handleTabChange} 
+              onCreateAgent={handleCreateNewAgent} 
+            />
           </div>
         </div>
 
@@ -490,19 +489,22 @@ export default function AgentsPage() {
       <div className="container mx-auto max-w-7xl px-4 py-8">
         <AgentsPageHeader />
       </div>
-      <div className="sticky top-0 z-50">
+      <div className="sticky top-0 z-50 relative">
         <div className="absolute inset-0 backdrop-blur-md" style={{
           maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
           WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)'
         }}></div>
         <div className="relative bg-gradient-to-b from-background/95 via-background/70 to-transparent">
           <div className="container mx-auto max-w-7xl px-4 py-4">
-            <TabsNavigation activeTab={activeTab} onTabChange={handleTabChange} onCreateAgent={handleCreateNewAgent} />
+            <TabsNavigation 
+              activeTab={activeTab} 
+              onTabChange={handleTabChange} 
+              onCreateAgent={handleCreateNewAgent} 
+            />
           </div>
         </div>
       </div>
       <div className="container mx-auto max-w-7xl px-4 py-2">
-        {/* Fixed height container to prevent layout shifts on tab change */}
         <div className="w-full min-h-[calc(100vh-300px)]">
           {activeTab === "my-agents" && (
             <MyAgentsTab
@@ -517,17 +519,18 @@ export default function AgentsPage() {
               onDeleteAgent={handleDeleteAgent}
               onToggleDefault={handleToggleDefault}
               onClearFilters={clearAgentsFilters}
-              deleteAgentMutation={deleteAgentMutation}
+              isDeletingAgent={(agentId: string) => deleteAgentMutation.isPending}
               setAgentsPage={setAgentsPage}
               myTemplates={myTemplates}
               templatesLoading={templatesLoading}
               templatesError={templatesError}
               templatesActioningId={templatesActioningId}
-              onPublish={openPublishDialog}
+              onPublish={handleAgentPublish}
               onUnpublish={handleUnpublish}
               getTemplateStyling={getTemplateStyling}
               onPublishAgent={handleAgentPublish}
               publishingAgentId={publishingAgentId}
+              onDeleteTemplate={handleDeleteTemplate}
             />
           )}
 
@@ -541,19 +544,20 @@ export default function AgentsPage() {
               allMarketplaceItems={allMarketplaceItems}
               kortixTeamItems={kortixTeamItems}
               communityItems={communityItems}
+              mineItems={mineItems}
               installingItemId={installingItemId}
               onInstallClick={handleInstallClick}
+              onDeleteTemplate={handleDeleteTemplate}
               getItemStyling={getItemStyling}
+              currentUserId={user?.id}
             />
           )}
         </div>
 
         <PublishDialog
           publishDialog={publishDialog}
-          publishTags={publishTags}
           templatesActioningId={templatesActioningId}
           onClose={() => setPublishDialog(null)}
-          onPublishTagsChange={setPublishTags}
           onPublish={handlePublish}
         />
 
@@ -563,6 +567,11 @@ export default function AgentsPage() {
           onOpenChange={setShowInstallDialog}
           onInstall={handleInstall}
           isInstalling={installingItemId === selectedItem?.id}
+        />
+
+        <NewAgentDialog 
+          open={showNewAgentDialog} 
+          onOpenChange={setShowNewAgentDialog}
         />
       </div>
     </div>

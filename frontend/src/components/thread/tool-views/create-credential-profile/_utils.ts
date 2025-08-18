@@ -4,15 +4,16 @@ export interface CredentialProfile {
   profile_id: string;
   profile_name: string;
   display_name: string;
-  app_slug: string;
-  app_name: string;
-  external_user_id: string;
+  toolkit_slug: string;
+  toolkit_name: string;
+  mcp_url: string;
+  redirect_url?: string;
   is_connected: boolean;
-  created_at: string;
+  auth_required?: boolean;
 }
 
 export interface CreateCredentialProfileData {
-  app_slug: string | null;
+  toolkit_slug: string | null;
   profile_name: string | null;
   display_name: string | null;
   message: string | null;
@@ -36,7 +37,7 @@ const extractFromNewFormat = (content: any): CreateCredentialProfileData => {
   const parsedContent = parseContent(content);
   
   if (!parsedContent || typeof parsedContent !== 'object') {
-    return { app_slug: null, profile_name: null, display_name: null, message: null, profile: null, success: undefined, timestamp: undefined };
+    return { toolkit_slug: null, profile_name: null, display_name: null, message: null, profile: null, success: undefined, timestamp: undefined };
   }
 
   if ('tool_execution' in parsedContent && typeof parsedContent.tool_execution === 'object') {
@@ -48,12 +49,13 @@ const extractFromNewFormat = (content: any): CreateCredentialProfileData => {
       try {
         parsedOutput = JSON.parse(parsedOutput);
       } catch (e) {
+        // If parsing fails, keep the original output
       }
     }
     parsedOutput = parsedOutput || {};
 
     const extractedData = {
-      app_slug: args.app_slug || null,
+      toolkit_slug: args.toolkit_slug || null,
       profile_name: args.profile_name || null,
       display_name: args.display_name || null,
       message: parsedOutput.message || null,
@@ -67,7 +69,7 @@ const extractFromNewFormat = (content: any): CreateCredentialProfileData => {
 
   if ('parameters' in parsedContent && 'output' in parsedContent) {
     const extractedData = {
-      app_slug: parsedContent.parameters?.app_slug || null,
+      toolkit_slug: parsedContent.parameters?.toolkit_slug || null,
       profile_name: parsedContent.parameters?.profile_name || null,
       display_name: parsedContent.parameters?.display_name || null,
       message: parsedContent.output?.message || null,
@@ -83,7 +85,7 @@ const extractFromNewFormat = (content: any): CreateCredentialProfileData => {
     return extractFromNewFormat(parsedContent.content);
   }
 
-  return { app_slug: null, profile_name: null, display_name: null, message: null, profile: null, success: undefined, timestamp: undefined };
+  return { toolkit_slug: null, profile_name: null, display_name: null, message: null, profile: null, success: undefined, timestamp: undefined };
 };
 
 const extractFromLegacyFormat = (content: any): Omit<CreateCredentialProfileData, 'success' | 'timestamp'> => {
@@ -93,7 +95,7 @@ const extractFromLegacyFormat = (content: any): Omit<CreateCredentialProfileData
     const args = toolData.arguments || {};
 
     return {
-      app_slug: args.app_slug || null,
+      toolkit_slug: args.toolkit_slug || null,
       profile_name: args.profile_name || null,
       display_name: args.display_name || null,
       message: null,
@@ -102,7 +104,7 @@ const extractFromLegacyFormat = (content: any): Omit<CreateCredentialProfileData
   }
 
   return {
-    app_slug: null,
+    toolkit_slug: null,
     profile_name: null,
     display_name: null,
     message: null,
@@ -117,7 +119,7 @@ export function extractCreateCredentialProfileData(
   toolTimestamp?: string,
   assistantTimestamp?: string
 ): {
-  app_slug: string | null;
+  toolkit_slug: string | null;
   profile_name: string | null;
   display_name: string | null;
   message: string | null;
@@ -156,7 +158,7 @@ export function extractCreateCredentialProfileData(
   const assistantLegacy = extractFromLegacyFormat(assistantContent);
 
   const combinedData = {
-    app_slug: toolLegacy.app_slug || assistantLegacy.app_slug,
+    toolkit_slug: toolLegacy.toolkit_slug || assistantLegacy.toolkit_slug,
     profile_name: toolLegacy.profile_name || assistantLegacy.profile_name,
     display_name: toolLegacy.display_name || assistantLegacy.display_name,
     message: toolLegacy.message || assistantLegacy.message,
@@ -167,4 +169,4 @@ export function extractCreateCredentialProfileData(
   };
 
   return combinedData;
-} 
+}

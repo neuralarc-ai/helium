@@ -38,7 +38,7 @@ services:
       - FLAG_TEMPLATES_API=true
       - FLAG_TRIGGERS_API=true
       - FLAG_WORKFLOWS_API=true
-      - FLAG_PIPEDREAM=true
+      - FLAG_COMPOSIO=true
       - FLAG_CREDENTIALS_API=true
       - FLAG_SUNA_DEFAULT_AGENT=true
       
@@ -59,7 +59,7 @@ services:
 | `templates_api` | `FLAG_TEMPLATES_API` | Enable templates API |
 | `triggers_api` | `FLAG_TRIGGERS_API` | Enable triggers API |
 | `workflows_api` | `FLAG_WORKFLOWS_API` | Enable workflows API |
-| `pipedream` | `FLAG_PIPEDREAM` | Enable Pipedream integration |
+| `composio` | `FLAG_COMPOSIO` | Enable Composio integration |
 | `credentials_api` | `FLAG_CREDENTIALS_API` | Enable credentials API |
 | `suna_default_agent` | `FLAG_SUNA_DEFAULT_AGENT` | Enable Suna default agent |
 
@@ -83,7 +83,7 @@ FLAG_CUSTOM_AGENTS=true
 
 ```bash
 # Disable a feature (set to false or any other value)
-FLAG_PIPEDREAM=false
+FLAG_COMPOSIO=false
 ```
 
 ### Check Current Status

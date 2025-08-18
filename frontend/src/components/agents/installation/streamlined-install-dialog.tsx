@@ -73,6 +73,30 @@ export const StreamlinedInstallDialog: React.FC<StreamlinedInstallDialogProps> =
       });
 
     item.mcp_requirements
+      .filter(req => req.custom_type === 'composio')
+      .forEach(req => {
+        let app_slug = req.qualified_name;
+        
+        if (app_slug.startsWith('composio.')) {
+          app_slug = app_slug.substring('composio.'.length);
+        } else if (app_slug.includes('composio_')) {
+          const parts = app_slug.split('composio_');
+          app_slug = parts[parts.length - 1];
+        }
+        
+        steps.push({
+          id: req.qualified_name,
+          title: `Connect ${req.display_name}`,
+          description: `Select an existing ${req.display_name} profile or create a new one`,
+          type: 'composio_profile',
+          service_name: req.display_name,
+          qualified_name: req.qualified_name,
+          app_slug: app_slug,
+          app_name: req.display_name
+        });
+      });
+
+    item.mcp_requirements
       .filter(req => !req.custom_type)
       .forEach(req => {
         steps.push({
@@ -86,7 +110,7 @@ export const StreamlinedInstallDialog: React.FC<StreamlinedInstallDialogProps> =
       });
 
     item.mcp_requirements
-      .filter(req => req.custom_type && req.custom_type !== 'pipedream')
+      .filter(req => req.custom_type && req.custom_type !== 'pipedream' && req.custom_type !== 'composio')
       .forEach(req => {
         steps.push({
           id: req.qualified_name,
@@ -151,6 +175,7 @@ export const StreamlinedInstallDialog: React.FC<StreamlinedInstallDialogProps> =
     switch (step.type) {
       case 'credential_profile':
       case 'pipedream_profile':
+      case 'composio_profile':
         return !!profileMappings[step.qualified_name];
       case 'custom_server':
         const config = customMcpConfigs[step.qualified_name] || {};
@@ -188,6 +213,13 @@ export const StreamlinedInstallDialog: React.FC<StreamlinedInstallDialogProps> =
             headers: {
               'x-pd-app-slug': step.app_slug,
             },
+            profile_id: profileId
+          };
+        }
+      } else if (step.type === 'composio_profile') {
+        const profileId = profileMappings[step.qualified_name];
+        if (profileId) {
+          finalCustomConfigs[step.qualified_name] = {
             profile_id: profileId
           };
         }
@@ -266,7 +298,7 @@ export const StreamlinedInstallDialog: React.FC<StreamlinedInstallDialogProps> =
         </div>
 
         <div>
-          {(currentStepData.type === 'credential_profile' || currentStepData.type === 'pipedream_profile') && (
+          {(currentStepData.type === 'credential_profile' || currentStepData.type === 'pipedream_profile' || currentStepData.type === 'composio_profile') && (
             <ProfileConnector
               step={currentStepData}
               selectedProfileId={profileMappings[currentStepData.qualified_name]}

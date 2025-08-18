@@ -26,7 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { LoadingState } from '../shared/LoadingState';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
-import { extractGetAppDetailsData, AppDetails } from './_utils';
+import { extractGetAppDetailsData, ToolkitDetails } from './_utils';
 
 export function GetAppDetailsToolView({
   name = 'get-app-details',
@@ -39,9 +39,11 @@ export function GetAppDetailsToolView({
 }: ToolViewProps) {
 
   const {
-    app_slug,
+    toolkit_slug,
     message,
-    app,
+    toolkit,
+    supports_oauth,
+    auth_schemes = [],
     actualIsSuccess,
     actualToolTimestamp,
     actualAssistantTimestamp
@@ -53,29 +55,30 @@ export function GetAppDetailsToolView({
     assistantTimestamp
   );
 
+  // Ensure auth_schemes is always an array
+  const safeAuthSchemes = Array.isArray(auth_schemes) ? auth_schemes : [];
+
   const toolTitle = getToolTitle(name);
 
-  const getAuthTypeColor = (authType: string) => {
-    switch (authType?.toLowerCase()) {
-      case 'oauth':
-        return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800';
-      case 'api_key':
-        return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800';
-      case 'none':
-        return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800';
-      default:
-        return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800';
+  const getAuthTypeColor = (authSchemes: string[] = []) => {
+    const schemes = Array.isArray(authSchemes) ? authSchemes : [];
+    if (schemes.includes('OAUTH2')) {
+      return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800';
+    } else if (schemes.includes('API_KEY')) {
+      return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800';
+    } else if (schemes.includes('BEARER_TOKEN')) {
+      return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800';
+    } else {
+      return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-800';
     }
   };
 
-  const getAuthTypeIcon = (authType: string) => {
-    switch (authType?.toLowerCase()) {
-      case 'oauth':
-        return ShieldCheck;
-      case 'api_key':
-        return Shield;
-      default:
-        return Shield;
+  const getAuthTypeIcon = (authSchemes: string[] = []) => {
+    const schemes = Array.isArray(authSchemes) ? authSchemes : [];
+    if (schemes.includes('OAUTH2')) {
+      return ShieldCheck;
+    } else {
+      return Shield;
     }
   };
 
@@ -122,20 +125,20 @@ export function GetAppDetailsToolView({
             iconColor="text-blue-500 dark:text-blue-400"
             bgColor="bg-gradient-to-b from-blue-100 to-blue-50 shadow-inner dark:from-blue-800/40 dark:to-blue-900/60 dark:shadow-blue-950/20"
             title="Loading app details"
-            filePath={app_slug ? `"${app_slug}"` : undefined}
+            filePath={toolkit_slug ? `"${toolkit_slug}"` : undefined}
             showProgress={true}
           />
-        ) : app ? (
+        ) : toolkit ? (
           <ScrollArea className="h-full w-full">
             <div className="p-4 space-y-6">
               <div className="border rounded-xl p-4">
                 <div className="flex items-start gap-4">
                   <div className="relative flex-shrink-0">
                     <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted/50 border flex items-center justify-center">
-                      {app.logo_url ? (
+                      {toolkit.logo_url ? (
                         <img
-                          src={app.logo_url}
-                          alt={`${app.name} logo`}
+                          src={toolkit.logo_url}
+                          alt={`${toolkit.name} logo`}
                           className="w-8 h-8 object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
@@ -150,7 +153,7 @@ export function GetAppDetailsToolView({
                         <Server className="w-8 h-8 text-zinc-400" />
                       )}
                     </div>
-                    {app.is_verified && (
+                    {toolkit.is_verified && (
                       <div className="absolute -top-1 -right-1">
                         <div className="bg-blue-500 rounded-full p-1">
                           <Verified className="w-3 h-3 text-white" />
@@ -164,9 +167,9 @@ export function GetAppDetailsToolView({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
                           <h2 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-                            {app.name}
+                            {toolkit.name}
                           </h2>
-                          {app.is_verified && (
+                          {toolkit.is_verified && (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger>
@@ -182,20 +185,18 @@ export function GetAppDetailsToolView({
                           )}
                         </div>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400 font-mono mb-2">
-                          {app.app_slug}
+                          {toolkit.toolkit_slug}
                         </p>
                       </div>
                       
                       <div className="flex items-center gap-2">
                         {(() => {
-                          const AuthIcon = getAuthTypeIcon(app.auth_type);
                           return (
                             <Badge
                               variant="outline"
-                              className={cn("text-xs font-medium", getAuthTypeColor(app.auth_type))}
+                              className={cn("text-xs font-medium", getAuthTypeColor(safeAuthSchemes))}
                             >
-                              <AuthIcon className="w-3 h-3 " />
-                              {app.auth_type?.replace('_', ' ') || 'Unknown'}
+                              {safeAuthSchemes.includes('OAUTH2') ? 'OAuth2' : safeAuthSchemes.includes('BEARER_TOKEN') ? 'Bearer Token' : safeAuthSchemes.includes('API_KEY') ? 'API Key' : 'Unknown'}
                             </Badge>
                           );
                         })()}
@@ -203,12 +204,12 @@ export function GetAppDetailsToolView({
                     </div>
 
                     <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed mb-4">
-                      {app.description}
+                      {toolkit.description}
                     </p>
 
-                    {app.tags && app.tags.length > 0 && (
+                    {toolkit.tags && toolkit.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-4">
-                        {app.tags.map((tag, tagIndex) => (
+                        {toolkit.tags.map((tag, tagIndex) => (
                           <Badge
                             key={tagIndex}
                             variant="secondary"
@@ -222,12 +223,12 @@ export function GetAppDetailsToolView({
                     )}
 
                     <div className="flex items-center gap-2">
-                      {app.url && (
+                      {toolkit.url && (
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-8 px-3 text-xs hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                          onClick={() => window.open(app.url!, '_blank')}
+                          onClick={() => window.open(toolkit.url!, '_blank')}
                         >
                           <ExternalLink className="w-3 h-3 " />
                           Visit Website
@@ -238,47 +239,47 @@ export function GetAppDetailsToolView({
                 </div>
               </div>
 
-              {(app.pricing || app.setup_instructions) && (
+              {(toolkit.pricing || toolkit.setup_instructions) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {app.pricing && (
+                  {toolkit.pricing && (
                     <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <DollarSign className="w-4 h-4 text-green-500" />
                         <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Pricing</h3>
                       </div>
                       <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                        {app.pricing || 'No pricing information available'}
+                        {toolkit.pricing || 'No pricing information available'}
                       </p>
                     </div>
                   )}
 
-                  {app.setup_instructions && (
+                  {toolkit.setup_instructions && (
                     <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <Settings className="w-4 h-4 text-blue-500" />
                         <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Setup</h3>
                       </div>
                       <p className="text-sm text-zinc-600 dark:text-zinc-300">
-                        {app.setup_instructions || 'No setup instructions available'}
+                        {toolkit.setup_instructions || 'No setup instructions available'}
                       </p>
                     </div>
                   )}
                 </div>
               )}
 
-              {(app.available_actions?.length || app.available_triggers?.length) ? (
+              {(toolkit.available_actions?.length || toolkit.available_triggers?.length) ? (
                 <div className="space-y-4">
-                  {app.available_actions && app.available_actions.length > 0 && (
+                  {toolkit.available_actions && toolkit.available_actions.length > 0 && (
                     <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <Zap className="w-4 h-4 text-orange-500" />
                         <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Available Actions</h3>
                         <Badge variant="secondary" className="text-xs">
-                          {app.available_actions.length}
+                          {toolkit.available_actions.length}
                         </Badge>
                       </div>
                       <div className="space-y-2">
-                        {app.available_actions.slice(0, 5).map((action: any, index: number) => (
+                        {toolkit.available_actions.slice(0, 5).map((action: any, index: number) => (
                           <div key={index} className="flex items-center gap-2 text-sm">
                             <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
                             <span className="text-zinc-700 dark:text-zinc-300">
@@ -286,26 +287,26 @@ export function GetAppDetailsToolView({
                             </span>
                           </div>
                         ))}
-                        {app.available_actions.length > 5 && (
+                        {toolkit.available_actions.length > 5 && (
                           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
-                            +{app.available_actions.length - 5} more actions
+                            +{toolkit.available_actions.length - 5} more actions
                           </p>
                         )}
                       </div>
                     </div>
                   )}
 
-                  {app.available_triggers && app.available_triggers.length > 0 && (
+                  {toolkit.available_triggers && toolkit.available_triggers.length > 0 && (
                     <div className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <Play className="w-4 h-4 text-green-500" />
                         <h3 className="font-medium text-zinc-900 dark:text-zinc-100">Available Triggers</h3>
                         <Badge variant="secondary" className="text-xs">
-                          {app.available_triggers.length}
+                          {toolkit.available_triggers.length}
                         </Badge>
                       </div>
                       <div className="space-y-2">
-                        {app.available_triggers.slice(0, 5).map((trigger: any, index: number) => (
+                        {toolkit.available_triggers.slice(0, 5).map((trigger: any, index: number) => (
                           <div key={index} className="flex items-center gap-2 text-sm">
                             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
                             <span className="text-zinc-700 dark:text-zinc-300">
@@ -313,9 +314,9 @@ export function GetAppDetailsToolView({
                             </span>
                           </div>
                         ))}
-                        {app.available_triggers.length > 5 && (
+                        {toolkit.available_triggers.length > 5 && (
                           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
-                            +{app.available_triggers.length - 5} more triggers
+                            +{toolkit.available_triggers.length - 5} more triggers
                           </p>
                         )}
                       </div>
@@ -342,7 +343,7 @@ export function GetAppDetailsToolView({
                 No app details found
               </h3>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                {app_slug ? `Unable to load details for "${app_slug}"` : 'App information not available'}
+                {toolkit_slug ? `Unable to load details for "${toolkit_slug}"` : 'App information not available'}
               </p>
             </div>
           </div>

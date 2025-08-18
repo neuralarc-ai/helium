@@ -42,6 +42,7 @@ export interface AgentTemplate {
   marketplace_published_at?: string;
   created_at: string;
   creator_name?: string;
+  creator_id?: string;
   avatar?: string;
   avatar_color?: string;
   is_kortix_team?: boolean;
@@ -57,7 +58,7 @@ export interface MCPRequirement {
   display_name: string;
   enabled_tools: string[];
   required_config: string[];
-  custom_type?: 'sse' | 'http'; // For custom MCP servers
+  custom_type?: 'sse' | 'http' | 'pipedream'; // For custom MCP servers
 }
 
 export interface InstallTemplateRequest {

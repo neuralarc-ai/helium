@@ -19,7 +19,7 @@ def get_available_flags():
         "triggers_api": "FLAG_TRIGGERS_API",
         "workflows_api": "FLAG_WORKFLOWS_API",
         "knowledge_base": "FLAG_KNOWLEDGE_BASE",
-        "pipedream": "FLAG_PIPEDREAM",
+        "composio": "FLAG_COMPOSIO",
         "credentials_api": "FLAG_CREDENTIALS_API",
         "suna_default_agent": "FLAG_SUNA_DEFAULT_AGENT"
     }

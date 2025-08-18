@@ -30,9 +30,11 @@ class CustomMCPHandler:
         enabled_tools = config.get('enabledTools', config.get('enabled_tools', []))
         server_name = config.get('name', 'Unknown')
         
-        logger.info(f"Initializing custom MCP: {server_name} (type: {custom_type})")
+        logger.debug(f"Initializing custom MCP: {server_name} (type: {custom_type})")
         
-        if custom_type == 'pipedream':
+        if custom_type == 'composio':
+            await self._initialize_composio_mcp(server_name, server_config, enabled_tools)
+        elif custom_type == 'pipedream':
             await self._initialize_pipedream_mcp(server_name, server_config, enabled_tools)
         elif custom_type == 'sse':
             await self._initialize_sse_mcp(server_name, server_config, enabled_tools)
@@ -43,60 +45,33 @@ class CustomMCPHandler:
         else:
             logger.error(f"Custom MCP {server_name}: Unsupported type '{custom_type}'")
     
-    async def _initialize_pipedream_mcp(self, server_name: str, server_config: Dict[str, Any], enabled_tools: List[str]):
-        app_slug = server_config.get('app_slug')
-        if not app_slug and 'headers' in server_config and 'x-pd-app-slug' in server_config['headers']:
-            app_slug = server_config['headers']['x-pd-app-slug']
-            server_config['app_slug'] = app_slug
-        
-        external_user_id = await self._resolve_external_user_id(server_config)
-        if not external_user_id:
-            logger.error(f"Custom MCP {server_name}: Missing external_user_id for Pipedream")
+    async def _initialize_composio_mcp(self, server_name: str, server_config: Dict[str, Any], enabled_tools: List[str]):
+        profile_id = server_config.get('profile_id')
+        if not profile_id:
+            logger.error(f"Composio MCP {server_name}: Missing profile_id in config")
             return
         
-        server_config['external_user_id'] = external_user_id
-        oauth_app_id = server_config.get('oauth_app_id')
-        
-        logger.info(f"Initializing Pipedream MCP for {app_slug} (user: {external_user_id}, oauth_app_id: {oauth_app_id})")
-        
         try:
-            import os
-            from pipedream import connection_service
-            from mcp import ClientSession
-            from mcp.client.streamable_http import streamablehttp_client
+            from composio_integration.composio_profile_service import ComposioProfileService
+            from services.supabase import DBConnection
             
-            access_token = await connection_service._ensure_access_token()
+            db = DBConnection()
+            profile_service = ComposioProfileService(db)
+            mcp_url = await profile_service.get_mcp_url_for_runtime(profile_id)
             
-            project_id = os.getenv("PIPEDREAM_PROJECT_ID")
-            environment = os.getenv("PIPEDREAM_X_PD_ENVIRONMENT", "development")
-            
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "x-pd-project-id": project_id,
-                "x-pd-environment": environment,
-                "x-pd-external-user-id": external_user_id,
-                "x-pd-app-slug": app_slug,
-            }
-            
-            if hasattr(connection_service, 'rate_limit_token') and connection_service.rate_limit_token:
-                headers["x-pd-rate-limit"] = connection_service.rate_limit_token
-            
-            if oauth_app_id:
-                headers["x-pd-oauth-app-id"] = oauth_app_id
+            logger.debug(f"Resolved Composio profile {profile_id} to MCP URL")
 
-            url = "https://remote.mcp.pipedream.net"
-            
-            async with streamablehttp_client(url, headers=headers) as (read_stream, write_stream, _):
+            async with streamablehttp_client(mcp_url) as (read_stream, write_stream, _):
                 async with ClientSession(read_stream, write_stream) as session:
                     await session.initialize()
                     tools_result = await session.list_tools()
                     tools = tools_result.tools if hasattr(tools_result, 'tools') else tools_result
                     
-                    self._register_custom_tools(tools, server_name, enabled_tools, 'pipedream', server_config)
-                    
+                    self._register_custom_tools(tools, server_name, enabled_tools, 'composio', server_config)
+                    logger.debug(f"Registered {len(tools)} tools from Composio MCP {server_name}")
+            
         except Exception as e:
-            logger.error(f"Pipedream MCP {server_name}: Connection failed - {str(e)}")
-            raise
+            logger.error(f"Failed to initialize Composio MCP {server_name}: {str(e)}")
     
     async def _initialize_sse_mcp(self, server_name: str, server_config: Dict[str, Any], enabled_tools: List[str]):
         if 'url' not in server_config:

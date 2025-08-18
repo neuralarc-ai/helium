@@ -32,6 +32,8 @@ interface ConfigurationTabProps {
   isViewingOldVersion: boolean;
   onFieldChange: (field: string, value: any) => void;
   onMCPChange: (updates: { configured_mcps: any[]; custom_mcps: any[] }) => void;
+  onSystemPromptSave?: (value: string) => void;
+  onToolsSave?: (tools: Record<string, boolean | { enabled: boolean; description: string }>) => void;
   initialAccordion?: string;
   agentMetadata?: {
     is_suna_default?: boolean;
@@ -53,6 +55,8 @@ export function ConfigurationTab({
   isViewingOldVersion,
   onFieldChange,
   onMCPChange,
+  onSystemPromptSave,
+  onToolsSave,
   initialAccordion,
   agentMetadata,
 }: ConfigurationTabProps) {
@@ -81,13 +85,43 @@ export function ConfigurationTab({
   const areToolsEditable = !isViewingOldVersion && (restrictions.tools_editable !== false);
   
   const handleSystemPromptChange = (value: string) => {
+    console.log('📝 System prompt change in ConfigurationTab:', { value, length: value.length, hasImmediateSave: !!onSystemPromptSave });
     if (!isSystemPromptEditable && isSunaAgent) {
+      console.log('❌ System prompt edit blocked for Suna agent');
       toast.error("System prompt cannot be edited", {
         description: "Suna's system prompt is managed centrally and cannot be changed.",
       });
       return;
     }
-    onFieldChange('system_prompt', value);
+    // onFieldChange('system_prompt', value);
+    if (onSystemPromptSave) {
+      console.log('🚀 Using immediate save for system prompt');
+      onSystemPromptSave(value);
+    } else {
+      console.log('📋 Using regular field change for system prompt');
+      onFieldChange('system_prompt', value);
+    }
+  };
+
+  const handleToolsChange = (tools: Record<string, boolean | { enabled: boolean; description: string }>) => {
+    console.log('🔧 Tools change in ConfigurationTab:', { tools, toolsCount: Object.keys(tools).length, hasImmediateSave: !!onToolsSave });
+    
+    if (!areToolsEditable && isSunaAgent) {
+      console.log('❌ Tools edit blocked for Suna agent');
+      toast.error("Tools cannot be modified", {
+        description: "Suna's default tools are managed centrally and cannot be changed.",
+      });
+      return;
+    }
+    
+    // Use immediate save if available, otherwise fall back to regular field change
+    if (onToolsSave) {
+      console.log('🚀 Using immediate save for tools');
+      onToolsSave(tools);
+    } else {
+      console.log('📋 Using regular field change for tools');
+      onFieldChange('agentpress_tools', tools);
+    }
   };
 
   return (
@@ -144,8 +178,8 @@ export function ConfigurationTab({
                     placeholder="Click to set system instructions..."
                     title="System Instructions"
                     disabled={!isSystemPromptEditable}
-                    autosave={true}
-                    autosaveDelay={1500}
+                    // autosave={true}
+                    // autosaveDelay={1500}
                   />
                 </div>
               </div>
@@ -183,7 +217,8 @@ export function ConfigurationTab({
                 <div className="border-t border-border/30 pt-4">
                   <AgentToolsConfiguration
                     tools={displayData.agentpress_tools}
-                    onToolsChange={areToolsEditable ? (tools) => onFieldChange('agentpress_tools', tools) : () => {}}
+                    // onToolsChange={areToolsEditable ? (tools) => onFieldChange('agentpress_tools', tools) : () => {}}
+                    onToolsChange={areToolsEditable ? handleToolsChange : () => {}}
                     disabled={!areToolsEditable}
                     isSunaAgent={isSunaAgent}
                   />

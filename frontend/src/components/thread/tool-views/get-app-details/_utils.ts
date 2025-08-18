@@ -1,24 +1,33 @@
 import { extractToolData } from '../utils';
 
-export interface AppDetails {
+export interface ActionOrTrigger {
+  name?: string;
+  display_name?: string;
+  description?: string;
+  [key: string]: any;
+}
+
+export interface ToolkitDetails {
   name: string;
-  app_slug: string;
+  toolkit_slug: string;
   description: string;
   logo_url: string;
-  auth_type: string;
-  is_verified: boolean;
-  url?: string | null;
+  auth_schemes: string[];
   tags?: string[];
-  pricing?: string;
+  categories?: string[];
+  is_verified?: boolean;
   setup_instructions?: string;
-  available_actions?: any[];
-  available_triggers?: any[];
+  available_actions?: ActionOrTrigger[];
+  available_triggers?: ActionOrTrigger[];
+  [key: string]: any; // For any additional properties that might exist
 }
 
 export interface GetAppDetailsData {
-  app_slug: string | null;
+  toolkit_slug: string | null;
   message: string | null;
-  app: AppDetails | null;
+  toolkit: ToolkitDetails | null;
+  supports_oauth: boolean;
+  auth_schemes: string[];
   success?: boolean;
   timestamp?: string;
 }
@@ -38,7 +47,15 @@ const extractFromNewFormat = (content: any): GetAppDetailsData => {
   const parsedContent = parseContent(content);
   
   if (!parsedContent || typeof parsedContent !== 'object') {
-    return { app_slug: null, message: null, app: null, success: undefined, timestamp: undefined };
+    return { 
+      toolkit_slug: null, 
+      message: null, 
+      toolkit: null, 
+      supports_oauth: false, 
+      auth_schemes: [], 
+      success: undefined, 
+      timestamp: undefined 
+    };
   }
 
   if ('tool_execution' in parsedContent && typeof parsedContent.tool_execution === 'object') {
@@ -50,14 +67,17 @@ const extractFromNewFormat = (content: any): GetAppDetailsData => {
       try {
         parsedOutput = JSON.parse(parsedOutput);
       } catch (e) {
+        // If parsing fails, keep the original output
       }
     }
     parsedOutput = parsedOutput || {};
 
     const extractedData = {
-      app_slug: args.app_slug || null,
+      toolkit_slug: args.toolkit_slug || null,
       message: parsedOutput.message || null,
-      app: parsedOutput.app || null,
+      toolkit: parsedOutput.toolkit || null,
+      supports_oauth: parsedOutput.supports_oauth || false,
+      auth_schemes: parsedOutput.auth_schemes || [],
       success: toolExecution.result?.success,
       timestamp: toolExecution.execution_details?.timestamp
     };
@@ -67,9 +87,11 @@ const extractFromNewFormat = (content: any): GetAppDetailsData => {
 
   if ('parameters' in parsedContent && 'output' in parsedContent) {
     const extractedData = {
-      app_slug: parsedContent.parameters?.app_slug || null,
+      toolkit_slug: parsedContent.parameters?.toolkit_slug || null,
       message: parsedContent.output?.message || null,
-      app: parsedContent.output?.app || null,
+      toolkit: parsedContent.output?.toolkit || null,
+      supports_oauth: parsedContent.output?.supports_oauth || false,
+      auth_schemes: parsedContent.output?.auth_schemes || [],
       success: parsedContent.success,
       timestamp: undefined
     };
@@ -81,7 +103,15 @@ const extractFromNewFormat = (content: any): GetAppDetailsData => {
     return extractFromNewFormat(parsedContent.content);
   }
 
-  return { app_slug: null, message: null, app: null, success: undefined, timestamp: undefined };
+  return { 
+    toolkit_slug: null, 
+    message: null, 
+    toolkit: null, 
+    supports_oauth: false, 
+    auth_schemes: [], 
+    success: undefined, 
+    timestamp: undefined 
+  };
 };
 
 const extractFromLegacyFormat = (content: any): Omit<GetAppDetailsData, 'success' | 'timestamp'> => {
@@ -91,16 +121,20 @@ const extractFromLegacyFormat = (content: any): Omit<GetAppDetailsData, 'success
     const args = toolData.arguments || {};
     
     return {
-      app_slug: args.app_slug || null,
+      toolkit_slug: args.toolkit_slug || null,
       message: null,
-      app: null
+      toolkit: null,
+      supports_oauth: false,
+      auth_schemes: []
     };
   }
 
   return {
-    app_slug: null,
+    toolkit_slug: null,
     message: null,
-    app: null
+    toolkit: null,
+    supports_oauth: false,
+    auth_schemes: []
   };
 };
 
@@ -111,9 +145,11 @@ export function extractGetAppDetailsData(
   toolTimestamp?: string,
   assistantTimestamp?: string
 ): {
-  app_slug: string | null;
+  toolkit_slug: string | null;
   message: string | null;
-  app: AppDetails | null;
+  toolkit: ToolkitDetails | null;
+  supports_oauth: boolean;
+  auth_schemes: string[];
   actualIsSuccess: boolean;
   actualToolTimestamp?: string;
   actualAssistantTimestamp?: string;
@@ -122,9 +158,13 @@ export function extractGetAppDetailsData(
   
   if (toolContent) {
     data = extractFromNewFormat(toolContent);
-    if (data.success !== undefined || data.app) {
+    if (data.success !== undefined || data.toolkit) {
       return {
-        ...data,
+        toolkit_slug: data.toolkit_slug,
+        message: data.message,
+        toolkit: data.toolkit,
+        supports_oauth: data.supports_oauth,
+        auth_schemes: data.auth_schemes,
         actualIsSuccess: data.success !== undefined ? data.success : isSuccess,
         actualToolTimestamp: data.timestamp || toolTimestamp,
         actualAssistantTimestamp: assistantTimestamp
@@ -134,9 +174,13 @@ export function extractGetAppDetailsData(
 
   if (assistantContent) {
     data = extractFromNewFormat(assistantContent);
-    if (data.success !== undefined || data.app) {
+    if (data.success !== undefined || data.toolkit) {
       return {
-        ...data,
+        toolkit_slug: data.toolkit_slug,
+        message: data.message,
+        toolkit: data.toolkit,
+        supports_oauth: data.supports_oauth,
+        auth_schemes: data.auth_schemes,
         actualIsSuccess: data.success !== undefined ? data.success : isSuccess,
         actualToolTimestamp: toolTimestamp,
         actualAssistantTimestamp: data.timestamp || assistantTimestamp
@@ -148,9 +192,11 @@ export function extractGetAppDetailsData(
   const assistantLegacy = extractFromLegacyFormat(assistantContent);
 
   const combinedData = {
-    app_slug: toolLegacy.app_slug || assistantLegacy.app_slug,
+    toolkit_slug: toolLegacy.toolkit_slug || assistantLegacy.toolkit_slug,
     message: toolLegacy.message || assistantLegacy.message,
-    app: toolLegacy.app || assistantLegacy.app,
+    toolkit: toolLegacy.toolkit || assistantLegacy.toolkit,
+    supports_oauth: toolLegacy.supports_oauth || assistantLegacy.supports_oauth,
+    auth_schemes: toolLegacy.auth_schemes.length > 0 ? toolLegacy.auth_schemes : assistantLegacy.auth_schemes,
     actualIsSuccess: isSuccess,
     actualToolTimestamp: toolTimestamp,
     actualAssistantTimestamp: assistantTimestamp

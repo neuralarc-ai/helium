@@ -409,6 +409,9 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
                 <p className='w-[60%] text-2xl'>I'm your <span className='text-primary/80 font-semibold'>Agent Builder</span>. Describe the exact workflows and tasks you want to automate, and I'll configure your agent to handle them.</p>
               </div>
             }
+            isSidePanelOpen={false}
+            leftSidebarState="collapsed"
+            isLeftSidebarExpanded={false}
           />
           <div ref={messagesEndRef} />
         </div>

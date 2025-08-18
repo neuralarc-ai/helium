@@ -1,655 +1,384 @@
 'use client';
 
-import React, {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useMemo,
-} from 'react';
-import { useSearchParams } from 'next/navigation';
-import { BillingError } from '@/lib/api';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Loader2, Save, Eye } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUpdateAgent } from '@/hooks/react-query/agents/use-agents';
+import { useCreateAgentVersion, useActivateAgentVersion } from '@/hooks/react-query/agents/use-agent-versions';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ChatInput } from '@/components/thread/chat-input/chat-input';
-import { useSidebar } from '@/components/ui/sidebar';
-import { useAgentStream } from '@/hooks/useAgentStream';
+import { getAgentAvatar } from '@/lib/utils/get-agent-style';
+import { AgentPreview } from '@/components/agents/agent-preview';
+import { AgentVersionSwitcher } from '@/components/agents/agent-version-switcher';
+import { CreateVersionButton } from '@/components/agents/create-version-button';
+import { useAgentVersionData } from '@/hooks/use-agent-version-data';
+import { useSearchParams } from 'next/navigation';
+import { useAgentVersionStore } from '@/lib/stores/agent-version-store';
+import { useAutosave } from '@/hooks/use-autosave';
+import { AutosaveIndicator } from '@/components/ui/autosave-indicator';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { isLocalMode } from '@/lib/config';
-import { ThreadContent } from '@/components/thread/content/ThreadContent';
-import { ThreadSkeleton } from '@/components/thread/content/ThreadSkeleton';
-import { useAddUserMessageMutation } from '@/hooks/react-query/threads/use-messages';
-import { useStartAgentMutation, useStopAgentMutation } from '@/hooks/react-query/threads/use-agent-run';
-import { useSubscription } from '@/hooks/react-query/subscriptions/use-subscriptions';
-import { SubscriptionStatus } from '@/components/thread/chat-input/_use-model-selection';
 
-import { UnifiedMessage, ApiMessageType, ToolCallInput, Project } from '../_types';
-import { useThreadData, useToolCalls, useBilling, useKeyboardShortcuts } from '../_hooks';
-import { ThreadError, UpgradeDialog, ThreadLayout } from '../_components';
-import { useVncPreloader } from '@/hooks/useVncPreloader';
-import { useThreadAgent } from '@/hooks/react-query/agents/use-agents';
-import { useSubscriptionWithStreaming } from '@/hooks/react-query/subscriptions/use-subscriptions';
-import { useModelSelection } from '@/components/thread/chat-input/_use-model-selection';
+import { AgentHeader, VersionAlert, AgentBuilderTab, ConfigurationTab } from '@/components/agents/config';
+import { UpcomingRunsDropdown } from '@/components/agents/upcoming-runs-dropdown';
 
-// Helper function to check if we're in production mode
-const isProductionMode = (): boolean => {
-  const envMode = process.env.NEXT_PUBLIC_ENV_MODE?.toLowerCase();
-  return envMode === 'production';
-};
+interface FormData {
+  name: string;
+  description: string;
+  system_prompt: string;
+  agentpress_tools: any;
+  configured_mcps: any[];
+  custom_mcps: any[];
+  is_default: boolean;
+  avatar: string;
+  avatar_color: string;
+}
 
-export default function ThreadPage({
-  params,
-}: {
-  params: Promise<{
-    projectId: string;
-    threadId: string;
-  }>;
-}) {
-  const unwrappedParams = React.use(params);
-  const { projectId, threadId } = unwrappedParams;
-  const isMobile = useIsMobile();
+export default function AgentConfigurationPage() {
+  const params = useParams();
+  const agentId = params.agentId as string;
+  const queryClient = useQueryClient();
+
+  const { agent, versionData, isViewingOldVersion, isLoading, error } = useAgentVersionData({ agentId });
   const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const initialAccordion = searchParams.get('accordion');
+  const { setHasUnsavedChanges } = useAgentVersionStore();
+  
+  const updateAgentMutation = useUpdateAgent();
+  const createVersionMutation = useCreateAgentVersion();
+  const activateVersionMutation = useActivateAgentVersion();
 
-  // State
-  const [newMessage, setNewMessage] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [fileViewerOpen, setFileViewerOpen] = useState(false);
-  const [fileToView, setFileToView] = useState<string | null>(null);
-  const [filePathList, setFilePathList] = useState<string[] | undefined>(undefined);
-  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-  const [debugMode, setDebugMode] = useState(false);
-  const [initialPanelOpenAttempted, setInitialPanelOpenAttempted] = useState(false);
-  const [selectedAgentId, setSelectedAgentId] = useState<string | undefined>(undefined);
-  const [isSidePanelAnimating, setIsSidePanelAnimating] = useState(false);
-
-  // Refs
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const latestMessageRef = useRef<HTMLDivElement>(null);
-  const [showScrollButton, setShowScrollButton] = useState(false);
-  const [userHasScrolled, setUserHasScrolled] = useState(false);
-  const hasInitiallyScrolled = useRef<boolean>(false);
-  const initialLayoutAppliedRef = useRef(false);
-
-  // Sidebar
-  const { state: leftSidebarState, setOpen: setLeftSidebarOpen } = useSidebar();
-  const isLeftSidebarExpanded = leftSidebarState === 'expanded';
-
-  // Custom hooks
-  const {
-    messages,
-    setMessages,
-    project,
-    sandboxId,
-    projectName,
-    agentRunId,
-    setAgentRunId,
-    agentStatus,
-    setAgentStatus,
-    isLoading,
-    error,
-    initialLoadCompleted,
-    threadQuery,
-    messagesQuery,
-    projectQuery,
-    agentRunsQuery,
-  } = useThreadData(threadId, projectId);
-
-  const {
-    toolCalls,
-    setToolCalls,
-    currentToolIndex,
-    setCurrentToolIndex,
-    isSidePanelOpen,
-    setIsSidePanelOpen,
-    autoOpenedPanel,
-    setAutoOpenedPanel,
-    externalNavIndex,
-    setExternalNavIndex,
-    handleToolClick,
-    handleStreamingToolCall,
-    toggleSidePanel,
-    handleSidePanelNavigate,
-    userClosedPanelRef,
-  } = useToolCalls(messages, setLeftSidebarOpen, agentStatus);
-
-  const {
-    showBillingAlert,
-    setShowBillingAlert,
-    billingData,
-    setBillingData,
-    checkBillingLimits,
-    billingStatusQuery,
-  } = useBilling(project?.account_id, agentStatus, initialLoadCompleted);
-
-  // Keyboard shortcuts
-  useKeyboardShortcuts({
-    isSidePanelOpen,
-    setIsSidePanelOpen,
-    leftSidebarState,
-    setLeftSidebarOpen,
-    userClosedPanelRef,
+  const [formData, setFormData] = useState<FormData>({
+    name: '',
+    description: '',
+    system_prompt: '',
+    agentpress_tools: {},
+    configured_mcps: [],
+    custom_mcps: [],
+    is_default: false,
+    avatar: '',
+    avatar_color: '',
   });
 
-  const addUserMessageMutation = useAddUserMessageMutation();
-  const startAgentMutation = useStartAgentMutation();
-  const stopAgentMutation = useStopAgentMutation();
-  const { data: threadAgentData } = useThreadAgent(threadId);
-  const agent = threadAgentData?.agent;
-  const workflowId = threadQuery.data?.metadata?.workflow_id;
+  const [originalData, setOriginalData] = useState<FormData>(formData);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  // Initialize active tab from URL param, default to 'agent-builder'
+  const initialTab = tabParam === 'configuration' ? 'configuration' : 'agent-builder';
+  const [activeTab, setActiveTab] = useState(initialTab);
 
-  // Set initial selected agent from thread data
   useEffect(() => {
-    if (threadAgentData?.agent && !selectedAgentId) {
-      setSelectedAgentId(threadAgentData.agent.agent_id);
+    if (!agent) return;
+    let configSource = agent;
+    if (versionData) {
+      configSource = versionData;
+    } 
+    else if (agent.current_version) {
+      configSource = agent.current_version;
     }
-  }, [threadAgentData, selectedAgentId]);
+    
+    const initialData: FormData = {
+      name: agent.name || '',
+      description: agent.description || '',
+      system_prompt: configSource.system_prompt || '',
+      agentpress_tools: configSource.agentpress_tools || {},
+      configured_mcps: configSource.configured_mcps || [],
+      custom_mcps: configSource.custom_mcps || [],
+      is_default: agent.is_default || false,
+      avatar: agent.avatar || '',
+      avatar_color: agent.avatar_color || '',
+    };
+    
+    setFormData(initialData);
+    setOriginalData(initialData);
+  }, [agent, versionData]);
 
-  const { data: subscriptionData } = useSubscription();
-  const subscriptionStatus: SubscriptionStatus = subscriptionData?.status === 'active'
-    ? 'active'
-    : 'no_subscription';
+  // Autosave callback function
+  const handleAutosave = useCallback(async (data: FormData) => {
+    if (!agent || isViewingOldVersion) return;
+    
+    const isSunaAgent = agent?.metadata?.is_suna_default || false;
+    const restrictions = agent?.metadata?.restrictions || {};
+    
+    if (isSunaAgent) {
+      if (restrictions.name_editable === false && data.name !== originalData.name) {
+        throw new Error("Suna's name cannot be modified.");
+      }
 
-  // Memoize project for VNC preloader to prevent re-preloading on every render
-  const memoizedProject = useMemo(() => project, [project?.id, project?.sandbox?.vnc_preview, project?.sandbox?.pass]);
-
-  useVncPreloader(memoizedProject);
-
-
-  const handleProjectRenamed = useCallback((newName: string) => {
-  }, []);
-
-  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
-  };
-
-  const handleNewMessageFromStream = useCallback((message: UnifiedMessage) => {
-    console.log(
-      `[STREAM HANDLER] Received message: ID=${message.message_id}, Type=${message.type}`,
-    );
-
-    if (!message.message_id) {
-      console.warn(
-        `[STREAM HANDLER] Received message is missing ID: Type=${message.type}, Content=${message.content?.substring(0, 50)}...`,
-      );
+      if (restrictions.tools_editable === false && JSON.stringify(data.agentpress_tools) !== JSON.stringify(originalData.agentpress_tools)) {
+        throw new Error("Suna's default tools cannot be modified.");
+      }
     }
-
-    setMessages((prev) => {
-      const messageExists = prev.some(
-        (m) => m.message_id === message.message_id,
-      );
-      if (messageExists) {
-        return prev.map((m) =>
-          m.message_id === message.message_id ? message : m,
-        );
-      } else {
-        return [...prev, message];
+    
+    const normalizedCustomMcps = (data.custom_mcps || []).map(mcp => ({
+      name: mcp.name || 'Unnamed MCP',
+      type: mcp.type || mcp.customType || 'sse',
+      config: mcp.config || {},
+      enabledTools: Array.isArray(mcp.enabledTools) ? mcp.enabledTools : [],
+    }));
+    
+    const newVersion = await createVersionMutation.mutateAsync({
+      agentId,
+      data: {
+        system_prompt: isSunaAgent ? '' : data.system_prompt,
+        configured_mcps: data.configured_mcps,
+        custom_mcps: normalizedCustomMcps,
+        agentpress_tools: data.agentpress_tools,
+        description: 'Autosave'
       }
     });
+    
+    const updatedAgent = await updateAgentMutation.mutateAsync({
+      agentId,
+      name: data.name,
+      description: data.description,
+      is_default: data.is_default,
+      avatar: data.avatar,
+      avatar_color: data.avatar_color
+    });
+    
+    queryClient.setQueryData(['agent', agentId], {
+      ...updatedAgent,
+      current_version: newVersion,
+      current_version_id: newVersion.versionId
+    });
+    
+    // Update original data to reflect successful save
+    setOriginalData(data);
+  }, [agent, originalData, isViewingOldVersion, agentId, createVersionMutation, updateAgentMutation, queryClient]);
 
-    if (message.type === 'tool') {
-      setAutoOpenedPanel(false);
-    }
-  }, [setMessages, setAutoOpenedPanel]);
+  // Use autosave hook
+  const { status: autosaveStatus, hasUnsavedChanges, lastSaveTime, saveNow } = useAutosave({
+    data: formData,
+    originalData,
+    onSave: handleAutosave,
+    delay: 2000, // 2 seconds delay
+    enabled: !isViewingOldVersion && !!agent
+  });
 
-  const handleStreamStatusChange = useCallback((hookStatus: string) => {
-    console.log(`[PAGE] Hook status changed: ${hookStatus}`);
-    switch (hookStatus) {
-      case 'idle':
-      case 'completed':
-      case 'stopped':
-      case 'agent_not_running':
-      case 'error':
-      case 'failed':
-        setAgentStatus('idle');
-        setAgentRunId(null);
-        setAutoOpenedPanel(false);
-
-        if (
-          [
-            'completed',
-            'stopped',
-            'agent_not_running',
-            'error',
-            'failed',
-          ].includes(hookStatus)
-        ) {
-          scrollToBottom('smooth');
-        }
-        break;
-      case 'connecting':
-        setAgentStatus('connecting');
-        break;
-      case 'streaming':
-        setAgentStatus('running');
-        break;
-    }
-  }, [setAgentStatus, setAgentRunId, setAutoOpenedPanel]);
-
-  const handleStreamError = useCallback((errorMessage: string) => {
-    console.error(`[PAGE] Stream hook error: ${errorMessage}`);
-    if (
-      !errorMessage.toLowerCase().includes('not found') &&
-      !errorMessage.toLowerCase().includes('agent run is not running')
-    ) {
-      toast.error(`Stream Error: ${errorMessage}`);
-    }
-  }, []);
-
-  const handleStreamClose = useCallback(() => {
-    console.log(`[PAGE] Stream hook closed with final status: ${agentStatus}`);
-  }, [agentStatus]);
-
-  // Agent stream hook
-  const {
-    status: streamHookStatus,
-    textContent: streamingTextContent,
-    toolCall: streamingToolCall,
-    error: streamError,
-    agentRunId: currentHookRunId,
-    startStreaming,
-    stopStreaming,
-  } = useAgentStream(
-    {
-      onMessage: handleNewMessageFromStream,
-      onStatusChange: handleStreamStatusChange,
-      onError: handleStreamError,
-      onClose: handleStreamClose,
-    },
-    threadId,
-    setMessages,
-  );
-
-  const handleSubmitMessage = useCallback(
-    async (
-      message: string,
-      options?: { model_name?: string; enable_thinking?: boolean },
-    ) => {
-      if (!message.trim()) return;
-      setIsSending(true);
-
-      const optimisticUserMessage: UnifiedMessage = {
-        message_id: `temp-${Date.now()}`,
-        thread_id: threadId,
-        type: 'user',
-        is_llm_message: false,
-        content: message,
-        metadata: '{}',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, optimisticUserMessage]);
-      setNewMessage('');
-      scrollToBottom('smooth');
-
-      try {
-        const messagePromise = addUserMessageMutation.mutateAsync({
-          threadId,
-          message
-        });
-
-        const agentPromise = startAgentMutation.mutateAsync({
-          threadId,
-          options: {
-            ...options,
-            agent_id: selectedAgentId
-          }
-        });
-
-        const results = await Promise.allSettled([messagePromise, agentPromise]);
-
-        if (results[0].status === 'rejected') {
-          const reason = results[0].reason;
-          console.error("Failed to send message:", reason);
-          throw new Error(`Failed to send message: ${reason?.message || reason}`);
-        }
-
-        if (results[1].status === 'rejected') {
-          const error = results[1].reason;
-          console.error("Failed to start agent:", error);
-
-          if (error instanceof BillingError) {
-            console.log("Caught BillingError:", error.detail);
-            // DISABLED: Billing error handling for production
-            // setBillingData({
-            //   currentUsage: error.detail.currentUsage as number | undefined,
-            //   limit: error.detail.limit as number | undefined,
-            //   message: error.detail.message || 'Monthly usage limit reached. Please upgrade.',
-            //   accountId: project?.account_id || null
-            // });
-            // setShowBillingAlert(true);
-
-            setMessages(prev => prev.filter(m => m.message_id !== optimisticUserMessage.message_id));
-            return;
-          }
-
-          throw new Error(`Failed to start agent: ${error?.message || error}`);
-        }
-
-        const agentResult = results[1].value;
-        setAgentRunId(agentResult.agent_run_id);
-
-        messagesQuery.refetch();
-        agentRunsQuery.refetch();
-
-      } catch (err) {
-        console.error('Error sending message or starting agent:', err);
-        if (!(err instanceof BillingError)) {
-          toast.error(err instanceof Error ? err.message : 'Operation failed');
-        }
-        setMessages((prev) =>
-          prev.filter((m) => m.message_id !== optimisticUserMessage.message_id),
-        );
-      } finally {
-        setIsSending(false);
-      }
-    },
-    [threadId, project?.account_id, addUserMessageMutation, startAgentMutation, messagesQuery, agentRunsQuery, setMessages, setBillingData, setShowBillingAlert, setAgentRunId],
-  );
-
-  const handleStopAgent = useCallback(async () => {
-    console.log(`[PAGE] Requesting agent stop via hook.`);
-    setAgentStatus('idle');
-
-    await stopStreaming();
-
-    if (agentRunId) {
-      try {
-        await stopAgentMutation.mutateAsync(agentRunId);
-        agentRunsQuery.refetch();
-      } catch (error) {
-        console.error('Error stopping agent:', error);
-      }
-    }
-  }, [stopStreaming, agentRunId, stopAgentMutation, agentRunsQuery, setAgentStatus]);
-
-  const handleOpenFileViewer = useCallback((filePath?: string, filePathList?: string[]) => {
-    if (filePath) {
-      setFileToView(filePath);
-    } else {
-      setFileToView(null);
-    }
-    setFilePathList(filePathList);
-    setFileViewerOpen(true);
-  }, []);
-
-  const toolViewAssistant = useCallback(
-    (assistantContent?: string, toolContent?: string) => {
-      if (!assistantContent) return null;
-
-      return (
-        <div className="space-y-1">
-          <div className="text-xs font-medium text-muted-foreground">
-            Assistant Message
-          </div>
-          <div className="rounded-md border bg-muted/50 p-3">
-            <div className="text-xs prose prose-xs dark:prose-invert chat-markdown max-w-none">{assistantContent}</div>
-          </div>
-        </div>
-      );
-    },
-    [],
-  );
-
-  const toolViewResult = useCallback(
-    (toolContent?: string, isSuccess?: boolean) => {
-      if (!toolContent) return null;
-
-      return (
-        <div className="space-y-1">
-          <div className="flex justify-between items-center">
-            <div className="text-xs font-medium text-muted-foreground">
-              Tool Result
-            </div>
-            <div
-              className={`px-2 py-0.5 rounded-full text-xs ${isSuccess
-                ? 'bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-300'
-                : 'bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300'
-                }`}
-            >
-              {isSuccess ? 'Success' : 'Failed'}
-            </div>
-          </div>
-          <div className="rounded-md border bg-muted/50 p-3">
-            <div className="text-xs prose prose-xs dark:prose-invert chat-markdown max-w-none">{toolContent}</div>
-          </div>
-        </div>
-      );
-    },
-    [],
-  );
-
-  // Effects
+  // Update the version store with unsaved changes status
   useEffect(() => {
-    if (!initialLayoutAppliedRef.current) {
-      setLeftSidebarOpen(false);
-      initialLayoutAppliedRef.current = true;
+    setHasUnsavedChanges(hasUnsavedChanges);
+  }, [hasUnsavedChanges, setHasUnsavedChanges]);
+
+  const handleFieldChange = useCallback((field: keyof FormData, value: any) => {
+    if (isViewingOldVersion) {
+      toast.error('Cannot edit old versions. Please activate this version first to make changes.');
+      return;
     }
-  }, [setLeftSidebarOpen]);
+    setFormData(prev => ({ ...prev, [field]: value }));
+  }, [isViewingOldVersion]);
+
+  const handleMCPChange = useCallback((updates: { configured_mcps: any[]; custom_mcps: any[] }) => {
+    if (isViewingOldVersion) {
+      toast.error('Cannot edit old versions. Please activate this version first to make changes.');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      configured_mcps: updates.configured_mcps,
+      custom_mcps: updates.custom_mcps
+    }));
+  }, [isViewingOldVersion]);
+
+  const handleStyleChange = useCallback((emoji: string, color: string) => {
+    if (isViewingOldVersion) {
+      toast.error('Cannot edit old versions. Please activate this version first to make changes.');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      avatar: emoji,
+      avatar_color: color
+    }));
+  }, [isViewingOldVersion]);
+
+  const handleActivateVersion = useCallback(async (versionId: string) => {
+    try {
+      await activateVersionMutation.mutateAsync({ agentId, versionId });
+    } catch (error) {
+      toast.error('Failed to activate version');
+    }
+  }, [agentId, activateVersionMutation]);
 
   useEffect(() => {
-    if (initialLoadCompleted && !initialPanelOpenAttempted) {
-      setInitialPanelOpenAttempted(true);
-
-      if (toolCalls.length > 0) {
-        setIsSidePanelOpen(true);
-        setCurrentToolIndex(toolCalls.length - 1);
-      } else {
-        if (messages.length > 0) {
-          setIsSidePanelOpen(true);
-        }
-      }
+    if (isViewingOldVersion && activeTab === 'agent-builder') {
+      setActiveTab('configuration');
     }
-  }, [initialPanelOpenAttempted, messages, toolCalls, initialLoadCompleted, setIsSidePanelOpen, setCurrentToolIndex]);
-
-  useEffect(() => {
-    if (agentRunId && agentRunId !== currentHookRunId) {
-      console.log(
-        `[PAGE] Target agentRunId set to ${agentRunId}, initiating stream...`,
-      );
-      startStreaming(agentRunId);
-    }
-  }, [agentRunId, startStreaming, currentHookRunId]);
-
-  useEffect(() => {
-    const lastMsg = messages[messages.length - 1];
-    const isNewUserMessage = lastMsg?.type === 'user';
-    if ((isNewUserMessage || agentStatus === 'running') && !userHasScrolled) {
-      scrollToBottom('smooth');
-    }
-  }, [messages, agentStatus, userHasScrolled]);
-
-  useEffect(() => {
-    if (!latestMessageRef.current || messages.length === 0) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setShowScrollButton(!entry?.isIntersecting),
-      { root: messagesContainerRef.current, threshold: 0.1 },
-    );
-    observer.observe(latestMessageRef.current);
-    return () => observer.disconnect();
-  }, [messages, streamingTextContent, streamingToolCall]);
-
-  useEffect(() => {
-    console.log(`[PAGE] 🔄 Page AgentStatus: ${agentStatus}, Hook Status: ${streamHookStatus}, Target RunID: ${agentRunId || 'none'}, Hook RunID: ${currentHookRunId || 'none'}`);
-
-    if ((streamHookStatus === 'completed' || streamHookStatus === 'stopped' ||
-      streamHookStatus === 'agent_not_running' || streamHookStatus === 'error') &&
-      (agentStatus === 'running' || agentStatus === 'connecting')) {
-      console.log('[PAGE] Detected hook completed but UI still shows running, updating status');
-      setAgentStatus('idle');
-      setAgentRunId(null);
-      setAutoOpenedPanel(false);
-    }
-  }, [agentStatus, streamHookStatus, agentRunId, currentHookRunId, setAgentStatus, setAgentRunId, setAutoOpenedPanel]);
-
-  // SEO title update
-  useEffect(() => {
-    if (projectName) {
-      document.title = `${projectName} | Helium AI`;
-
-      const metaDescription = document.querySelector(
-        'meta[name="description"]',
-      );
-      if (metaDescription) {
-        metaDescription.setAttribute(
-          'content',
-          `${projectName} - Interactive agent conversation powered by Helium AI`,
-        );
-      }
-
-      const ogTitle = document.querySelector('meta[property="og:title"]');
-      if (ogTitle) {
-        ogTitle.setAttribute('content', `${projectName} | Helium AI`);
-      }
-
-      const ogDescription = document.querySelector(
-        'meta[property="og:description"]',
-      );
-      if (ogDescription) {
-        ogDescription.setAttribute(
-          'content',
-          `Interactive AI conversation for ${projectName}`,
-        );
-      }
-    }
-  }, [projectName]);
-
-  useEffect(() => {
-    const debugParam = searchParams.get('debug');
-    setDebugMode(debugParam === 'true');
-  }, [searchParams]);
-
-  const hasCheckedUpgradeDialog = useRef(false);
-
-  useEffect(() => {
-    if (initialLoadCompleted && subscriptionData && !hasCheckedUpgradeDialog.current) {
-      hasCheckedUpgradeDialog.current = true;
-      const hasSeenUpgradeDialog = localStorage.getItem('suna_upgrade_dialog_displayed');
-      const isFreeTier = subscriptionStatus === 'no_subscription';
-      const isProduction = isProductionMode();
-      const currentUsage = subscriptionData?.current_usage || 0;
-      const usageOver5Dollars = currentUsage > 5;
-      
-      // DISABLED: Billing check functionality for production
-      // Only show upgrade dialog if:
-      // 1. Not in production environment
-      // 2. Usage is under $5
-      // 3. User hasn't seen the dialog before
-      // 4. User is on free tier
-      // 5. Not in local mode
-      // if (!hasSeenUpgradeDialog && isFreeTier && !isLocalMode() && !isProduction && !usageOver5Dollars) {
-      //   setShowUpgradeDialog(true);
-      // }
-    }
-  }, [subscriptionData, subscriptionStatus, initialLoadCompleted]);
-
-  const handleDismissUpgradeDialog = () => {
-    setShowUpgradeDialog(false);
-    localStorage.setItem('suna_upgrade_dialog_displayed', 'true');
-  };
-
-  useEffect(() => {
-    if (streamingToolCall) {
-      handleStreamingToolCall(streamingToolCall);
-    }
-  }, [streamingToolCall, handleStreamingToolCall]);
-
-  useEffect(() => {
-    setIsSidePanelAnimating(true);
-    const timer = setTimeout(() => setIsSidePanelAnimating(false), 200); // Match transition duration
-    return () => clearTimeout(timer);
-  }, [isSidePanelOpen]);
-
-  if (!initialLoadCompleted || isLoading) {
-    return <ThreadSkeleton isSidePanelOpen={isSidePanelOpen} />;
-  }
+  }, [isViewingOldVersion, activeTab]);
 
   if (error) {
     return (
-      <ThreadLayout
-        threadId={threadId}
-        projectName={projectName}
-        projectId={project?.id || ''}
-        project={project}
-        sandboxId={sandboxId}
-        isSidePanelOpen={isSidePanelOpen}
-        onToggleSidePanel={toggleSidePanel}
-        onViewFiles={handleOpenFileViewer}
-        fileViewerOpen={fileViewerOpen}
-        setFileViewerOpen={setFileViewerOpen}
-        fileToView={fileToView}
-        filePathList={filePathList}
-        toolCalls={toolCalls}
-        messages={messages as ApiMessageType[]}
-        externalNavIndex={externalNavIndex}
-        agentStatus={agentStatus}
-        currentToolIndex={currentToolIndex}
-        onSidePanelNavigate={handleSidePanelNavigate}
-        onSidePanelClose={() => {
-          setIsSidePanelOpen(false);
-          userClosedPanelRef.current = true;
-          setAutoOpenedPanel(true);
-        }}
-        renderAssistantMessage={toolViewAssistant}
-        renderToolResult={toolViewResult}
-        isLoading={!initialLoadCompleted || isLoading}
-        showBillingAlert={showBillingAlert}
-        billingData={billingData}
-        onDismissBilling={() => setShowBillingAlert(false)}
-        debugMode={debugMode}
-        isMobile={isMobile}
-        initialLoadCompleted={initialLoadCompleted}
-        agentName={agent && agent.name}
-      >
-        <ThreadError error={error} />
-      </ThreadLayout>
+      <div className="flex items-center justify-center h-screen">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertDescription>
+            {error.message || 'Failed to load agent configuration'}
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading agent configuration...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!agent) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Alert className="max-w-md">
+          <AlertDescription>Agent not found</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const displayData = isViewingOldVersion && versionData ? {
+    name: agent?.name || '',
+    description: agent?.description || '',
+    system_prompt: versionData.system_prompt || '',
+    agentpress_tools: versionData.agentpress_tools || {},
+    configured_mcps: versionData.configured_mcps || [],
+    custom_mcps: versionData.custom_mcps || [],
+    is_default: agent?.is_default || false,
+    avatar: agent?.avatar || '',
+    avatar_color: agent?.avatar_color || '',
+  } : formData;
+
+  const currentStyle = displayData.avatar && displayData.avatar_color
+    ? { avatar: displayData.avatar, color: displayData.avatar_color }
+    : getAgentAvatar(agentId);
+
+  const previewAgent = {
+    ...agent,
+    ...displayData,
+    agent_id: agentId,
+  };
+
   return (
-    <>
-      <ThreadLayout
-        threadId={threadId}
-        projectName={projectName}
-        projectId={project?.id || ''}
-        project={project}
-        sandboxId={sandboxId}
-        isSidePanelOpen={isSidePanelOpen}
-        onToggleSidePanel={toggleSidePanel}
-        onProjectRenamed={handleProjectRenamed}
-        onViewFiles={handleOpenFileViewer}
-        fileViewerOpen={fileViewerOpen}
-        setFileViewerOpen={setFileViewerOpen}
-        fileToView={fileToView}
-        filePathList={filePathList}
-        toolCalls={toolCalls}
-        messages={messages as ApiMessageType[]}
-        externalNavIndex={externalNavIndex}
-        agentStatus={agentStatus}
-        currentToolIndex={currentToolIndex}
-        onSidePanelNavigate={handleSidePanelNavigate}
-        onSidePanelClose={() => {
-          setIsSidePanelOpen(false);
-          userClosedPanelRef.current = true;
-          setAutoOpenedPanel(true);
-        }}
-        renderAssistantMessage={toolViewAssistant}
-        renderToolResult={toolViewResult}
-        isLoading={!initialLoadCompleted || isLoading}
-        showBillingAlert={showBillingAlert}
-        billingData={billingData}
-        onDismissBilling={() => setShowBillingAlert(false)}
-        debugMode={debugMode}
-        isMobile={isMobile}
-        initialLoadCompleted={initialLoadCompleted}
-        agentName={agent && agent.name}
-        disableInitialAnimation={!initialLoadCompleted && toolCalls.length > 0}
-      >
-        {/* {workflowId && (
-          <div className="px-4 pt-4">
-            <WorkflowInfo workflowId={workflowId} />
+    <div className="h-screen flex flex-col bg-background">
+      <div className="flex-1 flex overflow-hidden">
+        <div className="hidden lg:flex w-full h-full">
+          <div className="w-1/2 border-r border-border/40 bg-background h-full flex flex-col">
+            <div className="h-full flex flex-col">
+              <div className="flex-shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      {!agent?.metadata?.is_suna_default && (
+                        <AgentVersionSwitcher
+                          agentId={agentId}
+                          currentVersionId={agent?.current_version_id}
+                          currentFormData={{
+                            system_prompt: formData.system_prompt,
+                            configured_mcps: formData.configured_mcps,
+                            custom_mcps: formData.custom_mcps,
+                            agentpress_tools: formData.agentpress_tools
+                          }}
+                        />
+                      )}
+                      <CreateVersionButton
+                        agentId={agentId}
+                        currentFormData={{
+                          system_prompt: formData.system_prompt,
+                          configured_mcps: formData.configured_mcps,
+                          custom_mcps: formData.custom_mcps,
+                          agentpress_tools: formData.agentpress_tools
+                        }}
+                        hasChanges={hasUnsavedChanges && !isViewingOldVersion}
+                        onVersionCreated={() => {
+                          setOriginalData(formData);
+                        }}
+                      />
+                      <UpcomingRunsDropdown agentId={agentId} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!isViewingOldVersion && (
+                        <AutosaveIndicator
+                          status={autosaveStatus}
+                          lastSaveTime={lastSaveTime}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  {isViewingOldVersion && (
+                    <VersionAlert
+                      versionData={versionData}
+                      isActivating={activateVersionMutation.isPending}
+                      onActivateVersion={handleActivateVersion}
+                    />
+                  )}
+                  <AgentHeader
+                    agentId={agentId}
+                    displayData={displayData}
+                    currentStyle={currentStyle}
+                    activeTab={activeTab}
+                    isViewingOldVersion={isViewingOldVersion}
+                    onFieldChange={handleFieldChange}
+                    onStyleChange={handleStyleChange}
+                    onTabChange={setActiveTab}
+                    agentMetadata={agent?.metadata}
+                  />
+                </div>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                {agent?.metadata?.is_suna_default ? (
+                  <div className="flex-1 h-full">
+                    <ConfigurationTab
+                      agentId={agentId}
+                      displayData={displayData}
+                      versionData={versionData}
+                      isViewingOldVersion={isViewingOldVersion}
+                      onFieldChange={handleFieldChange}
+                      onMCPChange={handleMCPChange}
+                      initialAccordion={initialAccordion}
+                      agentMetadata={agent?.metadata}
+                    />
+                  </div>
+                ) : (
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+                    <TabsContent value="agent-builder" className="flex-1 h-0 m-0">
+                      <AgentBuilderTab
+                        agentId={agentId}
+                        displayData={displayData}
+                        currentStyle={currentStyle}
+                        isViewingOldVersion={isViewingOldVersion}
+                        onFieldChange={handleFieldChange}
+                        onStyleChange={handleStyleChange}
+                      />
+                    </TabsContent>
+                    <TabsContent value="configuration" className="flex-1 h-0 m-0">
+                      <ConfigurationTab
+                        agentId={agentId}
+                        displayData={displayData}
+                        versionData={versionData}
+                        isViewingOldVersion={isViewingOldVersion}
+                        onFieldChange={handleFieldChange}
+                        onMCPChange={handleMCPChange}
+                        initialAccordion={initialAccordion}
+                        agentMetadata={agent?.metadata}
+                      />
+                    </TabsContent>
+                  </Tabs>
+                )}
+              </div>
+            </div>
           </div>
+<<<<<<< HEAD
+          <div className="w-1/2 bg-muted/30 overflow-y-auto">
+            <div className="h-full">
+              {previewAgent && <AgentPreview agent={previewAgent} agentMetadata={agent?.metadata} />}
+=======
         )} */}
         <div className="absolute bottom-0 left-0 right-0 h-[5%] md:h-[10%] lg:h-[20%] bg-gradient-to-t from-background to-transparent pointer-events-none z-20" />
 
@@ -668,6 +397,8 @@ export default function ThreadPage({
           agentName={agent && agent.name}
           agentAvatar={agent && agent.avatar}
           isSidePanelOpen={isSidePanelOpen}
+          leftSidebarState={leftSidebarState}
+          isLeftSidebarExpanded={isLeftSidebarExpanded}
           isFloatingToolPreviewVisible={!isSidePanelOpen && toolCalls.length > 0}
           onSubmit={handleSubmitMessage}
         />
@@ -686,7 +417,7 @@ export default function ThreadPage({
           )}>
             <div className={cn(
               "w-full",
-              isSidePanelOpen ? "max-w-2xl" : "max-w-3xl"
+              isSidePanelOpen ? "max-w-3xl" : "max-w-3xl"
             )}>
           
             <ChatInput
@@ -714,16 +445,136 @@ export default function ThreadPage({
               }}
               defaultShowSnackbar="tokens"
             />
+>>>>>>> dfc2feced83e9e57d56dd2540ad1e2433a3fa780
             </div>
           </div>
         </div>
-      </ThreadLayout>
+        <div className="lg:hidden flex flex-col h-full w-full">
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <AgentVersionSwitcher
+                      agentId={agentId}
+                      currentVersionId={agent?.current_version_id}
+                      currentFormData={{
+                        system_prompt: formData.system_prompt,
+                        configured_mcps: formData.configured_mcps,
+                        custom_mcps: formData.custom_mcps,
+                        agentpress_tools: formData.agentpress_tools
+                      }}
+                    />
+                    <CreateVersionButton
+                      agentId={agentId}
+                      currentFormData={{
+                        system_prompt: formData.system_prompt,
+                        configured_mcps: formData.configured_mcps,
+                        custom_mcps: formData.custom_mcps,
+                        agentpress_tools: formData.agentpress_tools
+                      }}
+                      hasChanges={hasUnsavedChanges && !isViewingOldVersion}
+                      onVersionCreated={() => {
+                        setOriginalData(formData);
+                      }}
+                    />
+                    <UpcomingRunsDropdown agentId={agentId} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!isViewingOldVersion && (
+                      <AutosaveIndicator
+                        status={autosaveStatus}
+                        lastSaveTime={lastSaveTime}
+                      />
+                    )}
+                  </div>
+                </div>
 
-      {/* <UpgradeDialog
-        open={showUpgradeDialog}
-        onOpenChange={setShowUpgradeDialog}
-        onDismiss={handleDismissUpgradeDialog}
-      /> */}
-    </>
+                {isViewingOldVersion && (
+                  <VersionAlert
+                    versionData={versionData}
+                    isActivating={activateVersionMutation.isPending}
+                    onActivateVersion={handleActivateVersion}
+                  />
+                )}
+
+                <AgentHeader
+                  agentId={agentId}
+                  displayData={displayData}
+                  currentStyle={currentStyle}
+                  activeTab={activeTab}
+                  isViewingOldVersion={isViewingOldVersion}
+                  onFieldChange={handleFieldChange}
+                  onStyleChange={handleStyleChange}
+                  onTabChange={setActiveTab}
+                  agentMetadata={agent?.metadata}
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+              {agent?.metadata?.is_suna_default ? (
+                <div className="flex-1 h-full">
+                  <ConfigurationTab
+                    agentId={agentId}
+                    displayData={displayData}
+                    versionData={versionData}
+                    isViewingOldVersion={isViewingOldVersion}
+                    onFieldChange={handleFieldChange}
+                    onMCPChange={handleMCPChange}
+                    initialAccordion={initialAccordion}
+                    agentMetadata={agent?.metadata}
+                  />
+                </div>
+              ) : (
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+                  <TabsContent value="agent-builder" className="flex-1 h-0 m-0">
+                    <AgentBuilderTab
+                      agentId={agentId}
+                      displayData={displayData}
+                      currentStyle={currentStyle}
+                      isViewingOldVersion={isViewingOldVersion}
+                      onFieldChange={handleFieldChange}
+                      onStyleChange={handleStyleChange}
+                    />
+                  </TabsContent>
+                  <TabsContent value="configuration" className="flex-1 h-0 m-0">
+                    <ConfigurationTab
+                      agentId={agentId}
+                      displayData={displayData}
+                      versionData={versionData}
+                      isViewingOldVersion={isViewingOldVersion}
+                      onFieldChange={handleFieldChange}
+                      onMCPChange={handleMCPChange}
+                      initialAccordion={initialAccordion}
+                      agentMetadata={agent?.metadata}
+                    />
+                  </TabsContent>
+                </Tabs>
+              )}
+            </div>
+          </div>
+
+          <Drawer open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+            <DrawerTrigger asChild>
+              <Button 
+                className="fixed bottom-6 right-6 rounded-full shadow-lg h-14 w-14 bg-primary hover:bg-primary/90"
+                size="icon"
+              >
+                <Eye className="h-5 w-5" />
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="h-[85vh]">
+              <DrawerHeader className="border-b">
+                <DrawerTitle>Agent Preview</DrawerTitle>
+              </DrawerHeader>
+              <div className="flex-1 overflow-y-auto p-4">
+                {previewAgent && <AgentPreview agent={previewAgent} agentMetadata={agent?.metadata} />}
+              </div>
+            </DrawerContent>
+          </Drawer>
+        </div>
+      </div>
+    </div>
   );
 } 

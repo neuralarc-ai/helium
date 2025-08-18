@@ -280,11 +280,11 @@ class Configuration:
     def MODEL_TO_USE_PRODUCTION(self) -> str:
         """Return the appropriate model based on environment mode."""
         if self.ENV_MODE == EnvMode.PRODUCTION:
-            # In production, use the o1 model (Claude Sonnet 4)
-            return "bedrock/anthropic.claude-sonnet-4-20250514-v1:0"
+            # In production, use the GLM-4.5 model from OpenRouter
+            return "openrouter/z-ai/glm-4.5"
         elif self.ENV_MODE == EnvMode.STAGING:
             # In staging, use the o1-lite model (Claude 3.5 Sonnet v2)
-            return "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0"
+            return "openrouter/anthropic/claude-sonnet-4"
         else:
             # In local development, use the default model
             return self.MODEL_TO_USE

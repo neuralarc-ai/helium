@@ -22,6 +22,7 @@ class AgentVersion:
     version_number: int
     version_name: str
     system_prompt: str
+    model: Optional[str] = None  # Add model field
     configured_mcps: List[Dict[str, Any]] = field(default_factory=list)
     custom_mcps: List[Dict[str, Any]] = field(default_factory=list)
     agentpress_tools: Dict[str, Any] = field(default_factory=dict)
@@ -39,6 +40,7 @@ class AgentVersion:
             'version_number': self.version_number,
             'version_name': self.version_name,
             'system_prompt': self.system_prompt,
+            'model': self.model,  # Add model to dict output
             'configured_mcps': self.configured_mcps,
             'custom_mcps': self.custom_mcps,
             'agentpress_tools': self.agentpress_tools,
@@ -140,40 +142,53 @@ class VersionService:
         config = row.get('config', {})
         tools = config.get('tools', {})
         
-        # Safely handle datetime parsing with fallbacks
-        def parse_datetime_safe(dt_str: str) -> datetime:
-            if not dt_str:
-                return datetime.now(timezone.utc)
-            try:
-                # Handle different datetime formats
-                if dt_str.endswith('Z'):
-                    return datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
-                elif '+' in dt_str or dt_str.endswith('UTC'):
-                    return datetime.fromisoformat(dt_str)
-                else:
-                    # Assume UTC if no timezone info
-                    return datetime.fromisoformat(dt_str + '+00:00')
-            except (ValueError, TypeError):
-                logger.warning(f"Failed to parse datetime: {dt_str}, using current time")
-                return datetime.now(timezone.utc)
-        
         return AgentVersion(
             version_id=row['version_id'],
             agent_id=row['agent_id'],
             version_number=row['version_number'],
             version_name=row['version_name'],
             system_prompt=config.get('system_prompt', ''),
+            model=config.get('model'),  # Extract model from config
             configured_mcps=tools.get('mcp', []),
             custom_mcps=tools.get('custom_mcp', []),
             agentpress_tools=tools.get('agentpress', {}),
             is_active=row.get('is_active', False),
-            created_at=parse_datetime_safe(row.get('created_at')),
-            updated_at=parse_datetime_safe(row.get('updated_at')),
-            created_by=row.get('created_by', ''),  # Use get() with default value
+            created_at=datetime.fromisoformat(row['created_at'].replace('Z', '+00:00')),
+            updated_at=datetime.fromisoformat(row['updated_at'].replace('Z', '+00:00')),
+            created_by=row['created_by'],
             change_description=row.get('change_description'),
             previous_version_id=row.get('previous_version_id')
         )
     
+    def _normalize_custom_mcps(self, custom_mcps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        normalized = []
+        for mcp in custom_mcps:
+            if not isinstance(mcp, dict):
+                continue
+                
+            mcp_copy = mcp.copy()
+            config = mcp_copy.get('config', {})
+            mcp_type = mcp_copy.get('type', 'sse')
+            mcp_name = mcp_copy.get('name', '')
+            
+            if mcp_type == 'composio':
+                if 'mcp_qualified_name' not in mcp_copy:
+                    mcp_copy['mcp_qualified_name'] = config.get('mcp_qualified_name') or config.get('qualifiedName') or f"composio.{mcp_name.lower().replace(' ', '_')}"
+                if 'toolkit_slug' not in mcp_copy:
+                    mcp_copy['toolkit_slug'] = config.get('toolkit_slug') or mcp_name.lower().replace(' ', '_')
+                
+                mcp_copy['config'] = {k: v for k, v in config.items() if k == 'profile_id'}
+                
+            elif mcp_type == 'pipedream':
+                if 'qualifiedName' not in mcp_copy:
+                    app_slug = config.get('headers', {}).get('x-pd-app-slug') or mcp_name.lower().replace(' ', '')
+                    mcp_copy['qualifiedName'] = f"pipedream:{app_slug}"
+                if 'app_slug' not in mcp_copy:
+                    mcp_copy['app_slug'] = config.get('headers', {}).get('x-pd-app-slug') or mcp_name.lower().replace(' ', '')
+            
+            normalized.append(mcp_copy)
+        return normalized
+
     async def create_version(
         self,
         agent_id: str,
@@ -182,38 +197,52 @@ class VersionService:
         configured_mcps: List[Dict[str, Any]],
         custom_mcps: List[Dict[str, Any]],
         agentpress_tools: Dict[str, Any],
+        model: Optional[str] = None,
         version_name: Optional[str] = None,
         change_description: Optional[str] = None
     ) -> AgentVersion:
-        logger.info(f"Creating version for agent {agent_id}")
+        
+        logger.debug(f"Creating version for agent {agent_id}")
+        client = await self.db.client
         
         is_owner, _ = await self._verify_agent_access(agent_id, user_id)
         if not is_owner:
-            raise UnauthorizedError("You don't have permission to create versions for this agent")
+            raise UnauthorizedError("Unauthorized to create version for this agent")
         
-        client = await self._get_client()
+        current_result = await client.table('agents').select('current_version_id, version_count').eq('agent_id', agent_id).single().execute()
         
-        agent_result = await client.table('agents').select('*').eq(
-            'agent_id', agent_id
-        ).execute()
+        if not current_result.data:
+            raise Exception("Agent not found")
         
-        if not agent_result.data:
-            raise AgentNotFoundError(f"Agent {agent_id} not found")
+        previous_version_id = current_result.data.get('current_version_id')
         
-        version_number = await self._get_next_version_number(agent_id)
-        version_name = version_name or f"v{version_number}"
+        max_version_result = await client.table('agent_versions').select('version_number').eq('agent_id', agent_id).order('version_number', desc=True).limit(1).execute()
+        max_version_number = 0
+        if max_version_result.data and max_version_result.data[0].get('version_number'):
+            max_version_number = max_version_result.data[0]['version_number']
+        version_number = max_version_number + 1
         
-        current_active_result = await client.table('agent_versions').select('*').eq(
-            'agent_id', agent_id
-        ).eq('is_active', True).execute()
+        if not version_name:
+            version_name = f"v{version_number}"
         
-        previous_version_id = None
-        if current_active_result.data:
-            previous_version_id = current_active_result.data[0]['version_id']
-            await client.table('agent_versions').update({
-                'is_active': False,
-                'updated_at': datetime.now(timezone.utc).isoformat()
-            }).eq('version_id', previous_version_id).execute()
+        workflows_result = await client.table('agent_workflows').select('*').eq('agent_id', agent_id).execute()
+        workflows = workflows_result.data if workflows_result.data else []
+        
+        triggers_result = await client.table('agent_triggers').select('*').eq('agent_id', agent_id).execute()
+        triggers = []
+        if triggers_result.data:
+            import json
+            for trigger in triggers_result.data:
+                trigger_copy = trigger.copy()
+                if 'config' in trigger_copy and isinstance(trigger_copy['config'], str):
+                    try:
+                        trigger_copy['config'] = json.loads(trigger_copy['config'])
+                    except json.JSONDecodeError:
+                        logger.warning(f"Failed to parse trigger config for {trigger_copy.get('trigger_id')}")
+                        trigger_copy['config'] = {}
+                triggers.append(trigger_copy)
+        
+        normalized_custom_mcps = self._normalize_custom_mcps(custom_mcps)
         
         version = AgentVersion(
             version_id=str(uuid4()),
@@ -221,8 +250,9 @@ class VersionService:
             version_number=version_number,
             version_name=version_name,
             system_prompt=system_prompt,
+            model=model,
             configured_mcps=configured_mcps,
-            custom_mcps=custom_mcps,
+            custom_mcps=normalized_custom_mcps,
             agentpress_tools=agentpress_tools,
             is_active=True,
             created_at=datetime.now(timezone.utc),
@@ -245,11 +275,14 @@ class VersionService:
             'previous_version_id': version.previous_version_id,
             'config': {
                 'system_prompt': version.system_prompt,
+                'model': version.model,
                 'tools': {
                     'agentpress': version.agentpress_tools,
                     'mcp': version.configured_mcps,
-                    'custom_mcp': version.custom_mcps
-                }
+                    'custom_mcp': normalized_custom_mcps
+                },
+                'workflows': workflows,
+                'triggers': triggers
             }
         }
         
@@ -261,7 +294,7 @@ class VersionService:
         version_count = await self._count_versions(agent_id)
         await self._update_agent_current_version(agent_id, version.version_id, version_count)
         
-        logger.info(f"Created version {version.version_name} for agent {agent_id}")
+        logger.debug(f"Created version {version.version_name} for agent {agent_id}")
         return version
     
     async def get_version(self, agent_id: str, version_id: str, user_id: str) -> AgentVersion:
@@ -339,7 +372,7 @@ class VersionService:
         version_count = await self._count_versions(agent_id)
         await self._update_agent_current_version(agent_id, version_id, version_count)
         
-        logger.info(f"Activated version {version['version_name']} for agent {agent_id}")
+        logger.debug(f"Activated version {version['version_name']} for agent {agent_id}")
     
     async def compare_versions(
         self,
@@ -368,6 +401,14 @@ class VersionService:
                 'type': 'modified',
                 'old_value': v1.system_prompt,
                 'new_value': v2.system_prompt
+            })
+        
+        if v1.model != v2.model:
+            differences.append({
+                'field': 'model',
+                'type': 'modified',
+                'old_value': v1.model,
+                'new_value': v2.model
             })
         
         v1_tools = set(v1.agentpress_tools.keys())
@@ -417,6 +458,7 @@ class VersionService:
             configured_mcps=version_to_restore.configured_mcps,
             custom_mcps=version_to_restore.custom_mcps,
             agentpress_tools=version_to_restore.agentpress_tools,
+            model=version_to_restore.model,
             change_description=f"Rolled back to version {version_to_restore.version_name}"
         )
         

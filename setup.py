@@ -163,11 +163,12 @@ def load_existing_env_vars():
                 "MCP_CREDENTIAL_ENCRYPTION_KEY", ""
             ),
         },
-        "pipedream": {
-            "PIPEDREAM_PROJECT_ID": backend_env.get("PIPEDREAM_PROJECT_ID", ""),
-            "PIPEDREAM_CLIENT_ID": backend_env.get("PIPEDREAM_CLIENT_ID", ""),
-            "PIPEDREAM_CLIENT_SECRET": backend_env.get("PIPEDREAM_CLIENT_SECRET", ""),
-            "PIPEDREAM_X_PD_ENVIRONMENT": backend_env.get("PIPEDREAM_X_PD_ENVIRONMENT", ""),
+        "composio": {
+            "COMPOSIO_BASE_KEY": backend_env.get("COMPOSIO_BASE_KEY", ""),
+            "COMPOSIO_API_KEY": backend_env.get("COMPOSIO_API_KEY", ""),
+            "COMPOSIO_WEBHOOK_SECRET": backend_env.get("COMPOSIO_WEBHOOK_SECRET", ""),
+            "COMPOSIO_ENVIRONMENT": backend_env.get("COMPOSIO_ENVIRONMENT", ""),
+            "ENCRYPTION_KEY": backend_env.get("ENCRYPTION_KEY", ""),
         },
         "frontend": {
             "NEXT_PUBLIC_SUPABASE_URL": frontend_env.get(
@@ -263,7 +264,7 @@ class SetupWizard:
             "slack": existing_env_vars["slack"],
             "webhook": existing_env_vars["webhook"],
             "mcp": existing_env_vars["mcp"],
-            "pipedream": existing_env_vars["pipedream"],
+            "composio": existing_env_vars["composio"],
         }
 
         # Override with any progress data (in case user is resuming)
@@ -334,11 +335,11 @@ class SetupWizard:
         else:
             config_items.append(f"{Colors.YELLOW}○{Colors.ENDC} MCP encryption key")
 
-        # Check Pipedream configuration
-        if self.env_vars["pipedream"]["PIPEDREAM_PROJECT_ID"]:
-            config_items.append(f"{Colors.GREEN}✓{Colors.ENDC} Pipedream (optional)")
+        # Check Composio configuration
+        if self.env_vars["composio"]["COMPOSIO_PROJECT_ID"]:
+            config_items.append(f"{Colors.GREEN}✓{Colors.ENDC} Composio (optional)")
         else:
-            config_items.append(f"{Colors.CYAN}○{Colors.ENDC} Pipedream (optional)")
+            config_items.append(f"{Colors.CYAN}○{Colors.ENDC} Composio (optional)")
 
         # Check Slack configuration
         if self.env_vars["slack"]["SLACK_CLIENT_ID"]:
@@ -387,7 +388,7 @@ class SetupWizard:
             self.run_step(8, self.collect_rapidapi_keys)
             self.run_step(10, self.collect_qstash_keys)
             self.run_step(11, self.collect_mcp_keys)
-            self.run_step(12, self.collect_pipedream_keys)
+            self.run_step(12, self.collect_composio_keys)
             self.run_step(13, self.collect_slack_keys)
             self.run_step(14, self.collect_webhook_keys)
             self.run_step(15, self.configure_env_files)
@@ -974,65 +975,65 @@ class SetupWizard:
 
         print_success("MCP configuration saved.")
 
-    def collect_pipedream_keys(self):
-        """Collects the optional Pipedream configuration."""
-        print_step(12, self.total_steps, "Collecting Pipedream Configuration (Optional)")
+    def collect_composio_keys(self):
+        """Collects the optional Composio configuration."""
+        print_step(12, self.total_steps, "Collecting Composio Configuration (Optional)")
 
         # Check if we already have values configured
-        has_existing = any(self.env_vars["pipedream"].values())
+        has_existing = any(self.env_vars["composio"].values())
         if has_existing:
             print_info(
-                "Found existing Pipedream configuration. Press Enter to keep current values or type new ones."
+                "Found existing Composio configuration. Press Enter to keep current values or type new ones."
             )
         else:
-            print_info("Pipedream enables workflow automation and MCP integrations.")
-            print_info("Create a Pipedream Connect project at https://pipedream.com/connect to get your credentials.")
-            print_info("You can skip this step and configure Pipedream later.")
+            print_info("Composio enables workflow automation and MCP integrations.")
+            print_info("Create a Composio project at https://composio.dev to get your credentials.")
+            print_info("You can skip this step and configure Composio later.")
 
-        # Ask if user wants to configure Pipedream
+        # Ask if user wants to configure Composio
         if not has_existing:
-            configure_pipedream = input("Do you want to configure Pipedream integration? (y/N): ").lower().strip()
-            if configure_pipedream != 'y':
-                print_info("Skipping Pipedream configuration.")
+            configure_composio = input("Do you want to configure Composio integration? (y/N): ").lower().strip()
+            if configure_composio != 'y':
+                print_info("Skipping Composio configuration.")
                 return
 
-        self.env_vars["pipedream"]["PIPEDREAM_PROJECT_ID"] = self._get_input(
-            "Enter your Pipedream Project ID (or press Enter to skip): ",
+        self.env_vars["composio"]["COMPOSIO_PROJECT_ID"] = self._get_input(
+            "Enter your Composio Project ID (or press Enter to skip): ",
             validate_api_key,
-            "Invalid Pipedream Project ID format. It should be a valid project ID.",
+            "Invalid Composio Project ID format. It should be a valid project ID.",
             allow_empty=True,
-            default_value=self.env_vars["pipedream"]["PIPEDREAM_PROJECT_ID"],
+            default_value=self.env_vars["composio"]["COMPOSIO_PROJECT_ID"],
         )
         
-        if self.env_vars["pipedream"]["PIPEDREAM_PROJECT_ID"]:
-            self.env_vars["pipedream"]["PIPEDREAM_CLIENT_ID"] = self._get_input(
-                "Enter your Pipedream Client ID: ",
+        if self.env_vars["composio"]["COMPOSIO_PROJECT_ID"]:
+            self.env_vars["composio"]["COMPOSIO_CLIENT_ID"] = self._get_input(
+                "Enter your Composio Client ID: ",
                 validate_api_key,
-                "Invalid Pipedream Client ID format. It should be a valid client ID.",
-                default_value=self.env_vars["pipedream"]["PIPEDREAM_CLIENT_ID"],
+                "Invalid Composio Client ID format. It should be a valid client ID.",
+                default_value=self.env_vars["composio"]["COMPOSIO_CLIENT_ID"],
             )
             
-            self.env_vars["pipedream"]["PIPEDREAM_CLIENT_SECRET"] = self._get_input(
-                "Enter your Pipedream Client Secret: ",
+            self.env_vars["composio"]["COMPOSIO_CLIENT_SECRET"] = self._get_input(
+                "Enter your Composio Client Secret: ",
                 validate_api_key,
-                "Invalid Pipedream Client Secret format. It should be a valid client secret.",
-                default_value=self.env_vars["pipedream"]["PIPEDREAM_CLIENT_SECRET"],
+                "Invalid Composio Client Secret format. It should be a valid client secret.",
+                default_value=self.env_vars["composio"]["COMPOSIO_CLIENT_SECRET"],
             )
             
             # Set default environment if not already configured
-            if not self.env_vars["pipedream"]["PIPEDREAM_X_PD_ENVIRONMENT"]:
-                self.env_vars["pipedream"]["PIPEDREAM_X_PD_ENVIRONMENT"] = "development"
+            if not self.env_vars["composio"]["COMPOSIO_ENVIRONMENT"]:
+                self.env_vars["composio"]["COMPOSIO_ENVIRONMENT"] = "development"
             
-            self.env_vars["pipedream"]["PIPEDREAM_X_PD_ENVIRONMENT"] = self._get_input(
-                "Enter your Pipedream Environment (development/production): ",
+            self.env_vars["composio"]["COMPOSIO_ENVIRONMENT"] = self._get_input(
+                "Enter your Composio Environment (development/production): ",
                 lambda x, allow_empty=False: x.lower() in ["development", "production"] or allow_empty,
                 "Invalid environment. Please enter 'development' or 'production'.",
-                default_value=self.env_vars["pipedream"]["PIPEDREAM_X_PD_ENVIRONMENT"],
+                default_value=self.env_vars["composio"]["COMPOSIO_ENVIRONMENT"],
             )
             
-            print_success("Pipedream configuration saved.")
+            print_success("Composio configuration saved.")
         else:
-            print_info("Skipping Pipedream configuration.")
+            print_info("Skipping Composio configuration.")
 
     def collect_slack_keys(self):
         """Collects the optional Slack configuration."""
@@ -1135,7 +1136,7 @@ class SetupWizard:
             **self.env_vars["slack"],
             **self.env_vars["webhook"],
             **self.env_vars["mcp"],
-            **self.env_vars["pipedream"],
+            **self.env_vars["composio"],
             **self.env_vars["daytona"],
             "NEXT_PUBLIC_URL": "http://localhost:3000",
         }

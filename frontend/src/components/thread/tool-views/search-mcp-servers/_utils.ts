@@ -2,12 +2,14 @@ import { extractToolData } from '../utils';
 
 export interface McpServerResult {
   name: string;
-  app_slug: string;
+  toolkit_slug: string;
   description: string;
   logo_url: string;
-  auth_type: string;
-  is_verified: boolean;
+  // auth_type: string;
+  // is_verified: boolean;
   url?: string | null;
+  auth_schemes: string[];
+  categories?: string[];
   tags?: string[];
 }
 

@@ -6,6 +6,7 @@ import { Settings, X, Sparkles, Key, AlertTriangle } from 'lucide-react';
 import { MCPConfiguration } from './types';
 import { useCredentialProfilesForMcp } from '@/hooks/react-query/mcp/use-credential-profiles';
 import { usePipedreamAppIcon } from '@/hooks/react-query/pipedream/use-pipedream';
+import { useComposioToolkits } from '@/hooks/react-query/composio/use-composio';
 
 interface ConfiguredMcpListProps {
   configuredMCPs: MCPConfiguration[];
@@ -14,26 +15,57 @@ interface ConfiguredMcpListProps {
   onConfigureTools?: (index: number) => void;
 }
 
-const extractAppSlug = (mcp: MCPConfiguration): string | null => {
+const extractAppSlug = (mcp: MCPConfiguration): { type: 'pipedream' | 'composio', slug: string } | null => {
   if (mcp.customType === 'pipedream') {
-    const qualifiedMatch = mcp.qualifiedName.match(/^pipedream_([^_]+)_/);
-    if (qualifiedMatch) {
-      return qualifiedMatch[1];
+    if ((mcp as any).app_slug) {
+      return { type: 'pipedream', slug: (mcp as any).app_slug };
     }
     if (mcp.config?.headers?.['x-pd-app-slug']) {
-      return mcp.config.headers['x-pd-app-slug'];
+      return { type: 'pipedream', slug: mcp.config.headers['x-pd-app-slug'] };
+    }
+    const qualifiedMatch = mcp.qualifiedName.match(/^pipedream_([^_]+)_/);
+    if (qualifiedMatch) {
+      return { type: 'pipedream', slug: qualifiedMatch[1] };
     }
   }
+  
+  if (mcp.customType === 'composio' || mcp.isComposio) {
+    const slug = mcp.toolkitSlug || (mcp as any).toolkit_slug || mcp.config?.toolkit_slug;
+    if (slug) {
+      return { type: 'composio', slug };
+    }
+    
+    const qualifiedName = mcp.mcp_qualified_name || mcp.qualifiedName;
+    if (qualifiedName && qualifiedName.startsWith('composio.')) {
+      const extractedSlug = qualifiedName.substring(9);
+      if (extractedSlug) {
+        return { type: 'composio', slug: extractedSlug };
+      }
+    }
+  }
+  
   return null;
 };
 
 const MCPLogo: React.FC<{ mcp: MCPConfiguration }> = ({ mcp }) => {
-  const appSlug = extractAppSlug(mcp);
-  const { data: iconData } = usePipedreamAppIcon(appSlug || '', {
-    enabled: !!appSlug
-  });
+  const appInfo = extractAppSlug(mcp);
+  const { data: pipedreamIconData } = usePipedreamAppIcon(
+    appInfo?.type === 'pipedream' ? appInfo.slug : '', 
+    { enabled: appInfo?.type === 'pipedream' }
+  );
+  
+  const { data: composioToolkits } = useComposioToolkits(
+    appInfo?.type === 'composio' ? appInfo.slug : undefined,
+    undefined
+  );
+  
+  let logoUrl: string | undefined;
+  if (appInfo?.type === 'pipedream') {
+    logoUrl = pipedreamIconData?.icon_url;
+  } else if (appInfo?.type === 'composio' && composioToolkits?.toolkits?.[0]) {
+    logoUrl = composioToolkits.toolkits[0].logo;
+  }
 
-  const logoUrl = iconData?.icon_url;
   const firstLetter = mcp.name.charAt(0).toUpperCase();
 
   return (
@@ -64,7 +96,10 @@ const MCPConfigurationItem: React.FC<{
   onRemove: (index: number) => void;
   onConfigureTools?: (index: number) => void;
 }> = ({ mcp, index, onEdit, onRemove, onConfigureTools }) => {
-  const { data: profiles = [] } = useCredentialProfilesForMcp(mcp.qualifiedName);
+  const qualifiedNameForLookup = (mcp.customType === 'composio' || mcp.isComposio) 
+    ? mcp.mcp_qualified_name || mcp.config?.mcp_qualified_name || mcp.qualifiedName
+    : mcp.qualifiedName;
+  const { data: profiles = [] } = useCredentialProfilesForMcp(qualifiedNameForLookup);
   const profileId = mcp.selectedProfileId || mcp.config?.profile_id;
   const selectedProfile = profiles.find(p => p.profile_id === profileId);
   

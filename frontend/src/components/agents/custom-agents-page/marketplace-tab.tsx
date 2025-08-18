@@ -11,15 +11,18 @@ import type { MarketplaceTemplate } from '@/components/agents/installation/types
 interface MarketplaceTabProps {
   marketplaceSearchQuery: string;
   setMarketplaceSearchQuery: (value: string) => void;
-  marketplaceFilter: 'all' | 'kortix' | 'community';
-  setMarketplaceFilter: (value: 'all' | 'kortix' | 'community') => void;
+  marketplaceFilter: 'all' | 'kortix' | 'community' | 'mine';
+  setMarketplaceFilter: (value: 'all' | 'kortix' | 'community' | 'mine') => void;
   marketplaceLoading: boolean;
   allMarketplaceItems: MarketplaceTemplate[];
   kortixTeamItems: MarketplaceTemplate[];
   communityItems: MarketplaceTemplate[];
+  mineItems: MarketplaceTemplate[];
   installingItemId: string | null;
   onInstallClick: (item: MarketplaceTemplate, e?: React.MouseEvent) => void;
+  onDeleteTemplate?: (item: MarketplaceTemplate, e?: React.MouseEvent) => void;
   getItemStyling: (item: MarketplaceTemplate) => { avatar: string; color: string };
+  currentUserId?: string;
 }
 
 export const MarketplaceTab = ({
@@ -31,9 +34,12 @@ export const MarketplaceTab = ({
   allMarketplaceItems,
   kortixTeamItems,
   communityItems,
+  mineItems,
   installingItemId,
   onInstallClick,
-  getItemStyling
+  onDeleteTemplate,
+  getItemStyling,
+  currentUserId
 }: MarketplaceTabProps) => {
   return (
     <div className="space-y-6 mt-8 flex flex-col min-h-full">
@@ -43,12 +49,16 @@ export const MarketplaceTab = ({
           value={marketplaceSearchQuery}
           onChange={setMarketplaceSearchQuery}
         />
-        <Select value={marketplaceFilter} onValueChange={(value: 'all' | 'kortix' | 'community') => setMarketplaceFilter(value)}>
+        <Select 
+          value={marketplaceFilter} 
+          onValueChange={(value: 'all' | 'kortix' | 'community' | 'mine') => setMarketplaceFilter(value)}
+        >
           <SelectTrigger className="w-[180px] h-12 rounded-xl">
             <SelectValue placeholder="Filter agents" />
           </SelectTrigger>
           <SelectContent className='rounded-xl'>
             <SelectItem className='rounded-xl' value="all">All Agents</SelectItem>
+            <SelectItem className='rounded-xl' value="mine">Mine</SelectItem>
             <SelectItem className='rounded-xl' value="kortix">Kortix Verified</SelectItem>
             <SelectItem className='rounded-xl' value="community">Community</SelectItem>
           </SelectContent>
@@ -99,7 +109,9 @@ export const MarketplaceTab = ({
                           styling={getItemStyling(item)}
                           isActioning={installingItemId === item.id}
                           onPrimaryAction={onInstallClick}
+                          onDeleteAction={onDeleteTemplate}
                           onClick={() => onInstallClick(item)}
+                          currentUserId={currentUserId}
                         />
                       ))}
                     </div>
@@ -116,7 +128,9 @@ export const MarketplaceTab = ({
                           styling={getItemStyling(item)}
                           isActioning={installingItemId === item.id}
                           onPrimaryAction={onInstallClick}
+                          onDeleteAction={onDeleteTemplate}
                           onClick={() => onInstallClick(item)}
+                          currentUserId={currentUserId}
                         />
                       ))}
                     </div>
@@ -133,7 +147,9 @@ export const MarketplaceTab = ({
                     styling={getItemStyling(item)}
                     isActioning={installingItemId === item.id}
                     onPrimaryAction={onInstallClick}
+                    onDeleteAction={onDeleteTemplate}
                     onClick={() => onInstallClick(item)}
+                    currentUserId={currentUserId}
                   />
                 ))}
               </div>

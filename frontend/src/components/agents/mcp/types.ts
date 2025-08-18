@@ -1,11 +1,14 @@
 export interface MCPConfiguration {
   name: string;
   qualifiedName: string;
+  mcp_qualified_name?: string;
   config: Record<string, any>;
   enabledTools: string[];
   selectedProfileId?: string;
   isCustom?: boolean;
-  customType?: 'http' | 'sse' | 'pipedream';
+  customType?: 'http' | 'sse' | 'composio' | 'pipedream';
+  isComposio?: boolean;
+  toolkitSlug?: string;
 }
   
 export interface MCPConfigurationProps {

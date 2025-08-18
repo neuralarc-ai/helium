@@ -39,7 +39,7 @@ def get_available_flags() -> Dict[str, str]:
         "triggers_api": "FLAG_TRIGGERS_API",
         "workflows_api": "FLAG_WORKFLOWS_API",
         "knowledge_base": "FLAG_KNOWLEDGE_BASE",
-        "pipedream": "FLAG_PIPEDREAM",
+        "composio": "FLAG_COMPOSIO",
         "credentials_api": "FLAG_CREDENTIALS_API",
         "suna_default_agent": "FLAG_SUNA_DEFAULT_AGENT"
     }
@@ -218,8 +218,8 @@ workflows_api = True
 # Knowledge base feature flag
 knowledge_base = True
 
-# Pipedream integration feature flag
-pipedream = True
+# Composio integration feature flag
+composio = True
 
 # Credentials API feature flag
 credentials_api = True
