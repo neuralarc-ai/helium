@@ -122,6 +122,30 @@ export function renderMarkdownContent(
   streamingTextContent?: string,
   streamHookStatus?: string,
 ) {
+  // Sanitize content to avoid exposing port numbers and to collapse
+  // the "Dashboard Created Successfully" section to only the link
+  const sanitizeDisplayedContent = (input: string): string => {
+    if (!input) return input;
+    let out = input;
+    // Remove explicit port in URLs, e.g., https://host:8080 -> https://host
+    out = out.replace(/\b(https?:\/\/[^\s/:]+):(\d{2,5})(?=\b|\/)/gi, '$1');
+    // Remove standalone lines like "Port Number: 8080" or "Port: 8080"
+    out = out.replace(/^\s*Port(?:\s*Number)?\s*:?\s*\d{2,5}\s*$/gim, '');
+    // Redact inline mentions like "port 8080" or "port: 8080"
+    out = out.replace(/\b(port\s*:?\s*)(\d{2,5})/gi, '$1[redacted]');
+    // If the content contains the dashboard success heading, keep only the clickable link line
+    if (/Dashboard\s+Created\s+Successfully/i.test(out)) {
+      const linkMatch = out.match(/.*Click here to open the link.*/i);
+      if (linkMatch) {
+        return linkMatch[0].trim();
+      }
+      // If no explicit link line found, remove the rest
+      return '';
+    }
+    // Tidy multiple blank lines
+    out = out.replace(/\n{3,}/g, '\n\n');
+    return out.trim();
+  };
   // If in debug mode, just display raw content in a pre tag
   if (debugMode) {
     return (
@@ -147,7 +171,7 @@ export function renderMarkdownContent(
           contentParts.push(
             <PipedreamUrlDetector
               key={`md-${lastIndex}`}
-              content={textBeforeBlock}
+              content={sanitizeDisplayedContent(textBeforeBlock)}
               className="text-sm xl:text-base prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
             />,
           );
@@ -176,7 +200,7 @@ export function renderMarkdownContent(
           contentParts.push(
             <div key={`ask-${match.index}-${index}`} className="space-y-4">
               <PipedreamUrlDetector
-                content={askText}
+                content={sanitizeDisplayedContent(askText)}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
               {renderAttachments(
@@ -203,7 +227,7 @@ export function renderMarkdownContent(
           contentParts.push(
             <div key={`complete-${match.index}-${index}`} className="space-y-4">
               <PipedreamUrlDetector
-                content={completeText}
+                content={sanitizeDisplayedContent(completeText)}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
               {renderAttachments(
@@ -284,7 +308,7 @@ export function renderMarkdownContent(
         contentParts.push(
           <PipedreamUrlDetector
             key={`md-${lastIndex}`}
-            content={remainingText}
+            content={sanitizeDisplayedContent(remainingText)}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
           />,
         );
@@ -295,7 +319,7 @@ export function renderMarkdownContent(
       contentParts
     ) : (
       <PipedreamUrlDetector
-        content={content}
+        content={sanitizeDisplayedContent(content)}
         className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
       />
     );
@@ -325,7 +349,7 @@ export function renderMarkdownContent(
       contentParts.push(
         <PipedreamUrlDetector
           key={`md-${lastIndex}`}
-          content={textBeforeTag}
+          content={sanitizeDisplayedContent(textBeforeTag)}
           className="text-sm xl:text-base prose prose-sm dark:prose-invert chat-markdown max-w-none inline-block mr-1 break-words"
         />,
       );
@@ -350,7 +374,7 @@ export function renderMarkdownContent(
       contentParts.push(
         <div key={`ask-${match.index}`} className="space-y-4">
           <PipedreamUrlDetector
-            content={askContent}
+            content={sanitizeDisplayedContent(askContent)}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
           />
           {renderAttachments(
@@ -378,7 +402,7 @@ export function renderMarkdownContent(
       contentParts.push(
         <div key={`complete-${match.index}`} className="space-y-4">
           <PipedreamUrlDetector
-            content={completeContent}
+            content={sanitizeDisplayedContent(completeContent)}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
           />
           {renderAttachments(
@@ -446,7 +470,7 @@ export function renderMarkdownContent(
     contentParts.push(
       <PipedreamUrlDetector
         key={`md-${lastIndex}`}
-        content={content.substring(lastIndex)}
+        content={sanitizeDisplayedContent(content.substring(lastIndex))}
         className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
       />,
     );

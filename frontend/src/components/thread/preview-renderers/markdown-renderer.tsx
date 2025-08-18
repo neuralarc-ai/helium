@@ -3,6 +3,8 @@
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Markdown } from '@/components/ui/markdown';
+import { PipedreamUrlDetector } from '@/components/thread/content/pipedream-url-detector';
+
 import { cn } from '@/lib/utils';
 
 interface MarkdownRendererProps {
@@ -21,11 +23,10 @@ export function MarkdownRenderer({
         <div className={cn('w-full h-full overflow-hidden', className)}>
             <ScrollArea className="w-full h-full">
                 <div className="p-4">
-                    <Markdown
+                    <PipedreamUrlDetector
+                        content={content}
                         className="prose prose-sm dark:prose-invert max-w-none [&>:first-child]:mt-0 chat-markdown"
-                    >
-                        {content}
-                    </Markdown>
+                    />
                 </div>
             </ScrollArea>
         </div>

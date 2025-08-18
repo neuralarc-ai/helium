@@ -24,7 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from '@/components/ui/progress';
-import { Markdown } from '@/components/ui/markdown';
+import { PipedreamUrlDetector } from '@/components/thread/content/pipedream-url-detector';
 import { FileAttachment } from '../file-attachment';
 
 interface CompleteContent {
@@ -52,6 +52,17 @@ export function CompleteToolView({
 }: CompleteToolViewProps) {
   const [completeData, setCompleteData] = useState<CompleteContent>({});
   const [progress, setProgress] = useState(0);
+
+  // Sanitize content to avoid exposing port numbers (e.g., :8080 or "port 8080")
+  const sanitizeContentForDisplay = React.useCallback((input: string): string => {
+    if (!input) return input;
+    let out = input;
+    // Remove explicit port in URLs: https://host:8080 -> https://host
+    out = out.replace(/\b(https?:\/\/[^\s/:]+):(\d{2,5})(?=\b|\/)/gi, '$1');
+    // Redact phrases like "port 8080" or "port: 8080"
+    out = out.replace(/\b(port\s*:?\s*)(\d{2,5})/gi, '$1[redacted]');
+    return out;
+  }, []);
 
   const {
     text,
@@ -217,9 +228,10 @@ export function CompleteToolView({
             {(text || completeData.summary || completeData.result) && (
               <div className="space-y-1">
                 <div className="bg-muted/50 rounded-2xl p-4 border border-border">
-                  <Markdown className="text-sm leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 [&>:last-child]:mb-0">
-                    {text || completeData.summary || completeData.result}
-                  </Markdown>
+                  <PipedreamUrlDetector
+                    content={sanitizeContentForDisplay((text || completeData.summary || completeData.result) as string)}
+                    className="text-sm leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 [&>:last-child]:mb-0"
+                  />
                 </div>
               </div>
             )}
@@ -364,9 +376,10 @@ export function CompleteToolView({
                         <CheckCircle className="h-4 w-4 text-emerald-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <Markdown className="text-sm leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 [&>:last-child]:mb-0">
-                          {task}
-                        </Markdown>
+                        <PipedreamUrlDetector
+                          content={sanitizeContentForDisplay(task)}
+                          className="text-sm leading-none prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 [&>:last-child]:mb-0"
+                        />
                       </div>
                     </div>
                   ))}

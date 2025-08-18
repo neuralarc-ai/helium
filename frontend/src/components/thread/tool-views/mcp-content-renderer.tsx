@@ -1,6 +1,6 @@
 import React from 'react';
 import { ContentFormat, FormatDetectionResult } from './mcp-format-detector';
-import { MarkdownRenderer } from '@/components/file-renderers/markdown-renderer';
+import { MarkdownRenderer } from '@/components/thread/preview-renderers/markdown-renderer';
 import { CsvRenderer } from '@/components/thread/preview-renderers/csv-renderer';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card } from '@/components/ui/card';
@@ -128,31 +128,47 @@ function SearchResultsRenderer({ data, metadata }: { data: any; metadata?: any }
                       />
                     )}
                     <Globe className="h-3 w-3 text-zinc-500" />
-                    <a
-                      href={result.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 dark:text-blue-400 hover:underline truncate flex-1"
-                    >
-                      {result.url}
-                    </a>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={() => navigator.clipboard?.writeText(result.url!)}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Copy URL</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    {isDaytonaProxy(result.url) ? (
+                      <span
+                        role="link"
+                        tabIndex={0}
+                        onClick={() => { try { window.open(result.url, '_blank', 'noopener,noreferrer'); } catch {} }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); try { window.open(result.url, '_blank', 'noopener,noreferrer'); } catch {} } }}
+                        className="text-blue-600 dark:text-blue-300 underline cursor-pointer text-xs font-medium"
+                        aria-label="Open link in a new tab"
+                        title="Open link in a new tab"
+                      >
+                        Click here to open the link
+                      </span>
+                    ) : (
+                      <>
+                        <a
+                          href={result.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 dark:text-blue-400 hover:underline truncate flex-1"
+                        >
+                          {result.url}
+                        </a>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => navigator.clipboard?.writeText(result.url!)}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Copy URL</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -170,105 +186,92 @@ function SearchResultsRenderer({ data, metadata }: { data: any; metadata?: any }
   );
 }
 
-// Renderer for table data
-function TableRenderer({ data }: { data: any }) {
-  const renderAsTable = (items: any[]) => {
-    if (!items.length) return null;
-
-    const headers = Object.keys(items[0]);
-
-    return (
-      <div className="p-3">
-        <div className="flex items-center gap-2 mb-3">
-          <Table className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Table Data ({items.length} rows)
-          </span>
-        </div>
-        <ScrollArea className="max-h-96">
-          <table className="w-full text-sm">
-            <thead className="border-b border-zinc-200 dark:border-zinc-700">
-              <tr>
-                {headers.map((header, idx) => (
-                  <th key={idx} className="px-3 py-2 text-left font-medium text-zinc-700 dark:text-zinc-300">
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((row, rowIdx) => (
-                <tr key={rowIdx} className="border-b border-zinc-100 dark:border-zinc-800">
-                  {headers.map((header, cellIdx) => (
-                    <td key={cellIdx} className="px-3 py-2 text-zinc-600 dark:text-zinc-400">
-                      {String(row[header] ?? '')}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </ScrollArea>
-      </div>
-    );
-  };
-
-  if (Array.isArray(data)) {
-    return renderAsTable(data);
-  }
-
-  return <JsonRenderer data={data} />;
-}
-
-// Renderer for JSON data
+// Simple JSON renderer
 function JsonRenderer({ data }: { data: any }) {
+  let text = '';
+  try {
+    text = typeof data === 'string' ? JSON.stringify(JSON.parse(data), null, 2) : JSON.stringify(data, null, 2);
+  } catch {
+    text = typeof data === 'string' ? data : String(data);
+  }
   return (
     <div className="p-3">
-      <div className="flex items-center gap-2 mb-3">
-        <Database className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Structured Data
-        </span>
-      </div>
       <ScrollArea className="max-h-96">
-        <pre className="whitespace-pre-wrap font-mono text-xs text-zinc-700 dark:text-zinc-300">
-          {JSON.stringify(data, null, 2)}
+        <pre className="whitespace-pre-wrap font-mono text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900 p-3 rounded">
+          {text}
         </pre>
       </ScrollArea>
     </div>
   );
 }
 
-// Renderer for key-value pairs
+// Simple key-value renderer for colon-delimited lines
 function KeyValueRenderer({ content }: { content: string }) {
-  const lines = content.split('\n').filter(line => line.includes(':'));
-  const pairs = lines.map(line => {
-    const [key, ...valueParts] = line.split(':');
-    return { key: key.trim(), value: valueParts.join(':').trim() };
+  const lines = content.split(/\r?\n/).filter(Boolean);
+  const pairs = lines.map((l) => {
+    const idx = l.indexOf(':');
+    return idx >= 0 ? { key: l.slice(0, idx).trim(), value: l.slice(idx + 1).trim() } : { key: '', value: l };
   });
-
   return (
     <div className="p-3">
-      <div className="flex items-center gap-2 mb-3">
-        <Key className="h-4 w-4 text-green-600 dark:text-green-400" />
-        <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Properties
-        </span>
-      </div>
-      <div className="space-y-2">
-        {pairs.map((pair, idx) => (
-          <div key={idx} className="flex items-start gap-2 text-sm">
-            <span className="font-medium text-zinc-700 dark:text-zinc-300 min-w-[120px]">
-              {pair.key}:
-            </span>
-            <span className="text-zinc-600 dark:text-zinc-400 break-all">
-              {pair.value}
-            </span>
+      <div className="space-y-1 text-sm">
+        {pairs.map((p, i) => (
+          <div key={i} className="flex gap-2">
+            {p.key ? <span className="text-zinc-500 min-w-[120px]">{p.key}:</span> : null}
+            <span className="text-zinc-900 dark:text-zinc-100 break-words">{p.value}</span>
           </div>
         ))}
       </div>
     </div>
   );
+}
+
+// Simple table renderer for arrays of objects
+function TableRenderer({ data }: { data: any }) {
+  const rows: any[] = Array.isArray(data) ? data : Array.isArray(data?.rows) ? data.rows : [];
+  const headers = rows.length > 0 && typeof rows[0] === 'object' ? Object.keys(rows[0]) : [];
+  if (!headers.length) {
+    // Fallback to JSON view
+    return <JsonRenderer data={data} />;
+  }
+  return (
+    <div className="p-3">
+      <div className="overflow-auto max-h-96">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr>
+              {headers.map((h) => (
+                <th key={h} className="border border-slate-300 dark:border-zinc-700 px-3 py-2 text-left font-semibold bg-slate-100 dark:bg-zinc-800">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                {headers.map((h) => (
+                  <td key={h} className="border border-slate-300 dark:border-zinc-700 px-3 py-2 align-top">
+                    {String(r?.[h] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function isDaytonaProxy(url?: string) {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    return /(^|\.)proxy\.daytona\.work$/i.test(u.hostname);
+  } catch {
+    return /https?:\/\/(?:[\w.-]+\.)?proxy\.daytona\.work/i.test(url);
+  }
 }
 
 // Renderer for URL lists
@@ -286,15 +289,31 @@ function UrlListRenderer({ content }: { content: string }) {
       <div className="space-y-2">
         {urls.map((url, idx) => (
           <div key={idx} className="flex items-center gap-2">
-            <ExternalLink className="h-3 w-3 text-zinc-500" />
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate"
-            >
-              {url}
-            </a>
+            {isDaytonaProxy(url) ? (
+              <span
+                role="link"
+                tabIndex={0}
+                onClick={() => { try { window.open(url, '_blank', 'noopener,noreferrer'); } catch {} }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); try { window.open(url, '_blank', 'noopener,noreferrer'); } catch {} } }}
+                className="text-blue-600 dark:text-blue-300 underline cursor-pointer text-xs font-medium"
+                aria-label="Open link in a new tab"
+                title="Open link in a new tab"
+              >
+                Click here to open the link
+              </span>
+            ) : (
+              <>
+                <ExternalLink className="h-3 w-3 text-zinc-500" />
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline truncate"
+                >
+                  {url}
+                </a>
+              </>
+            )}
           </div>
         ))}
       </div>
@@ -302,7 +321,7 @@ function UrlListRenderer({ content }: { content: string }) {
   );
 }
 
-// Renderer for errors
+// ... rest of the code remains the same ...
 function ErrorRenderer({ content }: { content: string }) {
   return (
     <div className="p-3">

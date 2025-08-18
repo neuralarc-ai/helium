@@ -38,6 +38,17 @@ export function ExposePortToolView({
     assistantTimestamp
   );
 
+  // Sanitize message to avoid exposing raw URLs to the user when a URL is present
+  const sanitizedMessage = React.useMemo(() => {
+    if (!message) return '';
+    // Remove any http/https URLs
+    const withoutUrls = message.replace(/https?:\/\/[^\s)]+/g, '').trim();
+    // Redact explicit "port 8080" or "port: 8080" style mentions
+    const redactedPorts = withoutUrls.replace(/\b(port\s*:?\s*)(\d{2,5})/gi, '$1[redacted]');
+    // Collapse extra whitespace created by removals
+    return redactedPorts.replace(/\s{2,}/g, ' ').trim();
+  }, [message]);
+
   return (
     <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
       <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-lg mx-4 mt-2">
@@ -78,7 +89,7 @@ export function ExposePortToolView({
             iconColor="text-emerald-500 dark:text-emerald-400"
             bgColor="bg-gradient-to-b from-emerald-100 to-emerald-50 shadow-inner dark:from-emerald-800/40 dark:to-emerald-900/60 dark:shadow-emerald-950/20"
             title="Exposing port"
-            filePath={port?.toString()}
+            filePath={undefined}
             showProgress={true}
           />
         ) : (
@@ -92,33 +103,37 @@ export function ExposePortToolView({
                         <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2">
                           Exposed URL
                         </h3>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-md font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 mb-3 break-all max-w-full"
+                        <span
+                          role="link"
+                          tabIndex={0}
+                          onClick={() => {
+                            try {
+                              window.open(url, '_blank', 'noopener,noreferrer');
+                            } catch (e) {
+                              console.error('Failed to open link', e);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              try { window.open(url, '_blank', 'noopener,noreferrer'); } catch {}
+                            }
+                          }}
+                          className="mb-3 text-blue-600 dark:text-blue-300 underline cursor-pointer text-sm font-medium"
+                          aria-label="Open exposed URL in a new tab"
+                          title="Open link in a new tab"
                         >
-                          {url}
-                          <ExternalLink className="flex-shrink-0 h-3.5 w-3.5" />
-                        </a>
+                          Click here to open the link
+                        </span>
                       </div>
                     </div>
 
                     <div className="space-y-3">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                          Port Details
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                          <Badge variant="outline" className="bg-zinc-50 dark:bg-zinc-800 font-mono">
-                            Port: {port}
-                          </Badge>
-                        </div>
-                      </div>
+                      {/* Port details intentionally hidden to avoid exposing port numbers */}
 
-                      {message && (
+                      {sanitizedMessage && (
                         <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                          {message}
+                          {sanitizedMessage}
                         </div>
                       )}
 
@@ -155,7 +170,7 @@ export function ExposePortToolView({
           {!isStreaming && port && (
             <Badge variant="outline">
               <Computer className="h-3 w-3 mr-1" />
-              Port {port}
+              Port Exposed
             </Badge>
           )}
         </div>
