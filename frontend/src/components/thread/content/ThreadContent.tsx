@@ -238,10 +238,10 @@ export function renderMarkdownContent(
             <div key={`tool-${match.index}-${index}`} className="my-1">
               <button
                 onClick={() => handleToolClick(messageId, toolName)}
-                className="inline-flex items-center gap-1.5 py-1 px-1 pr-1.5 text-xs text-muted-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors cursor-pointer border border-neutral-200 dark:border-neutral-700/50"
+                className="inline-flex items-center gap-1.5 py-1.5 px-2.5 pr-1.5 text-xs text-muted-foreground bg-muted/50 hover:bg-muted/80 rounded-full transition-colors cursor-pointer border border-neutral-200"
               >
-                <div className="border-2 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-800 flex items-center justify-center p-0.5 rounded-sm border-neutral-400/20 dark:border-neutral-600">
-                  <IconComponent className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <div className="border-[1.5px] bg-muted flex items-center justify-center p-0.5 rounded-sm">
+                  <IconComponent className="h-3 w-3 text-black/70 flex-shrink-0 stroke-[2.5px]" />
                 </div>
                 <span className="text-xs text-foreground/80">
                   {getUserFriendlyToolName(toolName)}
@@ -475,6 +475,9 @@ export interface ThreadContentProps {
   threadMetadata?: any; // Add thread metadata prop
   // Align content to the left edge of the content area (useful when side panel is open)
   isSidePanelOpen?: boolean;
+  // Sidebar state for proper positioning
+  leftSidebarState?: 'collapsed' | 'expanded';
+  isLeftSidebarExpanded?: boolean;
   onSubmit?: (
     message: string,
     options?: { model_name?: string; enable_thinking?: boolean },
@@ -505,6 +508,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   emptyStateComponent,
   threadMetadata,
   isSidePanelOpen = false,
+  leftSidebarState = 'collapsed',
+  isLeftSidebarExpanded = false,
   onSubmit,
   isFloatingToolPreviewVisible = false,
   setInputValue,
@@ -1809,7 +1814,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 !readOnly &&
                 (messages.length === 0 ||
                   messages[messages.length - 1].type === 'user') && (
-                  <div ref={latestMessageRef} className="w-full h-22 rounded">
+                  <div ref={latestMessageRef} className="w-full h-fit">
                     <div className="flex flex-col gap-4">
                       {/* Logo positioned above the loader */}
                       <div className="flex items-center gap-2">
@@ -1824,7 +1829,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                       </div>
 
                       {/* Loader content */}
-                                              <div className="space-y-4 w-full h-12">
+                      <div className="space-y-4 w-full h-12">
                         <AgentLoader />
                       </div>
                     </div>
@@ -1899,12 +1904,23 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       {/* Scroll to bottom button */}
       {showScrollButton && (
         <Button
-          variant="outline"
           size="icon"
-          className="fixed bottom-24 right-6 z-10 h-8 w-8 rounded-full shadow-md"
+                      className={cn(
+              "fixed z-50 h-8 w-8 bg-white hover:bg-white/50 backdrop-blur-3xl border border-black/10 cursor-pointer rounded-full shadow-xs transition-all duration-300 ease-in-out",
+              // Position above chat input (pt-16 = 4rem, plus some buffer)
+              "bottom-50",
+              // Right positioning based on all possible sidebar states
+              leftSidebarState === 'expanded' && !isSidePanelOpen
+                ? 'right-[calc(50vw-156px)] bottom-62' // Left sidebar open, right side panel closed
+                : leftSidebarState === 'expanded' && isSidePanelOpen
+                  ? 'right-[calc(46vw+2rem)] bottom-52' // Left sidebar open, right side panel open
+                  : leftSidebarState === 'collapsed' && !isSidePanelOpen
+                    ? 'right-[calc(50vw-2rem)] bottom-62' // Left sidebar closed, right side panel closed
+                    : 'right-[calc(52vw+2rem)] bottom-52' // Left sidebar closed, right side panel open (default)
+            )}
           onClick={() => scrollToBottom('smooth')}
         >
-          <ArrowDown className="h-4 w-4" />
+          <ArrowDown className="h-4 w-4 text-black" />
         </Button>
       )}
     </>

@@ -43,7 +43,7 @@ export const AgentLoader = () => {
                 exit={{ y: -20, opacity: 0, filter: "blur(8px)" }}
                 transition={{ ease: "easeInOut" }}
                 style={{ position: "absolute" }}
-                className='ml-7'
+                className='ml-7.5'
             >
                 <AnimatedShinyText>{items[index].content}</AnimatedShinyText>
             </motion.div>
