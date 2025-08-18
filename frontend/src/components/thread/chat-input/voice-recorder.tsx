@@ -192,6 +192,8 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     };
 
     recognitionRef.current.onerror = (event: any) => {
+      // If the user has intentionally stopped, ignore any late errors
+      if (userStoppingRef.current) return;
       const err = (event && (event.error || event.name)) || 'unknown';
       console.error('Speech recognition error', err, event);
       // Handle recoverable vs fatal errors
@@ -211,13 +213,13 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
       if (recoverableErrors.has(err)) {
         // Attempt to auto-recover if we are still recording
-        if (stateRef.current === 'recording') {
+        if (!userStoppingRef.current && stateRef.current === 'recording') {
           try {
             recognitionRef.current?.stop();
           } catch {}
           setTimeout(() => {
             try {
-              if (stateRef.current === 'recording') recognitionRef.current?.start();
+              if (!userStoppingRef.current && stateRef.current === 'recording') recognitionRef.current?.start();
             } catch (e) {
               console.error('Failed to recover recognition after error:', e);
             }
@@ -536,6 +538,8 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     // Set guard first to prevent onend auto-restart
     userStoppingRef.current = true;
     ignoreResultsRef.current = true;
+    // Clear any visible error when the stop is intentional
+    setError(null);
     // Stop recognition explicitly
     try { (recognitionRef.current as any)?.abort?.(); } catch {}
     try { recognitionRef.current?.stop(); } catch {}

@@ -191,6 +191,8 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const hasLoadedFromLocalStorage = useRef(false);
+    // Tracks the last cumulative transcript received from VoiceRecorder
+    const lastTranscriptionRef = useRef<string>('');
     
     const { data: agentsResponse } = useAgents();
     const agents = agentsResponse?.agents || [];
@@ -289,6 +291,9 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
         setUncontrolledValue('');
       }
 
+      // Reset last transcript tracker on submit
+      lastTranscriptionRef.current = '';
+
       setUploadedFiles([]);
     };
 
@@ -299,17 +304,37 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       } else {
         setUncontrolledValue(newValue);
       }
+      // User typed manually; clear transcript tracker so next transcript appends
+      lastTranscriptionRef.current = '';
     };
 
     const handleTranscription = (transcribedText: string) => {
-      const currentValue = isControlled ? controlledValue : uncontrolledValue;
-      const newValue = currentValue ? `${currentValue} ${transcribedText}` : transcribedText;
+      // Ignore empty or whitespace-only updates to avoid clearing on pauses
+      if (!transcribedText || !transcribedText.trim()) {
+        return;
+      }
+
+      const currentValue = (isControlled ? (controlledValue ?? '') : uncontrolledValue) || '';
+      const last = lastTranscriptionRef.current;
+
+      // If the current value already ends with the last transcript, strip it to get the base
+      let base = currentValue;
+      if (last && currentValue.endsWith(last)) {
+        base = currentValue.slice(0, currentValue.length - last.length);
+        // Trim any trailing whitespace left behind
+        base = base.replace(/\s+$/, '');
+      }
+
+      const newValue = base ? `${base} ${transcribedText}` : transcribedText;
 
       if (isControlled) {
         controlledOnChange(newValue);
       } else {
         setUncontrolledValue(newValue);
       }
+
+      // Update last transcript tracker
+      lastTranscriptionRef.current = transcribedText;
     };
 
     const removeUploadedFile = (index: number) => {
