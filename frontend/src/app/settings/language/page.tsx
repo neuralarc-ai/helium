@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { I18nProvider } from '@/lib/i18n-clients';
+// Use the global I18nProvider from app/providers.tsx; no local provider here
 
 // Dynamically import the LanguageSettings component with SSR disabled
 const LanguageSettings = dynamic(
@@ -23,13 +23,10 @@ export default function LanguageSettingsPage() {
   }
 
   return (
-    <I18nProvider>
-      <div className="container mx-auto py-8 px-4">
-        <h1 className="text-3xl font-bold mb-6">Language Settings</h1>
-        <div className="max-w-2xl">
-          <LanguageSettings asPage={true} />
-        </div>
+    <div className="container mx-auto py-8 px-4">
+      <div className="max-w-2xl">
+        <LanguageSettings asPage={true} />
       </div>
-    </I18nProvider>
+    </div>
   );
 }
