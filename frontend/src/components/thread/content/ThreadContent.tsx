@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useContext } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { useI18n } from '@/lib/i18n-clients';
 import {
   ArrowDown,
@@ -47,7 +47,7 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+// Note: framer-motion not used in this file currently
 
 const HIDE_STREAMING_XML_TAGS = new Set([
   'execute-command',
@@ -765,10 +765,14 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                       (() => {
                         // For assistant messages, check if agent matches
                         if (messageType === 'assistant') {
-                          const lastAssistantMsg =
-                            currentGroup.messages.findLast(
-                              (m) => m.type === 'assistant',
-                            );
+                          // Find the last assistant message in a backward-compatible way
+                          const lastAssistantMsg = (() => {
+                            for (let i = currentGroup!.messages.length - 1; i >= 0; i--) {
+                              const m = currentGroup!.messages[i];
+                              if (m.type === 'assistant') return m;
+                            }
+                            return undefined;
+                          })();
                           if (!lastAssistantMsg) return true; // No assistant message yet, can add
 
                           // Compare agent info - both null/undefined should be treated as same (default agent)
@@ -851,7 +855,10 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
                 // Handle streaming content - only add to existing group or create new one if needed
                 if (streamingTextContent) {
-                  const lastGroup = finalGroupedMessages.at(-1);
+                  const lastGroup =
+                    finalGroupedMessages.length > 0
+                      ? finalGroupedMessages[finalGroupedMessages.length - 1]
+                      : undefined;
                   if (!lastGroup || lastGroup.type === 'user') {
                     // Create new assistant group for streaming content
                     assistantGroupCounter++;
@@ -868,6 +875,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                           is_llm_message: true,
                           thread_id: 'streamingTextContent',
                           sequence: Infinity,
+                          role: 'assistant',
                         },
                       ],
                       key: `assistant-group-${assistantGroupCounter}-streaming`,
@@ -887,6 +895,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         is_llm_message: true,
                         thread_id: 'streamingTextContent',
                         sequence: Infinity,
+                        role: 'assistant',
                       });
                     }
                   }
@@ -896,8 +905,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                   if (group.type === 'user') {
                     const message = group.messages[0];
                     const messageContent = typeof message.content === 'object' && message.content !== null
-                      ? (message.content as any)[t('language.code')] || message.content['en'] || JSON.stringify(message.content)
-                      : message.content;
+                      ? (message.content as any)[t('language.code')] || (message.content as any)['en'] || JSON.stringify(message.content)
+                      : (message.content ?? '');
                     const messageRole = message.role;
 
                     // In debug mode, display raw message content
@@ -906,7 +915,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         <div key={group.key} className="flex justify-end">
                           <div className="flex max-w-[85%] rounded-2xl bg-card px-4 py-3 break-words overflow-hidden">
                             <pre className="text-xs font-mono whitespace-pre-wrap overflow-x-auto min-w-0 flex-1">
-                              {message.content}
+                              {typeof message.content === 'string'
+                                ? message.content
+                                : JSON.stringify(message.content ?? '', null, 2)}
                             </pre>
                           </div>
                         </div>
