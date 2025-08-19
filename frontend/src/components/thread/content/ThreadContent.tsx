@@ -39,14 +39,77 @@ import {
 import { ShowToolStream } from './ShowToolStream';
 import { PipedreamUrlDetector } from './pipedream-url-detector';
 import { ThinkingAccordion } from './ThinkingAccordion';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+
+function getNodeText(node: any): string {
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(getNodeText).join('');
+  if (typeof node === 'object' && node) return getNodeText(node.props.children);
+  return '';
+}
+
+const customTableComponents = {
+  table: function Table({ children, ...props }: any) {
+    return (
+      <div className="not-prose">
+        <div className="overflow-x-auto">
+          <table
+            className="w-full table-fixed border-collapse my-3 text-sm"
+            {...props}
+          >
+            {children}
+          </table>
+        </div>
+      </div>
+    );
+  },
+  th: function TableHeader({ children, ...props }: any) {
+    return (
+      <th
+        className="border border-slate-300 dark:border-zinc-700 px-3 py-2 sm:px-2 sm:py-1 text-left font-semibold bg-slate-100 dark:bg-zinc-800 text-sm sm:text-xs truncate"
+        {...props}
+      >
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>{children}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{getNodeText(children)}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </th>
+    );
+  },
+  td: function TableCell({ children, ...props }: any) {
+    return (
+      <td
+        className="border border-slate-300 dark:border-zinc-700 px-3 py-2 sm:px-2 sm:py-1 text-sm sm:text-xs truncate max-w-[120px] sm:max-w-[80px]"
+        {...props}
+      >
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>{children}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{getNodeText(children)}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </td>
+    );
+  },
+};
 
 const HIDE_STREAMING_XML_TAGS = new Set([
   'execute-command',
@@ -83,9 +146,6 @@ const HIDE_STREAMING_XML_TAGS = new Set([
   'execute-data-provider-endpoint',
 ]);
 
-
-
-// Render Markdown content while preserving XML tags that should be displayed as tool calls
 export function renderMarkdownContent(
   content: string,
   handleToolClick: (
@@ -202,22 +262,26 @@ export function renderMarkdownContent(
           );
         } else if (toolName === 'think') {
           // Handle think tool specially - extract text content
-          const thinkText = toolCall.parameters.text || toolCall.parameters.content || '';
+          const thinkText =
+            toolCall.parameters.text || toolCall.parameters.content || '';
 
           // Check if this think tag is currently streaming
-          const isCurrentlyStreaming = streamingTextContent && 
-            streamingTextContent.includes('<think') && 
+          const isCurrentlyStreaming =
+            streamingTextContent &&
+            streamingTextContent.includes('<think') &&
             !streamingTextContent.includes('</think>');
 
           // Render think tool content with thinking UI
           contentParts.push(
-            <ThinkingAccordion 
+            <ThinkingAccordion
               key={`think-${match.index}-${index}`}
               content={thinkText}
               isStreaming={isCurrentlyStreaming}
-              streamingContent={isCurrentlyStreaming ? streamingTextContent : ''}
+              streamingContent={
+                isCurrentlyStreaming ? streamingTextContent : ''
+              }
               streamHookStatus={streamHookStatus}
-            />
+            />,
           );
         } else {
           const IconComponent = getToolIcon(toolName);
@@ -300,6 +364,7 @@ export function renderMarkdownContent(
       <PipedreamUrlDetector
         content={content}
         className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
+        components={customTableComponents}
       />
     );
   }
@@ -370,7 +435,7 @@ export function renderMarkdownContent(
           <PipedreamUrlDetector
             content={completeContent}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
-              />
+          />
           {attachments && attachments.length > 0 && (
             <ThreadFilesDisplay
               attachments={attachments}
@@ -389,13 +454,14 @@ export function renderMarkdownContent(
       const thinkContent = contentMatch ? contentMatch[1] : '';
 
       // Check if this think tag is currently streaming
-      const isCurrentlyStreaming = streamingTextContent && 
-        streamingTextContent.includes('<think') && 
+      const isCurrentlyStreaming =
+        streamingTextContent &&
+        streamingTextContent.includes('<think') &&
         !streamingTextContent.includes('</think>');
 
       // Render <think> tag content with thinking UI
       contentParts.push(
-        <ThinkingAccordion 
+        <ThinkingAccordion
           key={`think-${match.index}`}
           content={thinkContent}
           isStreaming={isCurrentlyStreaming}
@@ -661,7 +727,10 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   // - Use 'smooth' for user interactions and status changes
   // - This mimics ChatGPT/Claude behavior where content stays visible during generation
   React.useEffect(() => {
-    if (streamingTextContent && (agentStatus === 'running' || agentStatus === 'connecting')) {
+    if (
+      streamingTextContent &&
+      (agentStatus === 'running' || agentStatus === 'connecting')
+    ) {
       // Use immediate scroll for streaming content to ensure smooth experience
       scrollToBottom('auto');
     }
@@ -676,14 +745,20 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
   // Auto-scroll to bottom when streaming tool calls change
   React.useEffect(() => {
-    if (streamingToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
+    if (
+      streamingToolCall &&
+      (agentStatus === 'running' || agentStatus === 'connecting')
+    ) {
       scrollToBottom('auto');
     }
   }, [streamingToolCall, agentStatus, scrollToBottom]);
 
   // Auto-scroll to bottom when new tool calls are added
   React.useEffect(() => {
-    if (currentToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
+    if (
+      currentToolCall &&
+      (agentStatus === 'running' || agentStatus === 'connecting')
+    ) {
       scrollToBottom('auto');
     }
   }, [currentToolCall, agentStatus, scrollToBottom]);
@@ -990,9 +1065,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         data-message-id={group.key}
                       >
                         <div className="flex flex-col gap-1 items-end max-w-[85%]">
-                          <div
-                            className={cn('flex w-fit')}
-                          >
+                          <div className={cn('flex w-fit')}>
                             <div
                               style={{
                                 background: '#FFFFFF',
@@ -1038,11 +1111,10 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                     />
                                   </div>
                                 )}
-
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Files Display - Below the message content */}
                           {attachments && attachments.length > 0 && (
                             <div className="w-full flex justify-end">
@@ -1058,107 +1130,11 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                               </div>
                             </div>
                           )}
-                          
+
                           {/* Copy and Edit buttons for user prompt - OUTSIDE the message box */}
                           {!readOnly && (
                             <div className="w-full flex justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out">
                               <div className="max-w-[85%] flex justify-end">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(
-                                        cleanContent,
-                                      );
-                                      setCopiedPromptIdx(groupIndex);
-                                      toast.success('Copied to clipboard');
-                                      setTimeout(
-                                        () => setCopiedPromptIdx(null),
-                                        1500,
-                                      );
-                                    }}
-                                  >
-                                    {copiedPromptIdx === groupIndex ? (
-                                      <Check className="h-4 w-4" />
-                                    ) : (
-                                      <Copy className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Copy prompt</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              {editingMessageId === group.key ? (
-                                // Send and Cancel buttons when editing
-                                <>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-foreground/80"
-                                        onClick={() => {
-                                          const messageElement =
-                                            document.querySelector(
-                                              `[data-message-id="${group.key}"] .message-content`,
-                                            ) as HTMLElement;
-
-                                          if (messageElement && onSubmit) {
-                                            const newContent =
-                                              messageElement.textContent || '';
-                                            messageElement.contentEditable =
-                                              'false';
-                                            setEditingMessageId(null);
-                                            setOriginalDimensions(null);
-                                            onSubmit(newContent);
-                                            toast.success('Message sent');
-                                          }
-                                        }}
-                                        disabled={editValue.trim() === ''}
-                                      >
-                                        <Check className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Send edit</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
-                                        onClick={() => {
-                                          // Cancel editing and restore original content
-                                          const messageElement =
-                                            document.querySelector(
-                                              `[data-message-id="${group.key}"] .message-content`,
-                                            ) as HTMLElement;
-                                          if (messageElement) {
-                                            messageElement.textContent =
-                                              cleanContent;
-                                            messageElement.contentEditable =
-                                              'false';
-                                            setEditingMessageId(null);
-                                            setOriginalDimensions(null);
-                                            toast.info('Edit cancelled');
-                                          }
-                                        }}
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Cancel edit</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </>
-                              ) : (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button
@@ -1166,49 +1142,147 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                       size="sm"
                                       className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
                                       onClick={() => {
-                                        // Start editing mode
-                                        setEditingMessageId(group.key);
-                                        setEditValue(cleanContent);
-                                        const messageElement =
-                                          document.querySelector(
-                                            `[data-message-id="${group.key}"] .message-content`,
-                                          ) as HTMLElement;
-                                        if (messageElement) {
-                                          // Capture original dimensions before making editable
-                                          const rect =
-                                            messageElement.getBoundingClientRect();
-                                          setOriginalDimensions({
-                                            width: rect.width,
-                                            height: rect.height,
-                                          });
-
-                                          messageElement.contentEditable =
-                                            'true';
-                                          messageElement.focus();
-                                          // Select all text
-                                          const range = document.createRange();
-                                          range.selectNodeContents(
-                                            messageElement,
-                                          );
-                                          const selection =
-                                            window.getSelection();
-                                          selection?.removeAllRanges();
-                                          selection?.addRange(range);
-                                          toast.info('Edit mode enabled');
-                                        }
+                                        navigator.clipboard.writeText(
+                                          cleanContent,
+                                        );
+                                        setCopiedPromptIdx(groupIndex);
+                                        toast.success('Copied to clipboard');
+                                        setTimeout(
+                                          () => setCopiedPromptIdx(null),
+                                          1500,
+                                        );
                                       }}
                                     >
-                                      <Pencil className="h-4 w-4" />
+                                      {copiedPromptIdx === groupIndex ? (
+                                        <Check className="h-4 w-4" />
+                                      ) : (
+                                        <Copy className="h-4 w-4" />
+                                      )}
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Edit prompt</p>
+                                    <p>Copy prompt</p>
                                   </TooltipContent>
                                 </Tooltip>
-                              )}
+                                {editingMessageId === group.key ? (
+                                  // Send and Cancel buttons when editing
+                                  <>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-foreground/80"
+                                          onClick={() => {
+                                            const messageElement =
+                                              document.querySelector(
+                                                `[data-message-id="${group.key}"] .message-content`,
+                                              ) as HTMLElement;
+
+                                            if (messageElement && onSubmit) {
+                                              const newContent =
+                                                messageElement.textContent ||
+                                                '';
+                                              messageElement.contentEditable =
+                                                'false';
+                                              setEditingMessageId(null);
+                                              setOriginalDimensions(null);
+                                              onSubmit(newContent);
+                                              toast.success('Message sent');
+                                            }
+                                          }}
+                                          disabled={editValue.trim() === ''}
+                                        >
+                                          <Check className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Send edit</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
+                                          onClick={() => {
+                                            // Cancel editing and restore original content
+                                            const messageElement =
+                                              document.querySelector(
+                                                `[data-message-id="${group.key}"] .message-content`,
+                                              ) as HTMLElement;
+                                            if (messageElement) {
+                                              messageElement.textContent =
+                                                cleanContent;
+                                              messageElement.contentEditable =
+                                                'false';
+                                              setEditingMessageId(null);
+                                              setOriginalDimensions(null);
+                                              toast.info('Edit cancelled');
+                                            }
+                                          }}
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Cancel edit</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </>
+                                ) : (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
+                                        onClick={() => {
+                                          // Start editing mode
+                                          setEditingMessageId(group.key);
+                                          setEditValue(cleanContent);
+                                          const messageElement =
+                                            document.querySelector(
+                                              `[data-message-id="${group.key}"] .message-content`,
+                                            ) as HTMLElement;
+                                          if (messageElement) {
+                                            // Capture original dimensions before making editable
+                                            const rect =
+                                              messageElement.getBoundingClientRect();
+                                            setOriginalDimensions({
+                                              width: rect.width,
+                                              height: rect.height,
+                                            });
+
+                                            messageElement.contentEditable =
+                                              'true';
+                                            messageElement.focus();
+                                            // Select all text
+                                            const range =
+                                              document.createRange();
+                                            range.selectNodeContents(
+                                              messageElement,
+                                            );
+                                            const selection =
+                                              window.getSelection();
+                                            selection?.removeAllRanges();
+                                            selection?.addRange(range);
+                                            toast.info('Edit mode enabled');
+                                          }
+                                        }}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Edit prompt</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
                         </div>
                       </div>
                     );
@@ -1559,7 +1633,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                       let tagStartIndex = -1;
                                       let thinkTagEndIndex = -1;
                                       let hasThinkTag = false;
-                                      
+
                                       if (streamingTextContent) {
                                         // First check for new format
                                         const functionCallsIndex =
@@ -1571,16 +1645,23 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                           tagStartIndex = functionCallsIndex;
                                         } else {
                                           // Check for think tag specifically
-                                          const thinkStartIndex = streamingTextContent.indexOf('<think');
+                                          const thinkStartIndex =
+                                            streamingTextContent.indexOf(
+                                              '<think',
+                                            );
                                           if (thinkStartIndex !== -1) {
                                             hasThinkTag = true;
                                             detectedTag = 'think';
                                             tagStartIndex = thinkStartIndex;
-                                            
+
                                             // Find the end of think tag
-                                            const thinkEndIndex = streamingTextContent.indexOf('</think>');
+                                            const thinkEndIndex =
+                                              streamingTextContent.indexOf(
+                                                '</think>',
+                                              );
                                             if (thinkEndIndex !== -1) {
-                                              thinkTagEndIndex = thinkEndIndex + 7; // +7 for '</think>'
+                                              thinkTagEndIndex =
+                                                thinkEndIndex + 7; // +7 for '</think>'
                                             }
                                           } else {
                                             // Fall back to old format detection for other tags
@@ -1601,16 +1682,23 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                         }
                                       }
 
-                                      const textToRender = streamingTextContent || '';
+                                      const textToRender =
+                                        streamingTextContent || '';
                                       const textBeforeTag = detectedTag
-                                        ? textToRender.substring(0, tagStartIndex)
+                                        ? textToRender.substring(
+                                            0,
+                                            tagStartIndex,
+                                          )
                                         : textToRender;
-                                      
+
                                       // If think tag is complete, show content after it
-                                      const textAfterThink = hasThinkTag && thinkTagEndIndex > 0 
-                                        ? textToRender.substring(thinkTagEndIndex)
-                                        : '';
-                                      
+                                      const textAfterThink =
+                                        hasThinkTag && thinkTagEndIndex > 0
+                                          ? textToRender.substring(
+                                              thinkTagEndIndex,
+                                            )
+                                          : '';
+
                                       const showCursor =
                                         (streamHookStatus === 'streaming' ||
                                           streamHookStatus === 'connecting') &&
@@ -1629,32 +1717,46 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                             <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
                                           )}
 
-                                          {detectedTag && detectedTag === 'think' ? (
+                                          {detectedTag &&
+                                          detectedTag === 'think' ? (
                                             <ThinkingAccordion
                                               content=""
-                                              isStreaming={streamHookStatus === 'streaming' && !textToRender.includes('</think>')} // Only streaming if actively streaming and no closing tag
-                                              streamingContent={textToRender.substring(tagStartIndex)}
-                                              streamHookStatus={streamHookStatus}
-                                            />
-                                          ) : detectedTag && (
-                                            <ShowToolStream
-                                              content={textToRender.substring(
+                                              isStreaming={
+                                                streamHookStatus ===
+                                                  'streaming' &&
+                                                !textToRender.includes(
+                                                  '</think>',
+                                                )
+                                              } // Only streaming if actively streaming and no closing tag
+                                              streamingContent={textToRender.substring(
                                                 tagStartIndex,
                                               )}
-                                              messageId={
-                                                visibleMessages &&
-                                                visibleMessages.length > 0
-                                                  ? visibleMessages[
-                                                      visibleMessages.length - 1
-                                                    ].message_id
-                                                  : 'playback-streaming'
+                                              streamHookStatus={
+                                                streamHookStatus
                                               }
-                                              onToolClick={handleToolClick}
-                                              showExpanded={true}
-                                              startTime={Date.now()}
                                             />
+                                          ) : (
+                                            detectedTag && (
+                                              <ShowToolStream
+                                                content={textToRender.substring(
+                                                  tagStartIndex,
+                                                )}
+                                                messageId={
+                                                  visibleMessages &&
+                                                  visibleMessages.length > 0
+                                                    ? visibleMessages[
+                                                        visibleMessages.length -
+                                                          1
+                                                      ].message_id
+                                                    : 'playback-streaming'
+                                                }
+                                                onToolClick={handleToolClick}
+                                                showExpanded={true}
+                                                startTime={Date.now()}
+                                              />
+                                            )
                                           )}
-                                          
+
                                           {/* Show content after think tag if it exists */}
                                           {textAfterThink && (
                                             <PipedreamUrlDetector
@@ -1679,7 +1781,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                       let tagStartIndex = -1;
                                       let thinkTagEndIndex = -1;
                                       let hasThinkTag = false;
-                                      
+
                                       if (streamingText) {
                                         // First check for new format
                                         const functionCallsIndex =
@@ -1691,16 +1793,19 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                           tagStartIndex = functionCallsIndex;
                                         } else {
                                           // Check for think tag specifically
-                                          const thinkStartIndex = streamingText.indexOf('<think');
+                                          const thinkStartIndex =
+                                            streamingText.indexOf('<think');
                                           if (thinkStartIndex !== -1) {
                                             hasThinkTag = true;
                                             detectedTag = 'think';
                                             tagStartIndex = thinkStartIndex;
-                                            
+
                                             // Find the end of think tag
-                                            const thinkEndIndex = streamingText.indexOf('</think>');
+                                            const thinkEndIndex =
+                                              streamingText.indexOf('</think>');
                                             if (thinkEndIndex !== -1) {
-                                              thinkTagEndIndex = thinkEndIndex + 7; // +7 for '</think>'
+                                              thinkTagEndIndex =
+                                                thinkEndIndex + 7; // +7 for '</think>'
                                             }
                                           } else {
                                             // Fall back to old format detection for other tags
@@ -1723,16 +1828,24 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
                                       const textToRender = streamingText || '';
                                       const textBeforeTag = detectedTag
-                                        ? textToRender.substring(0, tagStartIndex)
+                                        ? textToRender.substring(
+                                            0,
+                                            tagStartIndex,
+                                          )
                                         : textToRender;
-                                      
+
                                       // If think tag is complete, show content after it
-                                      const textAfterThink = hasThinkTag && thinkTagEndIndex > 0 
-                                        ? textToRender.substring(thinkTagEndIndex)
-                                        : '';
-                                      
+                                      const textAfterThink =
+                                        hasThinkTag && thinkTagEndIndex > 0
+                                          ? textToRender.substring(
+                                              thinkTagEndIndex,
+                                            )
+                                          : '';
+
                                       const showCursor =
-                                        isStreamingText && !detectedTag && !textAfterThink;
+                                        isStreamingText &&
+                                        !detectedTag &&
+                                        !textAfterThink;
 
                                       return (
                                         <>
@@ -1753,25 +1866,36 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                 <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
                                               )}
 
-                                              {detectedTag && detectedTag === 'think' ? (
+                                              {detectedTag &&
+                                              detectedTag === 'think' ? (
                                                 <ThinkingAccordion
                                                   content=""
-                                                  isStreaming={!textToRender.includes('</think>')} // Only streaming if no closing tag
-                                                  streamingContent={textToRender.substring(tagStartIndex)}
-                                                  streamHookStatus="streaming"
-                                                />
-                                              ) : detectedTag && (
-                                                <ShowToolStream
-                                                  content={textToRender.substring(
+                                                  isStreaming={
+                                                    !textToRender.includes(
+                                                      '</think>',
+                                                    )
+                                                  } // Only streaming if no closing tag
+                                                  streamingContent={textToRender.substring(
                                                     tagStartIndex,
                                                   )}
-                                                  messageId="streamingTextContent"
-                                                  onToolClick={handleToolClick}
-                                                  showExpanded={true}
-                                                  startTime={Date.now()} // Tool just started now
+                                                  streamHookStatus="streaming"
                                                 />
+                                              ) : (
+                                                detectedTag && (
+                                                  <ShowToolStream
+                                                    content={textToRender.substring(
+                                                      tagStartIndex,
+                                                    )}
+                                                    messageId="streamingTextContent"
+                                                    onToolClick={
+                                                      handleToolClick
+                                                    }
+                                                    showExpanded={true}
+                                                    startTime={Date.now()} // Tool just started now
+                                                  />
+                                                )
                                               )}
-                                              
+
                                               {/* Show content after think tag if it exists */}
                                               {textAfterThink && (
                                                 <PipedreamUrlDetector
@@ -1788,7 +1912,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 )}
                             </div>
                           </div>
-                          
+
                           {/* Helium logo and text at the bottom - only for the last assistant group */}
                           {groupIndex === finalGroupedMessages.length - 1 && (
                             <div className="flex items-center gap-2 mt-2">
@@ -1847,7 +1971,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         </span>
                       </div>
                     </div>
-                    
+
                     {/* Logo positioned below the tool call */}
 
                     <div className="flex items-center gap-2">
@@ -1860,7 +1984,6 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         </p>
                       </div>
                     </div>
-
                   </div>
                 </div>
               )}
@@ -1880,7 +2003,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                           <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-300" />
                         </div>
                       </div>
-                      
+
                       {/* Logo positioned below the streaming indicator */}
                       <div className="flex items-center gap-2">
                         <div className="h-12 w-fit rounded-xl flex items-center justify-center">
@@ -1905,19 +2028,19 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       {showScrollButton && (
         <Button
           size="icon"
-                      className={cn(
-              "fixed z-50 h-8 w-8 bg-white hover:bg-white/50 backdrop-blur-3xl border border-black/10 cursor-pointer rounded-full shadow-xs transition-all duration-300 ease-in-out",
-              // Position above chat input (pt-16 = 4rem, plus some buffer)
-              "bottom-50",
-              // Right positioning based on all possible sidebar states
-              leftSidebarState === 'expanded' && !isSidePanelOpen
-                ? 'right-[calc(50vw-156px)] bottom-62' // Left sidebar open, right side panel closed
-                : leftSidebarState === 'expanded' && isSidePanelOpen
-                  ? 'right-[calc(46vw+2rem)] bottom-52' // Left sidebar open, right side panel open
-                  : leftSidebarState === 'collapsed' && !isSidePanelOpen
-                    ? 'right-[calc(50vw-2rem)] bottom-62' // Left sidebar closed, right side panel closed
-                    : 'right-[calc(52vw+2rem)] bottom-52' // Left sidebar closed, right side panel open (default)
-            )}
+          className={cn(
+            'fixed z-50 h-8 w-8 bg-white hover:bg-white/50 backdrop-blur-3xl border border-black/10 cursor-pointer rounded-full shadow-xs transition-all duration-300 ease-in-out',
+            // Position above chat input (pt-16 = 4rem, plus some buffer)
+            'bottom-50',
+            // Right positioning based on all possible sidebar states
+            leftSidebarState === 'expanded' && !isSidePanelOpen
+              ? 'right-[calc(50vw-156px)] bottom-62' // Left sidebar open, right side panel closed
+              : leftSidebarState === 'expanded' && isSidePanelOpen
+                ? 'right-[calc(46vw+2rem)] bottom-52' // Left sidebar open, right side panel open
+                : leftSidebarState === 'collapsed' && !isSidePanelOpen
+                  ? 'right-[calc(50vw-2rem)] bottom-62' // Left sidebar closed, right side panel closed
+                  : 'right-[calc(52vw+2rem)] bottom-52', // Left sidebar closed, right side panel open (default)
+          )}
           onClick={() => scrollToBottom('smooth')}
         >
           <ArrowDown className="h-4 w-4 text-black" />

@@ -319,17 +319,13 @@ export default function LoginFooter() {
           ease: [0.4, 0, 0.2, 1],
           delay: 1.6
         }}
-        className="fixed bottom-4 left-1/2 transform -translate-x-1/2 flex flex-row items-center space-x-1 gap-y-2 text-xs text-muted-foreground z-20"
+        className="fixed bottom-4 left-0 right-0 mx-auto w-full px-4 flex flex-row flex-wrap justify-center items-center gap-x-1 gap-y-2 text-xs text-muted-foreground z-20 text-center"
       >
         <LinkButton topic="terms">Terms of use</LinkButton>
-        <span className="mx-1">•</span>
-        <LinkButton topic="privacy">Privacy Policy</LinkButton>
-        <span className="mx-1">•</span>
-        <LinkButton topic="responsible-ai">Responsible &amp; Ethical AI</LinkButton>
-        <span className="mx-1 flex-shrink-0">•</span>
-        <span className='flex-shrink-0'>Copyright 2025. All rights reserved.</span>
-        <span className="mx-1 flex-shrink-0">•</span>
-        <span className='flex-shrink-0'>Helium, a product by <Link href="https://neuralarc.ai" className="font-bold hover:underline" target="_blank" rel="noopener noreferrer">NeuralArc</Link></span>
+        <div className="flex items-center"><span className="mx-1">•</span><LinkButton topic="privacy">Privacy Policy</LinkButton></div>
+        <div className="flex items-center"><span className="mx-1">•</span><LinkButton topic="responsible-ai">Responsible &amp; Ethical AI</LinkButton></div>
+        <div className="flex items-center flex-shrink-0"><span className="mx-1">•</span><span>Copyright 2025. All rights reserved.</span></div>
+        <div className="flex items-center flex-shrink-0"><span className="mx-1">•</span><span>Helium, a product by <Link href="https://neuralarc.ai" className="font-bold hover:underline" target="_blank" rel="noopener noreferrer">NeuralArc</Link></span></div>
       </motion.div>
 
       <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
