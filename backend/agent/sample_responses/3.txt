@@ -1,26 +1,21 @@
 I'll create a simple weather dashboard that shows current conditions and forecasts for any city.
 
 <function_calls>
-<invoke name="create_file">
-<parameter name="file_path">todo.md</parameter>
-<parameter name="file_contents">
-# Weather Dashboard Todo
-
-## Planning
-- [x] Define app requirements
-- [x] Research weather API options
-
-## Development
-- [ ] Set up HTML structure
-- [ ] Create CSS styling
-- [ ] Implement JavaScript for API calls
-- [ ] Add search functionality
-
-## Testing
-- [ ] Test API integration
-- [ ] Test responsiveness
-- [ ] Final review
-</parameter>
+<invoke name="create_tasks">
+<parameter name="sections">[
+    {
+        "title": "Planning", 
+        "tasks": ["Define app requirements", "Research weather API options"]
+    },
+    {
+        "title": "Development", 
+        "tasks": ["Set up HTML structure", "Create CSS styling", "Implement JavaScript for API calls", "Add search functionality"]
+    },
+    {
+        "title": "Testing", 
+        "tasks": ["Test API integration", "Test responsiveness", "Final review"]
+    }
+]</parameter>
 </invoke>
 </function_calls>
 
@@ -210,18 +205,9 @@ section {
 </function_calls>
 
 <function_calls>
-<invoke name="edit_file">
-<parameter name="target_file">todo.md</parameter>
-<parameter name="instructions">I am marking HTML and CSS setup as complete in my todo list.</parameter>
-<parameter name="code_edit">
-// ... existing code ...
-## Development
-- [x] Set up HTML structure
-- [x] Create CSS styling
-- [ ] Implement JavaScript for API calls
-- [ ] Add search functionality
-// ... existing code ...
-</parameter>
+<invoke name="update_tasks">
+<parameter name="task_ids">["task-id-3", "task-id-4"]</parameter>
+<parameter name="status">completed</parameter>
 </invoke>
 </function_calls>
 
@@ -349,18 +335,9 @@ console.log('Weather Dashboard is ready to use!');
 </function_calls>
 
 <function_calls>
-<invoke name="edit_file">
-<parameter name="target_file">todo.md</parameter>
-<parameter name="instructions">I am marking JavaScript implementation and search functionality as complete in my todo list.</parameter>
-<parameter name="code_edit">
-// ... existing code ...
-## Development
-- [x] Set up HTML structure
-- [x] Create CSS styling
-- [x] Implement JavaScript for API calls
-- [x] Add search functionality
-// ... existing code ...
-</parameter>
+<invoke name="update_tasks">
+<parameter name="task_ids">["task-id-5", "task-id-6"]</parameter>
+<parameter name="status">completed</parameter>
 </invoke>
 </function_calls>
 
@@ -382,16 +359,9 @@ Let's start a server to preview our weather dashboard:
 I've tested the API integration and responsiveness and everything works correctly.
 
 <function_calls>
-<invoke name="edit_file">
-<parameter name="target_file">todo.md</parameter>
-<parameter name="instructions">I am marking testing as complete in my todo list.</parameter>
-<parameter name="code_edit">
-// ... existing code ...
-## Testing
-- [x] Test API integration
-- [x] Test responsiveness
-- [x] Final review
-</parameter>
+<invoke name="update_tasks">
+<parameter name="task_ids">["task-id-7", "task-id-8", "task-id-9"]</parameter>
+<parameter name="status">completed</parameter>
 </invoke>
 </function_calls>
 

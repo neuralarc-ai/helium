@@ -30,7 +30,6 @@ import {
   getUserFriendlyToolName,
   safeJsonParse,
 } from '@/components/thread/utils';
-import { HeliumLogo } from '@/components/sidebar/helium-logo';
 import { AgentLoader } from './loader';
 import {
   parseXmlToolCalls,
@@ -39,6 +38,8 @@ import {
 import { ShowToolStream } from './ShowToolStream';
 import { PipedreamUrlDetector } from './pipedream-url-detector';
 import { ThinkingAccordion } from './ThinkingAccordion';
+import { ThinkingAnimation } from '@/components/ui/ThinkingAnimation';
+import { HeliumLogo } from '@/components/sidebar/helium-logo';
 import {
   Tooltip,
   TooltipContent,
@@ -164,7 +165,7 @@ export function renderMarkdownContent(
                   sandboxId={sandboxId}
                   project={project}
                   className="mt-3"
-                  rightAlignGrid={false}
+                  rightAlignGrid={true}
                 />
               )}
             </div>,
@@ -195,7 +196,7 @@ export function renderMarkdownContent(
                   sandboxId={sandboxId}
                   project={project}
                   className="mt-3"
-                  rightAlignGrid={false}
+                  rightAlignGrid={true}
                 />
               )}
             </div>,
@@ -346,7 +347,7 @@ export function renderMarkdownContent(
               sandboxId={sandboxId}
               project={project}
               className="mt-3"
-              rightAlignGrid={false}
+              rightAlignGrid={true}
             />
           )}
         </div>,
@@ -378,7 +379,7 @@ export function renderMarkdownContent(
               sandboxId={sandboxId}
               project={project}
               className="mt-3"
-              rightAlignGrid={false}
+              rightAlignGrid={true}
             />
           )}
         </div>,
@@ -518,7 +519,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [, setUserHasScrolled] = useState(false);
+  const [userHasScrolled, setUserHasScrolled] = useState(false);
   const { session } = useAuth();
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
@@ -632,17 +633,39 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     const { scrollTop, scrollHeight, clientHeight } =
       messagesContainerRef.current;
     const isScrolledUp = scrollHeight - scrollTop - clientHeight > 100;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight <= 50;
+    
     setShowScrollButton(isScrolledUp);
     setUserHasScrolled(isScrolledUp);
+    
+    // Reset scroll state when user scrolls near bottom
+    if (isNearBottom && userHasScrolled) {
+      setUserHasScrolled(false);
+    }
   };
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
+    // Reset user scroll state when manually scrolling to bottom
+    if (behavior === 'smooth') {
+      setUserHasScrolled(false);
+    }
+  }, []);
+
+  // Check if the last assistant message is in view
+  const isLastAssistantMessageInView = useCallback(() => {
+    if (!messagesContainerRef.current) return true;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const scrollBottom = scrollTop + clientHeight;
+    const threshold = 150; // Allow some buffer
+    return scrollHeight - scrollBottom <= threshold;
   }, []);
 
   // Auto-scroll to bottom when new messages arrive or agent status changes
   React.useEffect(() => {
     if (agentStatus === 'running' || agentStatus === 'connecting') {
+      // Reset scroll state when agent starts working to allow auto-scroll
+      setUserHasScrolled(false);
       scrollToBottom('smooth');
     }
   }, [agentStatus, scrollToBottom]);
@@ -652,54 +675,68 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.type === 'user') {
         scrollToBottom('smooth');
+        // Reset scroll state for new user messages
+        setUserHasScrolled(false);
       }
     }
   }, [messages, scrollToBottom]);
 
   // Auto-scroll behaviors for different streaming scenarios:
-  // - Use 'auto' for streaming content to ensure immediate visibility
-  // - Use 'smooth' for user interactions and status changes
-  // - This mimics ChatGPT/Claude behavior where content stays visible during generation
+  // - Only auto-scroll if user hasn't scrolled up or if last assistant message is in view
+  // - Use smooth ease-out animation for better user experience
+  // - Allow users to scroll up during streaming
   React.useEffect(() => {
     if (streamingTextContent && (agentStatus === 'running' || agentStatus === 'connecting')) {
-      // Use immediate scroll for streaming content to ensure smooth experience
-      scrollToBottom('auto');
+      // Only auto-scroll if user hasn't scrolled up or if last message is in view
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
     }
-  }, [streamingTextContent, agentStatus, scrollToBottom]);
+  }, [streamingTextContent, agentStatus, scrollToBottom, userHasScrolled, isLastAssistantMessageInView]);
 
   // Auto-scroll to bottom when streaming text changes in playback mode
   React.useEffect(() => {
     if (streamingText && isStreamingText && readOnly) {
-      scrollToBottom('auto');
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
     }
-  }, [streamingText, isStreamingText, readOnly, scrollToBottom]);
+  }, [streamingText, isStreamingText, readOnly, scrollToBottom, userHasScrolled, isLastAssistantMessageInView]);
 
   // Auto-scroll to bottom when streaming tool calls change
   React.useEffect(() => {
     if (streamingToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
-      scrollToBottom('auto');
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
     }
-  }, [streamingToolCall, agentStatus, scrollToBottom]);
+  }, [streamingToolCall, agentStatus, scrollToBottom, userHasScrolled, isLastAssistantMessageInView]);
 
   // Auto-scroll to bottom when new tool calls are added
   React.useEffect(() => {
     if (currentToolCall && (agentStatus === 'running' || agentStatus === 'connecting')) {
-      scrollToBottom('auto');
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
     }
-  }, [currentToolCall, agentStatus, scrollToBottom]);
+  }, [currentToolCall, agentStatus, scrollToBottom, userHasScrolled, isLastAssistantMessageInView]);
 
   // Auto-scroll to bottom when streaming starts
   React.useEffect(() => {
     if (streamHookStatus === 'streaming') {
-      scrollToBottom('auto');
+      // Reset scroll state when streaming starts to allow auto-scroll
+      setUserHasScrolled(false);
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
     }
-  }, [streamHookStatus, scrollToBottom]);
+  }, [streamHookStatus, scrollToBottom, userHasScrolled, isLastAssistantMessageInView]);
 
   // Complete auto-scroll strategy:
   // 1. Smooth scroll for user interactions (new messages, status changes)
-  // 2. Immediate scroll for streaming content (text, tool calls, streaming start)
-  // 3. Always auto-scroll during streaming regardless of user scroll position
-  // 4. This ensures content stays visible during generation like ChatGPT/Claude
+  // 2. Conditional auto-scroll during streaming - only if user hasn't scrolled up
+  // 3. Allow users to scroll up during streaming for better UX
+  // 4. Use smooth ease-out animation for all auto-scrolls
 
   // Preload all message attachments when messages change or sandboxId is provided
   React.useEffect(() => {
@@ -765,7 +802,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
           <div
             className={
               isSidePanelOpen
-                ? 'mx-auto max-w-2xl md:px-8 min-w-0'
+                ? 'mx-auto max-w-3xl md:px-8 min-w-0'
                 : 'mx-auto max-w-3xl md:px-8 min-w-0'
             }
           >
@@ -1789,17 +1826,11 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                             </div>
                           </div>
                           
-                          {/* Helium logo and text at the bottom - only for the last assistant group */}
-                          {groupIndex === finalGroupedMessages.length - 1 && (
+                          {/* Thinking animation at the bottom - only for the last assistant group when agent is running */}
+                          {groupIndex === finalGroupedMessages.length - 1 && 
+                           (agentStatus === 'running' || agentStatus === 'connecting') && (
                             <div className="flex items-center gap-2 mt-2">
-                              <div className="h-fit w-fit rounded-xl flex items-center justify-center">
-                                {getAgentInfo().avatar}
-                              </div>
-                              <div className="flex flex-col">
-                                <p className="text-sm font-medium text-foreground/60">
-                                  {getAgentInfo().name}
-                                </p>
-                              </div>
+                              <ThinkingAnimation />
                             </div>
                           )}
                         </div>
@@ -1816,16 +1847,10 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                   messages[messages.length - 1].type === 'user') && (
                   <div ref={latestMessageRef} className="w-full h-fit">
                     <div className="flex flex-col gap-4">
-                      {/* Logo positioned above the loader */}
+                      {/* Helium Logo and text above the loader for initial loading */}
                       <div className="flex items-center gap-2">
-                        <div className="h-8 w-fit rounded-xl flex items-center justify-center">
-                          {getAgentInfo().avatar}
-                        </div>
-                        <div className="flex flex-col">
-                          <p className="text-lg font-semibold text-foreground/80">
-                            {getAgentInfo().name}
-                          </p>
-                        </div>
+                        <HeliumLogo size={20} />
+                        <span className="text-lg font-semibold text-black">Helium</span>
                       </div>
 
                       {/* Loader content */}
@@ -1835,61 +1860,37 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                     </div>
                   </div>
                 )}
-              {readOnly && currentToolCall && (
-                <div ref={latestMessageRef}>
-                  <div className="flex flex-col gap-2">
-                    {/* Tool call content */}
-                    <div className="space-y-2">
-                      <div className="animate-shimmer inline-flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-primary bg-primary/10 rounded-md border border-primary/20">
-                        <CircleDashed className="h-3.5 w-3.5 text-primary flex-shrink-0 animate-spin animation-duration-2000" />
-                        <span className="font-mono text-xs text-primary">
-                          {currentToolCall.name || 'Using Tool'}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Logo positioned below the tool call */}
+                
 
-                    <div className="flex items-center gap-2">
-                      <div className="h-12 w-fit rounded-xl flex items-center justify-center">
-                        {getAgentInfo().avatar}
-                      </div>
-                      <div className="flex flex-col">
-                        <p className="text-sm font-semibold text-foreground/80">
-                          {getAgentInfo().name}
-                        </p>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-              )}
-
-              {/* For playback mode - Show streaming indicator if no messages yet */}
-              {readOnly &&
-                visibleMessages &&
-                visibleMessages.length === 0 &&
-                isStreamingText && (
+                
+                {/* Tool call content (without thinking animation) */}
+                {readOnly && currentToolCall && (
                   <div ref={latestMessageRef}>
                     <div className="flex flex-col gap-2">
-                      {/* Streaming indicator content */}
+                      <div className="space-y-2">
+                        <div className="animate-shimmer inline-flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-primary bg-primary/10 rounded-md border border-primary/20">
+                          <CircleDashed className="h-3.5 w-3.5 text-primary flex-shrink-0 animate-spin animation-duration-2000" />
+                          <span className="font-mono text-xs text-primary">
+                            {currentToolCall.name || 'Using Tool'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* For playback mode - Show streaming indicator if no messages yet (without thinking animation) */}
+                {readOnly &&
+                  visibleMessages &&
+                  visibleMessages.length === 0 &&
+                  isStreamingText && (
+                  <div ref={latestMessageRef}>
+                    <div className="flex flex-col gap-2">
                       <div className="max-w-[90%] px-4 py-3 text-sm">
                         <div className="flex items-center gap-1.5 py-1">
                           <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse" />
                           <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-150" />
-                          <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-300" />
-                        </div>
-                      </div>
-                      
-                      {/* Logo positioned below the streaming indicator */}
-                      <div className="flex items-center gap-2">
-                        <div className="h-12 w-fit rounded-xl flex items-center justify-center">
-                          {getAgentInfo().avatar}
-                        </div>
-                        <div className="flex flex-col">
-                          <p className="text-sm font-semibold text-foreground/80">
-                            {getAgentInfo().name}
-                          </p>
+                          <div className="h-1.5 w-3.5 rounded-full bg-primary/50 animate-pulse delay-300" />
                         </div>
                       </div>
                     </div>

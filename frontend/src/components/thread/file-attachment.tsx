@@ -779,7 +779,7 @@ interface ThreadFilesDisplayProps {
     sandboxId?: string;
     showPreviews?: boolean;
     project?: Project;
-    showViewAllButton?: boolean; // Control whether to show "View all files" button
+    showViewAllButton?: boolean; // Control whether to show "View all files in this task" button
     rightAlignGrid?: boolean; // Control whether to right-align the 3rd item in 2-column grid
 }
 
@@ -805,6 +805,21 @@ export function ThreadFilesDisplay({
     const showViewAll = showViewAllButton && uniqueAttachments.length > maxVisibleFiles;
     const visibleAttachments = uniqueAttachments.slice(0, maxVisibleFiles);
 
+    // Helper function to determine grid positioning based on attachment count and alignment
+    const getGridPosition = (index: number, total: number, isRightAligned: boolean) => {
+        if (total === 1) {
+            // Single file: [][1] for user messages, [1][] for assistant messages
+            return isRightAligned ? "col-start-1" : "col-start-2";
+        } else if (total === 3) {
+            // Three files: [1][2] and [][3] for user messages, [1][2] and [3][] for assistant messages
+            if (index === 2) { // Third file
+                return isRightAligned ? "col-start-1" : "col-start-2";
+            }
+        }
+        // Default positioning for other cases
+        return "";
+    };
+
     return (
         <>
             <div className={cn("w-full mt-4", className)}>
@@ -814,8 +829,7 @@ export function ThreadFilesDisplay({
                             key={`${filepath}-${index}`} 
                             className={cn(
                                 "w-full",
-                                // When there are exactly 3 items and rightAlignGrid is true, make the 3rd item align to the right
-                                rightAlignGrid && visibleAttachments.length === 3 && index === 2 && "col-start-2"
+                                getGridPosition(index, visibleAttachments.length, rightAlignGrid)
                             )}
                         >
                             <FileAttachment
