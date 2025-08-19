@@ -1260,7 +1260,7 @@ async def process_file_background(
 @router.get("/agents/{agent_id}/context")
 async def get_agent_knowledge_base_context(
     agent_id: str,
-    max_tokens: int = 4000,
+    max_tokens: int = 16000,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     if not await is_enabled("knowledge_base"):
@@ -1295,6 +1295,206 @@ async def get_agent_knowledge_base_context(
     except Exception as e:
         logger.error(f"Error getting knowledge base context for agent {agent_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve agent knowledge base context")
+
+@router.get("/agents/{agent_id}/smart-context")
+async def get_agent_smart_knowledge_base_context(
+    agent_id: str,
+    query: str,
+    max_tokens: int = 16000,
+    similarity_threshold: float = 0.1,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Get smart knowledge base context for agent prompts using RAG-based retrieval"""
+    try:
+        client = await db.client
+        
+        agent_result = await client.table('agents').select('agent_id').eq('agent_id', agent_id).eq('account_id', user_id).execute()
+        if not agent_result.data:
+            raise HTTPException(status_code=404, detail="Agent not found or access denied")
+        
+        # Use the RAG-based function for smart context retrieval
+        result = await client.rpc('get_relevant_kb_context', {
+            'p_query': query,
+            'p_max_tokens': max_tokens,
+            'p_similarity_threshold': similarity_threshold
+        }).execute()
+        
+        context = result.data if result.data else None
+        
+        return {
+            "context": context,
+            "query": query,
+            "max_tokens": max_tokens,
+            "similarity_threshold": similarity_threshold,
+            "agent_id": agent_id,
+            "retrieval_method": "rag_semantic_search"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting smart knowledge base context for agent {agent_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve smart knowledge base context")
+
+@router.get("/global/smart-context")
+async def get_global_smart_knowledge_base_context(
+    query: str,
+    max_tokens: int = 16000,
+    similarity_threshold: float = 0.1,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Get smart global knowledge base context using RAG-based retrieval"""
+    try:
+        client = await db.client
+        
+        # Use the RAG-based function for smart context retrieval
+        result = await client.rpc('get_relevant_kb_context', {
+            'p_query': query,
+            'p_max_tokens': max_tokens,
+            'p_similarity_threshold': similarity_threshold
+        }).execute()
+        
+        context = result.data if result.data else None
+        
+        return {
+            "context": context,
+            "query": query,
+            "max_tokens": max_tokens,
+            "similarity_threshold": similarity_threshold,
+            "retrieval_method": "rag_semantic_search"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting smart global knowledge base context: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve smart global knowledge base context")
+
+@router.get("/threads/{thread_id}/smart-context")
+async def get_thread_smart_knowledge_base_context(
+    thread_id: str,
+    query: str,
+    max_tokens: int = 16000,
+    thread_kb_tokens: int = 8000,
+    global_kb_tokens: int = 8000,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Get smart combined knowledge base context (thread + global) using RAG-based retrieval"""
+    try:
+        client = await db.client
+        
+        # Verify thread exists and user has access
+        thread_result = await client.table('threads').select('account_id').eq('thread_id', thread_id).maybe_single().execute()
+        if not thread_result.data:
+            raise HTTPException(status_code=404, detail="Thread not found")
+        
+        # Use the smart combined context function
+        result = await client.rpc('get_smart_kb_context', {
+            'p_thread_id': thread_id,
+            'p_query': query,
+            'p_max_tokens': max_tokens,
+            'p_thread_kb_tokens': thread_kb_tokens,
+            'p_global_kb_tokens': global_kb_tokens
+        }).execute()
+        
+        context = result.data if result.data else None
+        
+        return {
+            "context": context,
+            "query": query,
+            "thread_id": thread_id,
+            "max_tokens": max_tokens,
+            "thread_kb_tokens": thread_kb_tokens,
+            "global_kb_tokens": global_kb_tokens,
+            "retrieval_method": "smart_combined_rag"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting smart thread knowledge base context: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve smart thread knowledge base context")
+
+@router.get("/should-use-kb")
+async def check_should_use_knowledge_base(
+    query: str,
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Check if a query should trigger knowledge base retrieval"""
+    try:
+        client = await db.client
+        
+        result = await client.rpc('should_use_knowledge_base', {
+            'p_query': query
+        }).execute()
+        
+        should_use = result.data if result.data else False
+        
+        return {
+            "query": query,
+            "should_use_knowledge_base": should_use,
+            "reasoning": "Query analyzed for knowledge base relevance using keyword matching and pattern detection"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error checking if query should use knowledge base: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to check knowledge base usage")
+
+@router.get("/test-global-access")
+async def test_global_knowledge_base_access(
+    user_id: str = Depends(get_current_user_id_from_jwt)
+):
+    if not await is_enabled("knowledge_base"):
+        raise HTTPException(
+            status_code=403, 
+            detail="This feature is not available at the moment."
+        )
+    
+    """Test function to verify global knowledge base access and DATA BLOCK format"""
+    try:
+        client = await db.client
+        
+        result = await client.rpc('test_global_kb_access').execute()
+        
+        context = result.data if result.data else "No knowledge base content found"
+        
+        return {
+            "context": context,
+            "format": "DATA_BLOCK",
+            "purpose": "Testing global knowledge base access and DATA BLOCK format verification"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error testing global knowledge base access: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to test global knowledge base access")
 
 @router.put("/{entry_id}", response_model=KnowledgeBaseEntryResponse)
 async def update_knowledge_base_entry(
@@ -1449,7 +1649,7 @@ async def get_knowledge_base_entry(
 @router.get("/threads/{thread_id}/context")
 async def get_knowledge_base_context(
     thread_id: str,
-    max_tokens: int = 4000,
+    max_tokens: int = 16000,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     if not await is_enabled("knowledge_base"):
@@ -1488,7 +1688,7 @@ async def get_knowledge_base_context(
 async def get_combined_knowledge_base_context(
     thread_id: str,
     agent_id: Optional[str] = None,
-    max_tokens: int = 4000,
+    max_tokens: int = 16000,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     if not await is_enabled("knowledge_base"):

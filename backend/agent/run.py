@@ -202,7 +202,8 @@ class PromptManager:
     @staticmethod
     async def build_system_prompt(model_name: str, agent_config: Optional[dict], 
                                   is_agent_builder: bool, thread_id: str, 
-                                  mcp_wrapper_instance: Optional[MCPToolWrapper]) -> dict:
+                                  mcp_wrapper_instance: Optional[MCPToolWrapper],
+                                  user_message: Optional[str] = None) -> dict:
         
         if "gemini-2.5-flash" in model_name.lower() and "gemini-2.5-pro" not in model_name.lower():
             default_system_content = get_gemini_system_prompt()
@@ -302,35 +303,78 @@ class PromptManager:
                     import traceback
                     logger.error(f"Traceback: {traceback.format_exc()}")
                 
-                # Get thread and agent specific knowledge base context
-                kb_result = await kb_client.rpc('get_combined_knowledge_base_context', {
-                    'p_thread_id': thread_id,
-                    'p_agent_id': current_agent_id,
-                    'p_max_tokens': 16000
-                }).execute()
-                
-                if kb_result.data and kb_result.data.strip():
-                    logger.info(f"Thread/Agent knowledge base context retrieved successfully. Length: {len(kb_result.data)}")
-                    # Log a preview of the context to help debug
-                    preview = kb_result.data[:500] + "..." if len(kb_result.data) > 500 else kb_result.data
-                    logger.info(f"Thread/Agent knowledge base context preview: {preview}")
+                # Get thread and agent specific knowledge base context using smart RAG-based retrieval
+                try:
+                    # First check if we should use knowledge base for this query
+                    # If no user message is available, default to using knowledge base
+                    if user_message:
+                        should_use_kb_result = await kb_client.rpc('should_use_knowledge_base', {
+                            'p_query': user_message
+                        }).execute()
+                        
+                        should_use_kb = should_use_kb_result.data if should_use_kb_result.data else False
+                        logger.info(f"Knowledge base usage check: {should_use_kb} for query: {user_message[:100]}...")
+                    else:
+                        # Default to using knowledge base if no user message available
+                        should_use_kb = True
+                        logger.info("No user message available, defaulting to using knowledge base")
                     
-                    # Add explicit instruction to prioritize knowledge base content
-                    knowledge_base_instruction = "\n\n🚨 CRITICAL KNOWLEDGE BASE INSTRUCTIONS 🚨\n"
-                    knowledge_base_instruction += "You have access to knowledge base content that should be your PRIMARY source of information.\n"
-                    knowledge_base_instruction += "1. ALWAYS check the knowledge base content FIRST before searching the web\n"
-                    knowledge_base_instruction += "2. If the knowledge base contains relevant information, use it as your primary source\n"
-                    knowledge_base_instruction += "3. Only search the web if the knowledge base doesn't contain the specific information needed\n"
-                    knowledge_base_instruction += "4. When using knowledge base content, explicitly reference it in your response\n"
-                    knowledge_base_instruction += "5. Do NOT search the web for information that is already available in your knowledge base\n"
-                    knowledge_base_instruction += "\nIMPORTANT: Knowledge base content takes priority over web searches!\n"
+                    if should_use_kb:
+                        # Use smart RAG-based context retrieval
+                        kb_result = await kb_client.rpc('get_smart_kb_context', {
+                            'p_thread_id': thread_id,
+                            'p_query': user_message or "general knowledge base access",
+                            'p_max_tokens': 16000,
+                            'p_thread_kb_tokens': 8000,
+                            'p_global_kb_tokens': 8000
+                        }).execute()
+                        
+                        if kb_result.data and kb_result.data.strip():
+                            logger.info(f"Smart knowledge base context retrieved successfully. Length: {len(kb_result.data)}")
+                            # Log a preview of the context to help debug
+                            preview = kb_result.data[:500] + "..." if len(kb_result.data) > 500 else kb_result.data
+                            logger.info(f"Smart knowledge base context preview: {preview}")
+                            
+                            # Add explicit instruction to prioritize knowledge base content
+                            knowledge_base_instruction = "\n\n🚨 CRITICAL KNOWLEDGE BASE INSTRUCTIONS 🚨\n"
+                            knowledge_base_instruction += "You have access to knowledge base content that should be your PRIMARY source of information.\n"
+                            knowledge_base_instruction += "1. ALWAYS check the knowledge base content FIRST before searching the web\n"
+                            knowledge_base_instruction += "2. If the knowledge base contains relevant information, use it as your primary source\n"
+                            knowledge_base_instruction += "3. Only search the web if the knowledge base doesn't contain the specific information needed\n"
+                            knowledge_base_instruction += "4. When using knowledge base content, explicitly reference it in your response\n"
+                            knowledge_base_instruction += "5. Do NOT search the web for information that is already available in your knowledge base\n"
+                            knowledge_base_instruction += "6. Do NOT attempt to create, read, or access files - use the knowledge base content directly\n"
+                            knowledge_base_instruction += "7. The knowledge base content is pre-extracted and ready to use\n"
+                            knowledge_base_instruction += "\nIMPORTANT: Knowledge base content takes priority over web searches!\n"
+                            
+                            system_content += knowledge_base_instruction + "\n\n" + kb_result.data
+                        else:
+                            logger.info("No smart knowledge base context found or empty result")
+                    else:
+                        logger.info("Query does not require knowledge base context")
+                        
+                except Exception as e:
+                    logger.error(f"Error retrieving smart knowledge base context for thread {thread_id}: {e}")
+                    import traceback
+                    logger.error(f"Traceback: {traceback.format_exc()}")
                     
-                    system_content += knowledge_base_instruction + "\n\n" + kb_result.data
-                else:
-                    logger.info("No thread/agent knowledge base context found or empty result")
+                    # Fallback to old method if smart retrieval fails
+                    try:
+                        logger.info("Falling back to old knowledge base context method...")
+                        kb_result = await kb_client.rpc('get_combined_knowledge_base_context', {
+                            'p_thread_id': thread_id,
+                            'p_agent_id': current_agent_id,
+                            'p_max_tokens': 16000
+                        }).execute()
+                        
+                        if kb_result.data and kb_result.data.strip():
+                            logger.info(f"Fallback knowledge base context retrieved. Length: {len(kb_result.data)}")
+                            system_content += "\n\n" + kb_result.data
+                    except Exception as fallback_error:
+                        logger.error(f"Fallback knowledge base context also failed: {fallback_error}")
                         
             except Exception as e:
-                logger.error(f"Error retrieving knowledge base context for thread {thread_id}: {e}")
+                logger.error(f"Error in knowledge base context retrieval: {e}")
                 import traceback
                 logger.error(f"Traceback: {traceback.format_exc()}")
 
@@ -555,19 +599,21 @@ class AgentRunner:
         system_message = await PromptManager.build_system_prompt(
             self.config.model_name, self.config.agent_config, 
             self.config.is_agent_builder, self.config.thread_id, 
-            mcp_wrapper_instance
+            mcp_wrapper_instance, user_message_content
         )
 
         iteration_count = 0
         continue_execution = True
 
         latest_user_message = await self.client.table('messages').select('*').eq('thread_id', self.config.thread_id).eq('type', 'user').order('created_at', desc=True).limit(1).execute()
+        user_message_content = None
         if latest_user_message.data and len(latest_user_message.data) > 0:
             data = latest_user_message.data[0]['content']
             if isinstance(data, str):
                 data = json.loads(data)
+            user_message_content = data.get('content', '')
             if self.config.trace:
-                self.config.trace.update(input=data['content'])
+                self.config.trace.update(input=user_message_content)
 
         message_manager = MessageManager(self.client, self.config.thread_id, self.config.model_name, self.config.trace)
 

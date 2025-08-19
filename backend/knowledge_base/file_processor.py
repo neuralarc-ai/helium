@@ -17,6 +17,15 @@ import docx
 from utils.logger import logger
 from services.supabase import DBConnection
 
+# Sentence Transformers for free open-source embeddings
+try:
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+    logger.info("Sentence Transformers available for embeddings")
+except ImportError:
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+    logger.warning("Sentence Transformers not available - embeddings will not be generated")
+
 class FileProcessor:
     SUPPORTED_TEXT_EXTENSIONS = {
         '.txt', '.csv'
@@ -67,6 +76,9 @@ class FileProcessor:
                 content[: self.MAX_CONTENT_LENGTH]
             )
 
+            # Generate embedding for the content
+            embedding = self._generate_embedding(sanitized_content)
+            
             # knowledge_base_entries has a slimmer schema than agent/global tables
             entry_data = {
                 'thread_id': thread_id,
@@ -77,6 +89,13 @@ class FileProcessor:
                 'usage_context': 'always',
                 'is_active': True,
             }
+            
+            # Add embedding if generated
+            if embedding:
+                entry_data['embedding'] = embedding
+                logger.info(f"Embedding generated and added to thread entry data")
+            else:
+                logger.warning(f"Failed to generate embedding for thread entry {filename}")
 
             # Deduplicate: if an entry with same thread, name, and identical content exists, reuse it
             try:
@@ -147,7 +166,7 @@ class FileProcessor:
             if not content or not content.strip():
                 raise ValueError(f"No extractable content found in {filename}")
             
-            client = await self.db.client
+            client = self.db.client
             
             entry_data = {
                 'agent_id': agent_id,
@@ -250,10 +269,9 @@ class FileProcessor:
                         except Exception:
                             existing_filename = None
 
-                        if (row.get('content') == sanitized_content) or (
-                            isinstance(existing_filename, str) and existing_filename == filename
-                        ):
-                            logger.info("Duplicate detected; reusing existing entry_id")
+                        # Only reuse if content is identical (prevents format changes from being blocked)
+                        if row.get('content') == sanitized_content:
+                            logger.info("Exact content duplicate detected; reusing existing entry_id")
                             return {
                                 'success': True,
                                 'entry_id': row['entry_id'],
@@ -262,9 +280,16 @@ class FileProcessor:
                                 'extraction_method': self._get_extraction_method(file_extension, mime_type),
                                 'deduplicated': True,
                             }
+                        # Don't reuse based on filename alone - allow format updates
+                        elif isinstance(existing_filename, str) and existing_filename == filename:
+                            logger.info("Filename match detected but content differs; allowing new upload for format update")
+                            continue
             except Exception as dedup_err:
                 logger.warning(f"Global KB dedup check failed: {dedup_err}")
 
+            # Generate embedding for the content
+            embedding = self._generate_embedding(sanitized_content)
+            
             entry_data = {
                 'account_id': account_id,
                 'name': display_name,
@@ -282,6 +307,13 @@ class FileProcessor:
                 'usage_context': 'always',
                 'is_active': True
             }
+            
+            # Add embedding if generated
+            if embedding:
+                entry_data['embedding'] = embedding
+                logger.info(f"Embedding generated and added to entry data")
+            else:
+                logger.warning(f"Failed to generate embedding for {filename}")
             
             logger.info(f"Preparing to insert entry into global_knowledge_base_entries table")
             logger.info(f"Entry data keys: {list(entry_data.keys())}")
@@ -340,7 +372,7 @@ class FileProcessor:
                 'account_id': account_id,
                 'name': display_name,
                 'description': f"ZIP archive: {zip_filename}",
-                'content': f"ZIP archive containing multiple files. Extracted files will appear as separate entries.",
+                'content': self._format_as_data_block(f"ZIP archive containing multiple files. Extracted files will appear as separate entries.\n\nArchive: {zip_filename}\nTotal size: {len(zip_content)} bytes", zip_filename),
                 'source_type': 'file',
                 'source_metadata': {
                     'filename': zip_filename,
@@ -450,7 +482,7 @@ class FileProcessor:
                 'account_id': account_id,
                 'name': f"📦 {zip_filename}",
                 'description': f"ZIP archive: {zip_filename}",
-                'content': f"ZIP archive containing multiple files. Extracted files will appear as separate entries.",
+                'content': self._format_as_data_block(f"ZIP archive containing multiple files. Extracted files will appear as separate entries.\n\nArchive: {zip_filename}\nTotal size: {len(zip_content)} bytes", zip_filename),
                 'source_type': 'file',
                 'source_metadata': {
                     'filename': zip_filename,
@@ -589,7 +621,7 @@ class FileProcessor:
                 'account_id': account_id,
                 'name': f"🔗 {repo_name}",
                 'description': f"Git repository: {git_url} (branch: {branch})",
-                'content': f"Git repository cloned from {git_url}. Individual files are processed as separate entries.",
+                'content': self._format_as_data_block(f"Git repository cloned from {git_url}. Individual files are processed as separate entries.\n\nRepository: {repo_name}\nURL: {git_url}\nBranch: {branch}", f"{repo_name}_repository"),
                 'source_type': 'git_repo',
                 'source_metadata': {
                     'git_url': git_url,
@@ -706,17 +738,18 @@ class FileProcessor:
                 logger.info("Processing as text file")
                 if file_extension == '.csv':
                     logger.info("Processing as CSV file")
-                    return self._extract_csv_content(file_content)
+                    return self._extract_csv_content(file_content, filename)
                 else:
-                    return self._extract_text_content(file_content)
+                    logger.info("Processing as text file")
+                    return self._extract_text_content(file_content, filename)
             
             elif file_extension == '.pdf':
                 logger.info("Processing as PDF file")
-                return self._extract_pdf_content(file_content)
+                return self._extract_pdf_content(file_content, filename)
             
             elif file_extension == '.docx':
                 logger.info("Processing as DOCX file")
-                return self._extract_docx_content(file_content)
+                return self._extract_docx_content(file_content, filename)
             
             else:
                 logger.error(f"Unsupported file format: {file_extension}")
@@ -726,7 +759,7 @@ class FileProcessor:
             logger.error(f"Error extracting content from {filename}: {str(e)}", exc_info=True)
             return f"Error extracting content: {str(e)}"
     
-    def _extract_text_content(self, file_content: bytes) -> str:
+    def _extract_text_content(self, file_content: bytes, filename: str) -> str:
         detected = chardet.detect(file_content)
         encoding = detected.get('encoding', 'utf-8')
         
@@ -735,10 +768,10 @@ class FileProcessor:
         except UnicodeDecodeError:
             raw_text = file_content.decode('utf-8', errors='replace')
         
-        return self._sanitize_content(raw_text)
+        return self._format_as_data_block(raw_text, Path(filename).name)
     
-    def _extract_csv_content(self, file_content: bytes) -> str:
-        """Extract content from CSV files, preserving structure and headers"""
+    def _extract_csv_content(self, file_content: bytes, filename: str) -> str:
+        """Extract content from CSV files and format as DATA BLOCK"""
         try:
             logger.info("Starting CSV content extraction")
             
@@ -754,52 +787,77 @@ class FileProcessor:
                 logger.warning(f"Failed to decode with {encoding}, trying utf-8")
                 raw_text = file_content.decode('utf-8', errors='replace')
             
-            # Split the content into lines
-            lines = raw_text.splitlines()
-            logger.info(f"CSV has {len(lines)} lines")
+            # Use proper CSV parsing instead of simple split
+            import csv
+            from io import StringIO
             
-            if not lines:
-                return "Empty CSV file"
+            # Parse CSV properly
+            csv_reader = csv.reader(StringIO(raw_text))
+            rows = list(csv_reader)
+            
+            logger.info(f"CSV has {len(rows)} rows")
+            
+            if not rows:
+                return f"### DATA BLOCK: {Path(filename).name}\n\n(This is extracted content. Use it directly. Do NOT attempt to open or create files.)\n\nEmpty CSV file with no content."
+            
+            # Create the DATA BLOCK format
+            data_block_lines = []
+            data_block_lines.append(f"### DATA BLOCK: {Path(filename).name}")
+            data_block_lines.append("(This is extracted content. Use it directly. Do NOT attempt to open or create files.)")
+            data_block_lines.append("")
             
             # Process the CSV content to make it more readable
-            processed_lines = []
-            
-            # Add a header to indicate this is CSV content
-            processed_lines.append("=== CSV FILE CONTENT ===")
-            processed_lines.append("")
-            
-            for i, line in enumerate(lines):
-                if i == 0:
-                    # First line is usually headers
-                    processed_lines.append(f"COLUMN HEADERS: {line}")
-                    processed_lines.append("")
-                else:
-                    # Data rows - limit to first 100 rows to avoid overwhelming the context
-                    if i <= 100:
-                        processed_lines.append(f"Row {i}: {line}")
-                    elif i == 101:
-                        processed_lines.append(f"... (showing first 100 rows, total {len(lines)-1} data rows)")
-                        break
-            
-            # Add summary information
-            processed_lines.append("")
-            processed_lines.append(f"=== SUMMARY ===")
-            processed_lines.append(f"Total rows: {len(lines)}")
-            processed_lines.append(f"Total columns: {len(lines[0].split(',')) if lines else 0}")
-            processed_lines.append(f"Data rows: {len(lines) - 1 if len(lines) > 1 else 0}")
+            if len(rows) > 0:
+                # First row is usually headers
+                headers = rows[0]
+                data_block_lines.append(f"**Column Headers:** {len(headers)} columns")
+                data_block_lines.append("")
+                
+                # List each column header individually
+                for i, header in enumerate(headers, 1):
+                    data_block_lines.append(f"Column {i}: {header.strip()}")
+                
+                data_block_lines.append("")
+                
+                # Data rows - limit to first 50 rows to avoid overwhelming the context
+                max_rows_to_show = min(50, len(rows) - 1)
+                data_block_lines.append(f"**Data Rows:** (showing first {max_rows_to_show} of {len(rows)-1} total)")
+                data_block_lines.append("")
+                
+                for i in range(1, max_rows_to_show + 1):
+                    if i < len(rows):
+                        row_data = rows[i]
+                        data_block_lines.append(f"**Row {i}:**")
+                        
+                        # Format each row with column names and values separated by |
+                        row_formatted = []
+                        for j, value in enumerate(row_data):
+                            if j < len(headers):
+                                header_name = headers[j].strip()
+                                value_clean = value.strip()
+                                row_formatted.append(f"{header_name}: {value_clean}")
+                        
+                        # Join all values with | separator
+                        row_line = "  " + " | ".join(row_formatted)
+                        data_block_lines.append(row_line)
+                        data_block_lines.append("")
+                
+                if len(rows) > 51:
+                    data_block_lines.append(f"... (showing first {max_rows_to_show} rows, total {len(rows)-1} data rows)")
+                    data_block_lines.append("")
             
             # Combine lines into a single string
-            combined_text = '\n'.join(processed_lines)
-            logger.info(f"CSV extraction completed, total text length: {len(combined_text)}")
+            combined_text = '\n'.join(data_block_lines)
+            logger.info(f"CSV DATA BLOCK extraction completed, total text length: {len(combined_text)}")
             
             return self._sanitize_content(combined_text)
             
         except Exception as e:
             logger.error(f"Error extracting CSV content: {str(e)}", exc_info=True)
-            return f"Error extracting CSV content: {str(e)}"
+            return f"### DATA BLOCK: {Path(filename).name}\n\n(This is extracted content. Use it directly. Do NOT attempt to open or create files.)\n\nError extracting CSV content: {str(e)}"
     
-    def _extract_pdf_content(self, file_content: bytes) -> str:
-        """Extract text from a PDF using PyMuPDF first, then fall back to pdfminer if needed."""
+    def _extract_pdf_content(self, file_content: bytes, filename: str) -> str:
+        """Extract text from a PDF and format as DATA BLOCK"""
         # 1) Primary: PyMuPDF (fitz)
         try:
             import fitz  # PyMuPDF
@@ -824,7 +882,7 @@ class FileProcessor:
             raw_text = "\n\n".join(text_chunks)
             if raw_text.strip():
                 logger.info(f"PyMuPDF extraction completed, total text length: {len(raw_text)}")
-                return self._sanitize_content(raw_text)
+                return self._format_as_data_block(raw_text, Path(filename).name)
             else:
                 logger.warning("PyMuPDF produced no text; attempting pdfminer fallback")
         except Exception as fitz_err:
@@ -843,7 +901,7 @@ class FileProcessor:
                     text2 = pdfminer_extract_text(tmp.name)
             if text2 and text2.strip():
                 logger.info(f"pdfminer fallback extracted text successfully, length: {len(text2)}")
-                return self._sanitize_content(text2)
+                return self._format_as_data_block(text2, Path(filename).name)
             else:
                 logger.warning("pdfminer produced no text; attempting PyPDF2 fallback")
         except Exception as pm_err:
@@ -870,7 +928,7 @@ class FileProcessor:
             raw_text = "\n\n".join(text_chunks)
             if raw_text.strip():
                 logger.info(f"PyPDF2 extraction completed, total text length: {len(raw_text)}")
-                return self._sanitize_content(raw_text)
+                return self._format_as_data_block(raw_text, Path(filename).name)
             else:
                 logger.warning("PyPDF2 produced no text")
         except Exception as pypdf2_err:
@@ -878,9 +936,9 @@ class FileProcessor:
 
         # If all methods fail, provide detailed error message
         logger.error("All PDF extraction methods failed")
-        return "No text content could be extracted from this PDF file. This may be because the PDF contains only images, is encrypted, or is corrupted."
+        return self._format_as_data_block("No text content could be extracted from this PDF file. This may be because the PDF contains only images, is encrypted, or is corrupted.", Path(filename).name)
     
-    def _extract_docx_content(self, file_content: bytes) -> str:
+    def _extract_docx_content(self, file_content: bytes, filename: str) -> str:
         doc = docx.Document(io.BytesIO(file_content))
         text_content = []
         
@@ -888,7 +946,23 @@ class FileProcessor:
             text_content.append(paragraph.text)
         
         raw_text = '\n'.join(text_content)
-        return self._sanitize_content(raw_text)
+        return self._format_as_data_block(raw_text, Path(filename).name)
+    
+    def _format_as_data_block(self, content: str, filename: str) -> str:
+        """Format extracted content as a DATA BLOCK"""
+        if not content or not content.strip():
+            return f"### DATA BLOCK: {filename}\n\n(This is extracted content. Use it directly. Do NOT attempt to open or create files.)\n\nNo extractable content found."
+        
+        # Create the DATA BLOCK format
+        data_block_lines = []
+        data_block_lines.append(f"### DATA BLOCK: {filename}")
+        data_block_lines.append("")
+        data_block_lines.append("(This is extracted content. Use it directly. Do NOT attempt to open or create files.)")
+        data_block_lines.append("")
+        data_block_lines.append(content)
+        
+        combined_text = '\n'.join(data_block_lines)
+        return self._sanitize_content(combined_text)
     
     def _sanitize_content(self, content: str) -> str:
         if not content:
@@ -906,6 +980,30 @@ class FileProcessor:
         sanitized = re.sub(r'\n{4,}', '\n\n\n', sanitized)
 
         return sanitized.strip()
+    
+    def _generate_embedding(self, content: str) -> Optional[List[float]]:
+        """Generate embedding for content using Sentence Transformers."""
+        if not SENTENCE_TRANSFORMERS_AVAILABLE:
+            logger.warning("Sentence Transformers not available - skipping embedding generation")
+            return None
+        
+        try:
+            # Use a lightweight, fast model for embeddings
+            # 'all-MiniLM-L6-v2' is only 80MB and very fast, generates 384-dimensional vectors
+            model = SentenceTransformer('all-MiniLM-L6-v2')
+            
+            # Generate embedding
+            embedding = model.encode(content, convert_to_tensor=False)
+            
+            # Convert to list of floats
+            embedding_list = embedding.tolist()
+            
+            logger.info(f"Generated embedding with {len(embedding_list)} dimensions using Sentence Transformers")
+            return embedding_list
+            
+        except Exception as e:
+            logger.error(f"Error generating embedding: {e}")
+            return None
 
     def _get_extraction_method(self, file_extension: str, mime_type: str) -> str:
         if file_extension == '.pdf':

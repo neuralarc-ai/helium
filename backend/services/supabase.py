@@ -3,7 +3,7 @@ Centralized database connection management for AgentPress using Supabase.
 """
 
 from typing import Optional
-from supabase import create_async_client, AsyncClient
+from supabase import create_client, Client
 from utils.logger import logger
 from utils.config import config
 import base64
@@ -48,7 +48,7 @@ class DBConnection:
             logger.debug("Initializing Supabase connection")
             
             # Create Supabase client with timeout configuration
-            self._client = await create_async_client(
+            self._client = create_client(
                 supabase_url, 
                 supabase_key,
             )
@@ -69,7 +69,7 @@ class DBConnection:
             try:
                 # Close Supabase client
                 if hasattr(cls._instance._client, 'close'):
-                    await cls._instance._client.close()
+                    cls._instance._client.close()
                     
             except Exception as e:
                 logger.warning(f"Error during disconnect: {e}")
@@ -79,7 +79,7 @@ class DBConnection:
                 logger.info("Database disconnected successfully")
 
     @property
-    async def client(self) -> AsyncClient:
+    async def client(self):
         """Get the Supabase client instance."""
         if not self._initialized:
             logger.debug("Supabase client not initialized, initializing now")
