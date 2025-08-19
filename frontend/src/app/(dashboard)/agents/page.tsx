@@ -442,8 +442,8 @@ export default function AgentsPage() {
 
   const getItemStyling = (item: MarketplaceTemplate) => {
     return {
-      avatar: '🤖',
-      color: '#6366f1',
+      avatar: item.avatar || '🤖',
+      color: item.avatar_color || '#6366f1',
     };
   };
 

@@ -94,7 +94,7 @@ export const AgentMCPConfiguration: React.FC<AgentMCPConfigurationProps> = ({
       versionData={versionData}
       saveMode={saveMode}
       versionId={versionId}
-      isLoading={isLoading}
+      // isLoading={isLoading}
     />
   );
 }; 

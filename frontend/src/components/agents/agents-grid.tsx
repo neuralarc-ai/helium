@@ -287,7 +287,10 @@ export const AgentsGrid: React.FC<AgentsGridProps> = ({
                 <AgentCard
                   mode="agent"
                   data={agentData}
-                  styling={undefined}
+                  styling={{
+                    avatar: agentData.avatar || '🤖',
+                    color: agentData.avatar_color || '#6366f1'
+                  }}
                   onClick={() => !isDeleting && handleAgentClick(agent)}
                 />
               </div>

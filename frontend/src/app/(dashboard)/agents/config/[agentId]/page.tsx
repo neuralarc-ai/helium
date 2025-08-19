@@ -233,11 +233,41 @@ export default function AgentConfigurationPage() {
     );
   }
 
+  if (error) {
+    console.error('Error loading agent:', error);
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Alert className="max-w-md" variant="destructive">
+          <AlertDescription>
+            <p>Error loading agent: {error.message}</p>
+            <Button 
+              variant="link" 
+              className="mt-2 p-0 h-auto"
+              onClick={() => window.location.reload()}
+            >
+              Try again
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   if (!agent) {
+    console.error('Agent not found. Agent ID:', agentId);
     return (
       <div className="flex items-center justify-center h-screen">
         <Alert className="max-w-md">
-          <AlertDescription>Agent not found</AlertDescription>
+          <AlertDescription>
+            <p>Agent not found. The agent may have been deleted or you may not have permission to view it.</p>
+            <Button 
+              variant="link" 
+              className="mt-2 p-0 h-auto"
+              onClick={() => window.location.href = '/agents'}
+            >
+              Back to Agents
+            </Button>
+          </AlertDescription>
         </Alert>
       </div>
     );

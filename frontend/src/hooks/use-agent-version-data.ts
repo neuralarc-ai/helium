@@ -113,22 +113,48 @@ export function useAgentVersionData({ agentId }: UseAgentVersionDataProps): UseA
   const searchParams = useSearchParams();
   const versionParam = searchParams.get('version');
   
-  const { data: agent, isLoading: agentLoading, error: agentError } = useAgent(agentId);
+  console.log(`[useAgentVersionData] Fetching agent with ID: ${agentId}`);
+  
+  const { 
+    data: agent, 
+    isLoading: agentLoading, 
+    error: agentError 
+  } = useAgent(agentId, {
+    onSuccess: (data) => {
+      console.log('[useAgentVersionData] Agent data loaded:', data);
+    },
+    onError: (error) => {
+      console.error('[useAgentVersionData] Error loading agent:', error);
+    },
+    retry: 2, // Retry up to 2 times on failure
+    refetchOnWindowFocus: false // Don't refetch when window regains focus
+  });
   
   // Only try to load version if we have an agent
   const shouldLoadVersion = agent && (versionParam || agent.current_version_id);
   const versionToLoad = versionParam || agent?.current_version_id || '';
   
+  console.log(`[useAgentVersionData] Should load version: ${shouldLoadVersion}, Version to load: ${versionToLoad}`);
+  
   const { 
     data: rawVersionData, 
     isLoading: versionLoading, 
-    error: versionError 
+    error: versionError,
+    isFetching: isFetchingVersion
   } = useAgentVersion(
     agentId,
     shouldLoadVersion ? versionToLoad : null,
-    // {
-    //   enabled: !! shouldLoadVersion // Only enable the query if shouldLoadVersion is true
-    // }
+    {
+      enabled: !!shouldLoadVersion,
+      onSuccess: (data) => {
+        console.log('[useAgentVersionData] Version data loaded:', data);
+      },
+      onError: (error) => {
+        console.error('[useAgentVersionData] Error loading version:', error);
+      },
+      retry: 2,
+      refetchOnWindowFocus: false
+    }
   );
   
   const { setCurrentVersion, clearVersionState } = useVersionStore();
