@@ -9,7 +9,7 @@ export const STORAGE_KEY_MODEL = 'suna-preferred-model-v3';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
 export const DEFAULT_PREMIUM_MODEL_ID = 'helio-o1';
 // export const DEFAULT_FREE_MODEL_ID = 'moonshotai/kimi-k2';
-export const DEFAULT_FREE_MODEL_ID = 'helio-o1';
+export const DEFAULT_FREE_MODEL_ID = 'openrouter/z-ai/glm-4.5-air:free';
 
 export type SubscriptionStatus = 'no_subscription' | 'active';
 
@@ -216,7 +216,7 @@ export const MODEL_DESCRIPTIONS = {
 // Production-only models for Helio branding
 export const PRODUCTION_MODELS = {
   'helio-o1': {
-    id: 'moonshot/kimi-k2-turbo-preview',
+    id: 'openrouter/z-ai/glm-4.5',
     label: 'Helio o1',
     description: 'Our most powerful model for complex tasks',
     tier: 'free',
@@ -224,8 +224,9 @@ export const PRODUCTION_MODELS = {
     recommended: true,
     lowQuality: false,
     fallbacks: [
-      'openrouter/anthropic/claude-3-5-sonnet-20241022',
       'openrouter/z-ai/glm-4.5-air',
+      'moonshot/kimi-k2-turbo-preview',
+      'openrouter/anthropic/claude-sonnet-4',
       'bedrock/anthropic.claude-sonnet-4-20250514-v1:0',
     ]
   }
@@ -234,10 +235,11 @@ export const PRODUCTION_MODELS = {
 // Fallback model chain for production
 export const PRODUCTION_FALLBACK_CHAIN = {
   'helio-o1': [
-    'moonshot/kimi-k2-turbo-preview',       // Fallback 2: Kimi K2 from OpenRouter
-    'openrouter/anthropic/claude-3-5-sonnet-20241022',
-    'openrouter/z-ai/glm-4.5-air', // Fallback 1: Claude Sonnet 4 from OpenRouter
-    'bedrock/anthropic.claude-sonnet-4-20250514-v1:0', // Primary: Claude Sonnet 4 from Bedrock
+    'openrouter/z-ai/glm-4.5',                    // Primary: GLM-4.5 from OpenRouter
+    'openrouter/z-ai/glm-4.5-air',                // Fallback 1: GLM-4.5-air from OpenRouter
+    'moonshot/kimi-k2-turbo-preview',             // Fallback 2: Kimi K2 Turbo
+    'openrouter/anthropic/claude-3-5-sonnet-20241022', // Fallback 3: Claude 3.5 Sonnet from OpenRouter
+    'bedrock/anthropic.claude-sonnet-4-20250514-v1:0', // Fallback 4: Claude Sonnet 4 from Bedrock
   ]
 };
 
@@ -367,7 +369,7 @@ export const useModelSelection = () => {
             }
           ];
         } else {
-          // In local mode, show all models
+          // In local mode, show only free models
           models = [
             { 
               id: DEFAULT_FREE_MODEL_ID, 
@@ -375,12 +377,17 @@ export const useModelSelection = () => {
               requiresSubscription: false,
               priority: MODELS[DEFAULT_FREE_MODEL_ID]?.priority || 50
             },
-            { 
-              id: DEFAULT_PREMIUM_MODEL_ID, 
-              label: 'Sonnet 4', 
-              requiresSubscription: false, 
-              priority: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.priority || 100
-            },
+            // Only include models with :free in their ID
+            ...Object.entries(MODELS)
+              .filter(([id, model]) => id.includes(':free'))
+              .map(([id, model]) => ({
+                id,
+                label: formatModelName(id),
+                requiresSubscription: false,
+                priority: model.priority || 50,
+                lowQuality: model.lowQuality || false,
+                recommended: model.recommended || false
+              }))
           ];
         }
       } else {
@@ -400,13 +407,17 @@ export const useModelSelection = () => {
             }
           ];
         } else {
-          // In local mode, process all API models
+          // In local mode, process only free API models (those with :free in their ID)
           const processedModelIds = new Set(); // Track processed models to avoid duplicates
           models = modelsData.models
             .filter(model => {
               const shortName = model.short_name || model.id;
               // Skip if we've already processed this model ID
               if (processedModelIds.has(shortName)) {
+                return false;
+              }
+              // Only include models with :free in their ID
+              if (!shortName.includes(':free')) {
                 return false;
               }
               processedModelIds.add(shortName);
@@ -538,8 +549,8 @@ export const useModelSelection = () => {
       // Fallback to default model based on environment
       let defaultModel: string;
       if (isLocalMode()) {
-        // Local mode: use subscription-based default
-        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+        // Local mode: always use free model default
+        defaultModel = DEFAULT_FREE_MODEL_ID;
       } else {
         // Production mode: use Helio o1 as default
         defaultModel = PRODUCTION_MODELS['helio-o1'].id;
@@ -556,8 +567,8 @@ export const useModelSelection = () => {
       // Fallback to default model based on environment
       let defaultModel: string;
       if (isLocalMode()) {
-        // Local mode: use subscription-based default
-        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+        // Local mode: always use free model default
+        defaultModel = DEFAULT_FREE_MODEL_ID;
       } else {
         // Production mode: use Helio o1 as default
         defaultModel = PRODUCTION_MODELS['helio-o1'].id;
@@ -591,8 +602,8 @@ export const useModelSelection = () => {
       // Reset to default model when the selected model is not found
       let defaultModel: string;
       if (isLocalMode()) {
-        // Local mode: use subscription-based default
-        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+        // Local mode: always use free model default
+        defaultModel = DEFAULT_FREE_MODEL_ID;
       } else {
         // Production mode: use Helio o1 as default
         defaultModel = PRODUCTION_MODELS['helio-o1'].id;
@@ -646,7 +657,7 @@ export const useModelSelection = () => {
 // Function to get the actual model ID from Helio aliases (for backend routing)
 export const getActualModelId = (helioModelId: string): string => {
   if (helioModelId === 'helio-o1') {
-    return 'bedrock/anthropic.claude-sonnet-4-20250514-v1:0';
+    return 'openrouter/z-ai/glm-4.5';
   }
   return helioModelId;
 };
@@ -655,8 +666,9 @@ export const getActualModelId = (helioModelId: string): string => {
 export const getFallbackModels = (helioModelId: string): string[] => {
   if (helioModelId === 'helio-o1') {
     return [
-      'openrouter/anthropic/claude-3-5-sonnet-20241022',
-      'openrouter/moonshot/kimi-k2-0711-preview'
+      'openrouter/z-ai/glm-4.5-air',
+      'moonshot/kimi-k2-turbo-preview',
+      'anthropic/claude-sonnet-4',
     ];
   }
   return [];

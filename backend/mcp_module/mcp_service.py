@@ -368,15 +368,23 @@ class MCPService:
                 message=f"Failed to connect: {str(e)}"
             )
 
-    def _get_server_url(self, qualified_name: str, config: Dict[str, Any], provider: str) -> str:
+    async def _get_server_url(self, qualified_name: str, config: Dict[str, Any], provider: str) -> str:
         if provider in ['custom', 'http', 'sse']:
-            return self._get_custom_server_url(qualified_name, config)
+            return await self._get_custom_server_url(qualified_name, config)
+        elif provider == 'composio':
+            return await self._get_composio_server_url(qualified_name, config)
+        elif provider == 'pipedream':
+            return self._get_pipedream_server_url(qualified_name, config)
         else:
             raise MCPProviderError(f"Unknown provider type: {provider}")
     
     def _get_headers(self, qualified_name: str, config: Dict[str, Any], provider: str, external_user_id: Optional[str] = None) -> Dict[str, str]:
         if provider in ['custom', 'http', 'sse']:
             return self._get_custom_headers(qualified_name, config, external_user_id)
+        elif provider == 'composio':
+            return self._get_composio_headers(qualified_name, config, external_user_id)
+        elif provider == 'pipedream':
+            return self._get_pipedream_headers(qualified_name, config, external_user_id)
         else:
             raise MCPProviderError(f"Unknown provider type: {provider}")
     
@@ -395,6 +403,51 @@ class MCPService:
         if external_user_id:
             headers["X-External-User-Id"] = external_user_id
         
+        return headers
+
+    async def _get_composio_server_url(self, qualified_name: str, config: Dict[str, Any]) -> str:
+        """Resolve Composio profile_id to actual MCP URL"""
+        profile_id = config.get("profile_id")
+        if not profile_id:
+            raise MCPProviderError(f"profile_id not provided for Composio MCP server: {qualified_name}")
+        
+        # Import here to avoid circular dependency
+        from composio_integration.composio_profile_service import ComposioProfileService
+        from services.supabase import DBConnection
+        
+        try:
+            db = DBConnection()
+            profile_service = ComposioProfileService(db)
+            mcp_url = await profile_service.get_mcp_url_for_runtime(profile_id)
+            
+            self._logger.debug(f"Resolved Composio profile {profile_id} to MCP URL {mcp_url}")
+            return mcp_url
+            
+        except Exception as e:
+            self._logger.error(f"Failed to resolve Composio profile {profile_id}: {str(e)}")
+            raise MCPProviderError(f"Failed to resolve Composio profile: {str(e)}")
+    
+    def _get_composio_headers(self, qualified_name: str, config: Dict[str, Any], external_user_id: Optional[str] = None) -> Dict[str, str]:
+        """Get headers for Composio MCP connection"""
+        headers = {"Content-Type": "application/json"}
+        # Composio handles auth through the URL itself
+        return headers
+    
+    def _get_pipedream_server_url(self, qualified_name: str, config: Dict[str, Any]) -> str:
+        """Get Pipedream server URL"""
+        return config.get("url", "https://remote.mcp.pipedream.net")
+    
+    def _get_pipedream_headers(self, qualified_name: str, config: Dict[str, Any], external_user_id: Optional[str] = None) -> Dict[str, str]:
+        """Get headers for Pipedream MCP connection"""
+        headers = {"Content-Type": "application/json"}
+        
+        if "headers" in config:
+            headers.update(config["headers"])
+        
+        # For Pipedream, external_user_id is used differently
+        if external_user_id:
+            headers["X-External-User-Id"] = external_user_id
+            
         return headers
 
 

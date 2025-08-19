@@ -108,25 +108,29 @@ export const UpcomingRunsDropdown: React.FC<UpcomingRunsDropdownProps> = ({ agen
   const [isOpen, setIsOpen] = useState(false);
   const hasRuns = upcomingRuns?.upcoming_runs?.length > 0;
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button 
-          variant="ghost" 
-          size="sm"
-          className="h-8 px-3 text-muted-foreground hover:text-foreground"
-        >
-          <div className="flex items-center space-x-2">
-            <div className="relative">
-              <Clock className="h-4 w-4" />
-              {hasRuns && (
-                <div className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-              )}
-            </div>
-            <span className="text-sm">Upcoming</span>
-            <ChevronDown className="h-3 w-3" />
-          </div>
-        </Button>
-      </DropdownMenuTrigger>
+    <TooltipProvider>
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-9 w-9"
+              >
+                <div className="relative">
+                  <Clock className="h-4 w-4" />
+                  {hasRuns && (
+                    <div className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                  )}
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Upcoming Runs</p>
+          </TooltipContent>
+        </Tooltip>
       
       <DropdownMenuContent align="start" className="w-80">
         <DropdownMenuLabel className="flex items-center space-x-2">
@@ -178,7 +182,8 @@ export const UpcomingRunsDropdown: React.FC<UpcomingRunsDropdownProps> = ({ agen
             </DropdownMenuItem>
           </>
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </TooltipProvider>
   );
 }; 

@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import { ProfileConnector } from './installation/streamlined-profile-connector';
 import { CustomServerStep } from './installation/custom-server-step';
 import type { SetupStep } from './installation/types';
-import { useAnalyzeJsonForImport, useImportAgentFromJson, type JsonAnalysisResult, type JsonImportResult } from '@/hooks/react-query/agents/use-json-import';
+import { useAnalyzeJsonForImport, useImportAgentFromJson, type JsonAnalysisResult } from '@/hooks/react-query/agents/use-json-import';
+import { AgentCountLimitDialog } from './agent-count-limit-dialog';
 import { cn } from '@/lib/utils';
 
 interface JsonImportDialogProps {
@@ -34,6 +35,7 @@ export const JsonImportDialog: React.FC<JsonImportDialogProps> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [profileMappings, setProfileMappings] = useState<Record<string, string>>({});
   const [customMcpConfigs, setCustomMcpConfigs] = useState<Record<string, Record<string, any>>>({});
+  const [showAgentLimitDialog, setShowAgentLimitDialog] = useState(false);
 
   const analyzeJsonMutation = useAnalyzeJsonForImport();
   const importJsonMutation = useImportAgentFromJson();
@@ -47,6 +49,7 @@ export const JsonImportDialog: React.FC<JsonImportDialogProps> = ({
     setCurrentStep(0);
     setProfileMappings({});
     setCustomMcpConfigs({});
+    setShowAgentLimitDialog(false);
   }, []);
 
   useEffect(() => {
@@ -215,6 +218,12 @@ export const JsonImportDialog: React.FC<JsonImportDialogProps> = ({
             }
             onOpenChange(false);
           }
+        },
+        onError: (error) => {
+          if (error instanceof AgentCountLimitError) {
+            setShowAgentLimitDialog(true);
+            onOpenChange(false);
+          }
         }
       }
     );
@@ -238,7 +247,7 @@ export const JsonImportDialog: React.FC<JsonImportDialogProps> = ({
   }, [currentStep, setupSteps.length]);
 
   const renderPasteStep = () => (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       <div className="space-y-2">
         <Label htmlFor="json-content">Agent JSON</Label>
         <Textarea
@@ -380,7 +389,6 @@ export const JsonImportDialog: React.FC<JsonImportDialogProps> = ({
             Import Agent from JSON
           </DialogTitle>
         </DialogHeader>
-
         {analysis && !analysis.requires_setup && step === 'paste' && (
           <Alert>
             <CheckCircle2 className="h-4 w-4" />
@@ -389,7 +397,6 @@ export const JsonImportDialog: React.FC<JsonImportDialogProps> = ({
             </AlertDescription>
           </Alert>
         )}
-
         {analysis && analysis.requires_setup && step === 'paste' && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
@@ -400,7 +407,6 @@ export const JsonImportDialog: React.FC<JsonImportDialogProps> = ({
             </AlertDescription>
           </Alert>
         )}
-
         {analyzeJsonMutation.isError && step === 'paste' && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -409,7 +415,6 @@ export const JsonImportDialog: React.FC<JsonImportDialogProps> = ({
             </AlertDescription>
           </Alert>
         )}
-
         {importJsonMutation.isError && (step === 'setup' || step === 'importing') && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -418,11 +423,17 @@ export const JsonImportDialog: React.FC<JsonImportDialogProps> = ({
             </AlertDescription>
           </Alert>
         )}
-
         {step === 'paste' && renderPasteStep()}
         {step === 'setup' && renderSetupStep()}
         {step === 'importing' && renderImportingStep()}
       </DialogContent>
+      {showAgentLimitDialog && (
+        <AgentCountLimitDialog
+          open={showAgentLimitDialog}
+          onOpenChange={setShowAgentLimitDialog}
+          tierName={agentLimitError.detail.tier_name}
+        />
+      )}
     </Dialog>
   );
 }; 

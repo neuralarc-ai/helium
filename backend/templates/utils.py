@@ -220,7 +220,7 @@ def sanitize_config_for_security(config: Dict[str, Any]) -> Dict[str, Any]:
                 'enabledTools': mcp.get('enabledTools', [])
             }
             
-            if mcp.get('type') == 'pipedream':
+            if mcp.get('type') == 'composio':
                 original_config = mcp.get('config', {})
                 sanitized_mcp['config'] = {
                     'url': original_config.get('url'),

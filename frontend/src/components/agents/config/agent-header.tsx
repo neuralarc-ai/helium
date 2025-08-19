@@ -32,10 +32,12 @@ interface AgentHeaderProps {
   onTabChange: (value: string) => void;
   onExport?: () => void;
   isExporting?: boolean;
+  currentVersionId?: string;
   agentMetadata?: {
     is_suna_default?: boolean;
     restrictions?: {
       name_editable?: boolean;
+      avatar_editable?: boolean;
     };
   };
 }
@@ -57,7 +59,7 @@ export function AgentHeader({
   console.log('isSunaAgent', isSunaAgent);
   const restrictions = agentMetadata?.restrictions || {};
   const isNameEditable = !isViewingOldVersion && (restrictions.name_editable !== false);
-  
+  const isAvatarEditable = !isViewingOldVersion && (restrictions.avatar_editable !== false);  
   const handleNameChange = (value: string) => {
     if (!isNameEditable && isSunaAgent) {
       toast.error("Name cannot be edited", {
@@ -81,7 +83,7 @@ export function AgentHeader({
               currentColor={currentStyle.color}
               onStyleChange={onStyleChange}
               agentId={agentId}
-            >
+              >
               <div 
                 className="h-9 w-9 rounded-lg flex items-center justify-center shadow-sm ring-1 ring-black/5 hover:ring-black/10 transition-all duration-200 cursor-pointer"
                 style={{ backgroundColor: currentStyle.color }}

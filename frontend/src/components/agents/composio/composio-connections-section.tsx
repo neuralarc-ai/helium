@@ -306,25 +306,6 @@ const ToolkitTable: React.FC<ToolkitTableProps> = ({ toolkit }) => {
 
   const columns: DataTableColumn<ComposioProfileSummary>[] = [
     {
-      id: 'select',
-      header: '',
-      width: 'w-12',
-      cell: (profile) => (
-        <input
-          type="checkbox"
-          checked={selectedProfiles.some(p => p.profile_id === profile.profile_id)}
-          onChange={(e) => {
-            if (e.target.checked) {
-              setSelectedProfiles(prev => [...prev, profile]);
-            } else {
-              setSelectedProfiles(prev => prev.filter(p => p.profile_id !== profile.profile_id));
-            }
-          }}
-          className="h-4 w-4"
-        />
-      ),
-    },
-    {
       id: 'name',
       header: 'Profile Name',
       width: 'w-1/3',
@@ -465,21 +446,24 @@ const ToolkitTable: React.FC<ToolkitTableProps> = ({ toolkit }) => {
         data={toolkit.profiles}
         columns={columns}
         className="rounded-lg border"
+        selectable={true}
+        selectedItems={selectedProfiles}
+        onSelectionChange={setSelectedProfiles}
+        getItemId={(profile) => profile.profile_id}
+        headerActions={
+          selectedProfiles.length > 0 ? (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteSelected}
+              disabled={isDeleting}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete {selectedProfiles.length > 1 ? `${selectedProfiles.length} Profiles` : 'Profile'}
+            </Button>
+          ) : null
+        }
       />
-      
-      {selectedProfiles.length > 0 && (
-        <div className="flex justify-end pt-2">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleDeleteSelected}
-            disabled={isDeleting}
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete {selectedProfiles.length > 1 ? `${selectedProfiles.length} Profiles` : 'Profile'}
-          </Button>
-        </div>
-      )}
       
       {selectedProfile && (
         <McpUrlDialog

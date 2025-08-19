@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,6 +34,18 @@ interface ScheduleTriggerConfigFormProps {
 
 type ScheduleType = 'quick' | 'recurring' | 'advanced' | 'one-time';
 
+type VariableType = 'string' | 'number' | 'boolean' | 'select' | 'multiselect';
+
+interface VariableSpec {
+  key: string;
+  label: string;
+  type: VariableType;
+  required?: boolean;
+  options?: string[];
+  default?: string | number | boolean | string[];
+  helperText?: string;
+}
+
 interface QuickPreset {
   name: string;
   cron: string;
@@ -48,17 +60,17 @@ const QUICK_PRESETS: QuickPreset[] = [
   { name: 'Every 15 minutes', cron: '*/15 * * * *', description: 'Every 15 minutes', icon: <Timer className="h-4 w-4" />, category: 'frequent' },
   { name: 'Every 30 minutes', cron: '*/30 * * * *', description: 'Every 30 minutes', icon: <Timer className="h-4 w-4" />, category: 'frequent' },
   { name: 'Every hour', cron: '0 * * * *', description: 'At the start of every hour', icon: <Clock className="h-4 w-4" />, category: 'frequent' },
-  
+
   { name: 'Daily at 9 AM', cron: '0 9 * * *', description: 'Every day at 9:00 AM', icon: <Target className="h-4 w-4" />, category: 'daily' },
   { name: 'Daily at 12 PM', cron: '0 12 * * *', description: 'Every day at 12:00 PM', icon: <Target className="h-4 w-4" />, category: 'daily' },
   { name: 'Daily at 6 PM', cron: '0 18 * * *', description: 'Every day at 6:00 PM', icon: <Target className="h-4 w-4" />, category: 'daily' },
   { name: 'Twice daily', cron: '0 9,17 * * *', description: 'Every day at 9 AM and 5 PM', icon: <Repeat className="h-4 w-4" />, category: 'daily' },
-  
+
   { name: 'Weekdays at 9 AM', cron: '0 9 * * 1-5', description: 'Monday-Friday at 9:00 AM', icon: <Target className="h-4 w-4" />, category: 'weekly' },
   { name: 'Monday mornings', cron: '0 9 * * 1', description: 'Every Monday at 9:00 AM', icon: <CalendarIcon className="h-4 w-4" />, category: 'weekly' },
   { name: 'Friday evenings', cron: '0 17 * * 5', description: 'Every Friday at 5:00 PM', icon: <CalendarIcon className="h-4 w-4" />, category: 'weekly' },
   { name: 'Weekend mornings', cron: '0 10 * * 0,6', description: 'Saturday & Sunday at 10:00 AM', icon: <CalendarIcon className="h-4 w-4" />, category: 'weekly' },
-  
+
   { name: 'Monthly on 1st', cron: '0 9 1 * *', description: 'First day of month at 9:00 AM', icon: <CalendarIcon className="h-4 w-4" />, category: 'monthly' },
   { name: 'Monthly on 15th', cron: '0 9 15 * *', description: '15th of month at 9:00 AM', icon: <CalendarIcon className="h-4 w-4" />, category: 'monthly' },
   { name: 'End of month', cron: '0 9 28-31 * *', description: 'Last few days of month at 9:00 AM', icon: <CalendarIcon className="h-4 w-4" />, category: 'monthly' },
@@ -119,15 +131,57 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
   const { data: workflows = [], isLoading: isLoadingWorkflows } = useAgentWorkflows(agentId);
   const [scheduleType, setScheduleType] = useState<ScheduleType>('quick');
   const [selectedPreset, setSelectedPreset] = useState<string>('');
-  
+
   const [recurringType, setRecurringType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>(['1', '2', '3', '4', '5']);
   const [selectedMonths, setSelectedMonths] = useState<string[]>(['*']);
   const [dayOfMonth, setDayOfMonth] = useState<string>('1');
   const [scheduleTime, setScheduleTime] = useState<{ hour: string; minute: string }>({ hour: '09', minute: '00' });
-  
+
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [oneTimeTime, setOneTimeTime] = useState<{ hour: string; minute: string }>({ hour: '09', minute: '00' });
+
+  const selectedWorkflow = useMemo(() => {
+    return (workflows || []).find((w) => w.id === config.workflow_id);
+  }, [workflows, config.workflow_id]);
+
+  const { variableSpecs, templateText } = useMemo(() => {
+    if (!selectedWorkflow) return { variableSpecs: [] as VariableSpec[], templateText: '' };
+    const stepsAny = ((selectedWorkflow as any)?.steps as any[]) || [];
+    const start = stepsAny.find(
+      (s: any) => s?.name === 'Start' && s?.description === 'Click to add steps or use the Add Node button',
+    );
+    const child = start?.children?.[0] ?? stepsAny[0];
+    const vars = (child?.config?.playbook?.variables as VariableSpec[]) || [];
+    const tpl = (child?.config?.playbook?.template as string) || '';
+    return { variableSpecs: vars, templateText: tpl };
+  }, [selectedWorkflow]);
+
+  // Initialize defaults for variable inputs when workflow changes or dialog loads
+  useEffect(() => {
+    if (!selectedWorkflow || config.execution_type !== 'workflow') return;
+    if (!variableSpecs || variableSpecs.length === 0) return;
+    const defaults: Record<string, any> = {};
+    for (const v of variableSpecs) {
+      if (v.default !== undefined && (config.workflow_input?.[v.key] === undefined)) {
+        defaults[v.key] = v.default;
+      }
+    }
+    if (Object.keys(defaults).length > 0) {
+      onChange({
+        ...config,
+        workflow_input: { ...(config.workflow_input || {}), ...defaults },
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWorkflow?.id, config.execution_type]);
+
+  const handleVarChange = useCallback((key: string, value: any) => {
+    onChange({
+      ...config,
+      workflow_input: { ...(config.workflow_input || {}), [key]: value },
+    });
+  }, [config, onChange]);
 
   useEffect(() => {
     if (!config.timezone) {
@@ -221,7 +275,7 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
 
   const getSchedulePreview = () => {
     if (!config.cron_expression) return null;
-    
+
     try {
       const descriptions: Record<string, string> = {
         '0 9 * * *': 'Every day at 9:00 AM',
@@ -235,7 +289,7 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
         '0 0 * * *': 'Every day at midnight',
         '0 12 * * *': 'Every day at noon',
       };
-      
+
       return descriptions[config.cron_expression] || config.cron_expression;
     } catch {
       return config.cron_expression;
@@ -266,12 +320,14 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
     onChange({
       ...config,
       workflow_id: workflowId,
+      // reset inputs when switching playbooks to avoid leaking old keys
+      workflow_input: {},
     });
   };
 
   const handleWeekdayToggle = (weekday: string) => {
-    setSelectedWeekdays(prev => 
-      prev.includes(weekday) 
+    setSelectedWeekdays(prev =>
+      prev.includes(weekday)
         ? prev.filter(w => w !== weekday)
         : [...prev, weekday].sort()
     );
@@ -326,7 +382,7 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
                       <p className="text-sm text-destructive">{errors.name}</p>
                     )}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="trigger-description">Description</Label>
                     <Textarea
@@ -337,7 +393,7 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
                       rows={2}
                     />
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="trigger-active"
@@ -383,10 +439,10 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
                           Workflow *
                         </Label>
                         <Select value={config.workflow_id || ''} onValueChange={handleWorkflowChange}>
-                          <SelectTrigger className={errors.workflow_id ? 'border-destructive' : ''}>
-                            <SelectValue placeholder="Select a workflow" />
+                          <SelectTrigger className={cn('max-w-[28rem] w-full overflow-hidden', errors.workflow_id ? 'border-destructive' : '')}>
+                            <SelectValue className="truncate" placeholder="Select a workflow" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="max-w-[28rem]">
                             {isLoadingWorkflows ? (
                               <SelectItem value="__loading__" disabled>Loading workflows...</SelectItem>
                             ) : workflows.length === 0 ? (
@@ -394,7 +450,7 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
                             ) : (
                               workflows.filter(w => w.status === 'active').map((workflow) => (
                                 <SelectItem key={workflow.id} value={workflow.id}>
-                                  {workflow.name}
+                                  <span className="block truncate max-w-[26rem]">{workflow.name}</span>
                                 </SelectItem>
                               ))
                             )}
@@ -408,30 +464,53 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
                         </p>
                       </div>
 
-                      <div>
-                        <Label htmlFor="workflow_input" className="text-sm font-medium">
-                          Instructions for Workflow
-                        </Label>
-                        <Textarea
-                          id="workflow_input"
-                          value={config.workflow_input?.prompt || config.workflow_input?.message || ''}
-                          onChange={(e) => {
-                            onChange({
-                              ...config,
-                              workflow_input: { prompt: e.target.value },
-                            });
-                          }}
-                          placeholder="Write what you want the workflow to do..."
-                          rows={4}
-                          className={errors.workflow_input ? 'border-destructive' : ''}
-                        />
-                        {errors.workflow_input && (
-                          <p className="text-xs text-destructive mt-1">{errors.workflow_input}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Simply describe what you want the workflow to accomplish. The workflow will interpret your instructions naturally.
-                        </p>
-                      </div>
+                      {templateText ? (
+                        <div className="rounded-xl border p-3 bg-muted/30 max-h-[160px] overflow-y-auto">
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap">{templateText}</p>
+                        </div>
+                      ) : null}
+
+                      {variableSpecs && variableSpecs.length > 0 ? (
+                        <div className="space-y-3">
+                          {variableSpecs.map((v) => (
+                            <div key={v.key} className="space-y-1">
+                              <Label htmlFor={`v-${v.key}`}>{v.label}</Label>
+                              <Input
+                                id={`v-${v.key}`}
+                                type={v.type === 'number' ? 'number' : 'text'}
+                                value={(config.workflow_input?.[v.key] ?? '') as any}
+                                onChange={(e) => handleVarChange(v.key, v.type === 'number' ? Number(e.target.value) : e.target.value)}
+                                placeholder={v.helperText || ''}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div>
+                          <Label htmlFor="workflow_input" className="text-sm font-medium">
+                            Instructions for Workflow
+                          </Label>
+                          <Textarea
+                            id="workflow_input"
+                            value={config.workflow_input?.prompt || config.workflow_input?.message || ''}
+                            onChange={(e) => {
+                              onChange({
+                                ...config,
+                                workflow_input: { prompt: e.target.value },
+                              });
+                            }}
+                            placeholder="Write what you want the workflow to do..."
+                            rows={4}
+                            className={errors.workflow_input ? 'border-destructive' : ''}
+                          />
+                          {errors.workflow_input && (
+                            <p className="text-xs text-destructive mt-1">{errors.workflow_input}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Simply describe what you want the workflow to accomplish. The workflow will interpret your instructions naturally.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div>
@@ -463,7 +542,7 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
                   <Clock className="h-4 w-4" />
                   Schedule Configuration
                 </h3>
-                
+
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="timezone" className="text-sm font-medium">
@@ -482,11 +561,11 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
                             <div className="flex items-center justify-between w-full">
                               <span>{tz.label}</span>
                               <span className="text-xs text-muted-foreground ml-2">
-                                {new Date().toLocaleTimeString('en-US', { 
-                                  timeZone: tz.value, 
-                                  hour12: false, 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
+                                {new Date().toLocaleTimeString('en-US', {
+                                  timeZone: tz.value,
+                                  hour12: false,
+                                  hour: '2-digit',
+                                  minute: '2-digit'
                                 })}
                               </span>
                             </div>
@@ -496,8 +575,8 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
                     </Select>
                     {config.timezone && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        Current time: {new Date().toLocaleString('en-US', { 
-                          timeZone: config.timezone, 
+                        Current time: {new Date().toLocaleString('en-US', {
+                          timeZone: config.timezone,
                           hour12: true,
                           weekday: 'short',
                           month: 'short',
@@ -536,7 +615,7 @@ export const ScheduleTriggerConfigForm: React.FC<ScheduleTriggerConfigFormProps>
                             <h4 className="text-sm font-medium mb-3 capitalize">{category} Schedules</h4>
                             <div className="grid grid-cols-1 gap-2">
                               {presets.map((preset) => (
-                                <Card 
+                                <Card
                                   key={preset.cron}
                                   className={cn(
                                     "p-0 cursor-pointer transition-colors hover:bg-accent",

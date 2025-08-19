@@ -1,51 +1,27 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, ArrowDown, FileText, Info, ArrowLeft } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  ArrowDown,
+  FileText,
+  PanelRightOpen,
+  ArrowUp,
+} from 'lucide-react';
 import { UnifiedMessage } from '@/components/thread/types';
 import { safeJsonParse } from '@/components/thread/utils';
 import Link from 'next/link';
-
-// Define the set of tags whose raw XML should be hidden during streaming
-const HIDE_STREAMING_XML_TAGS = new Set([
-  'execute-command',
-  'create-file',
-  'delete-file',
-  'full-file-rewrite',
-  'str-replace',
-  'browser-click-element',
-  'browser-close-tab',
-  'browser-drag-drop',
-  'browser-get-dropdown-options',
-  'browser-go-back',
-  'browser-input-text',
-  'browser-navigate-to',
-  'browser-scroll-down',
-  'browser-scroll-to-text',
-  'browser-scroll-up',
-  'browser-select-dropdown-option',
-  'browser-send-keys',
-  'browser-switch-tab',
-  'browser-wait',
-  'deploy',
-  'ask',
-  'complete',
-  'think',
-  'crawl-webpage',
-  'web-search',
-]);
+import { parseXmlToolCalls } from '../tool-views/xml-parser';
+import { HIDE_STREAMING_XML_TAGS } from '@/components/thread/utils';
 
 export interface PlaybackControlsProps {
   messages: UnifiedMessage[];
   isSidePanelOpen: boolean;
   onToggleSidePanel: () => void;
   toolCalls: any[];
-  setCurrentToolIndex: (index: number) => void;
+  setCurrentToolIndex: React.Dispatch<React.SetStateAction<number>>;
   onFileViewerOpen: () => void;
   projectName?: string;
-  onBackNavigation?: () => void;
-  onCloseSidePanel?: () => void;
-  onStartToolCallReplay?: () => void;
-  onStepSync?: (stepIndex: number, toolName: string) => void;
 }
 
 export interface PlaybackState {
@@ -55,7 +31,6 @@ export interface PlaybackState {
   streamingText: string;
   isStreamingText: boolean;
   currentToolCall: any | null;
-  toolPlaybackIndex: number;
 }
 
 export interface PlaybackController {
@@ -67,6 +42,7 @@ export interface PlaybackController {
   togglePlayback: () => void;
   resetPlayback: () => void;
   skipToEnd: () => void;
+  forward: (step?: number) => void;
 }
 
 export const PlaybackControls = ({
@@ -77,10 +53,6 @@ export const PlaybackControls = ({
   setCurrentToolIndex,
   onFileViewerOpen,
   projectName = 'Shared Conversation',
-  onBackNavigation,
-  onCloseSidePanel,
-  onStartToolCallReplay,
-  onStepSync,
 }: PlaybackControlsProps): PlaybackController => {
   const [playbackState, setPlaybackState] = useState<PlaybackState>({
     isPlaying: false,
@@ -89,34 +61,7 @@ export const PlaybackControls = ({
     streamingText: '',
     isStreamingText: false,
     currentToolCall: null,
-    toolPlaybackIndex: -1,
   });
-
-  // Handle browser back button - only trigger navigation when chat is visible
-  useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      // Check if welcome overlay should be showing
-      const shouldShowWelcomeOverlay = playbackState.visibleMessages.length === 0 && 
-        !playbackState.streamingText && 
-        !playbackState.currentToolCall;
-      
-      // Only trigger back navigation if welcome overlay is NOT showing
-      if (onBackNavigation && !shouldShowWelcomeOverlay) {
-        onBackNavigation();
-      } else if (shouldShowWelcomeOverlay) {
-        // If welcome overlay is showing, prevent navigation and stay on the page
-        event.preventDefault();
-        // Push a new state to prevent the back button from working
-        window.history.pushState(null, '', window.location.href);
-      }
-    };
-
-    // Push initial state to enable back button handling
-    window.history.pushState(null, '', window.location.href);
-    
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [onBackNavigation, playbackState.visibleMessages.length, playbackState.streamingText, playbackState.currentToolCall]);
 
   // Extract state variables for easier access
   const {
@@ -126,8 +71,10 @@ export const PlaybackControls = ({
     streamingText,
     isStreamingText,
     currentToolCall,
-    toolPlaybackIndex,
   } = playbackState;
+
+  const playbackTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [isToolInitialized, setIsToolInitialized] = useState(false);
 
   // Helper function to update playback state
   const updatePlaybackState = useCallback((updates: Partial<PlaybackState>) => {
@@ -140,17 +87,11 @@ export const PlaybackControls = ({
       isPlaying: !isPlaying,
     });
 
-    // When starting playback, show the side panel and start tool call replay
-    if (!isPlaying) {
-      if (!isSidePanelOpen) {
-        onToggleSidePanel();
-      }
-      // Trigger tool call replay simultaneously
-      if (onStartToolCallReplay) {
-        onStartToolCallReplay();
-      }
+    // When starting playback, show the side panel
+    if (!isPlaying && !isSidePanelOpen) {
+      onToggleSidePanel();
     }
-  }, [isPlaying, isSidePanelOpen, onToggleSidePanel, onStartToolCallReplay]);
+  }, [isPlaying, isSidePanelOpen, onToggleSidePanel, updatePlaybackState]);
 
   const resetPlayback = useCallback(() => {
     updatePlaybackState({
@@ -160,14 +101,60 @@ export const PlaybackControls = ({
       streamingText: '',
       isStreamingText: false,
       currentToolCall: null,
-      toolPlaybackIndex: -1,
     });
-    
-    // Reset the step in Helium's core
-    if (onStepSync) {
-      onStepSync(0, '');
+    setCurrentToolIndex(0);
+    setIsToolInitialized(false);
+
+    if (playbackTimeout.current) {
+      clearTimeout(playbackTimeout.current);
     }
-  }, [updatePlaybackState, onStepSync]);
+
+    // If the side panel is open, close it
+    if (isSidePanelOpen) {
+      onToggleSidePanel();
+    }
+  }, [
+    updatePlaybackState,
+    setCurrentToolIndex,
+    isSidePanelOpen,
+    onToggleSidePanel,
+  ]);
+
+  const forward = useCallback(
+    (step: number = 1) => {
+      const newMessageIndex = Math.min(
+        currentMessageIndex + step,
+        messages.length,
+      );
+
+      if (!isSidePanelOpen) {
+        onToggleSidePanel();
+      }
+
+      // If we're moving to a new message, update the visible messages
+      if (newMessageIndex > currentMessageIndex) {
+        const newVisibleMessages = messages.slice(0, newMessageIndex);
+        updatePlaybackState({
+          currentMessageIndex: newMessageIndex,
+          visibleMessages: newVisibleMessages,
+          streamingText: '',
+          isStreamingText: false,
+        });
+      }
+
+      // If we're at the end, stop playback
+      if (newMessageIndex >= messages.length) {
+        updatePlaybackState({ isPlaying: false });
+      }
+    },
+    [
+      currentMessageIndex,
+      messages,
+      isSidePanelOpen,
+      onToggleSidePanel,
+      updatePlaybackState,
+    ],
+  );
 
   const skipToEnd = useCallback(() => {
     updatePlaybackState({
@@ -177,18 +164,10 @@ export const PlaybackControls = ({
       streamingText: '',
       isStreamingText: false,
       currentToolCall: null,
-      toolPlaybackIndex: toolCalls.length - 1,
     });
 
     if (toolCalls.length > 0) {
-      const finalStepIndex = toolCalls.length - 1;
-      setCurrentToolIndex(finalStepIndex);
-      
-      // Sync the final step in Helium's core
-      if (onStepSync) {
-        onStepSync(finalStepIndex, toolCalls[finalStepIndex]?.assistantCall?.name || '');
-      }
-      
+      setCurrentToolIndex(toolCalls.length - 1);
       if (!isSidePanelOpen) {
         onToggleSidePanel();
       }
@@ -234,11 +213,9 @@ export const PlaybackControls = ({
         }
 
         // Add the tool call
-        const toolName = match[1] || match[2];
         chunks.push({
           text: match[0],
           isTool: true,
-          toolName,
         });
 
         lastIndex = toolCallRegex.lastIndex;
@@ -298,47 +275,24 @@ export const PlaybackControls = ({
         // If this is a tool call chunk and we're at the start of it
         if (currentChunk.isTool && currentIndex === 0) {
           // For tool calls, check if they should be hidden during streaming
-          if (
-            currentChunk.toolName &&
-            HIDE_STREAMING_XML_TAGS.has(currentChunk.toolName)
-          ) {
-            // Instead of showing the XML, create a tool call object
-            const toolCall = {
-              name: currentChunk.toolName,
-              arguments: currentChunk.text,
-              xml_tag_name: currentChunk.toolName,
-            };
-
-            const newToolPlaybackIndex = toolPlaybackIndex + 1;
-            
-            updatePlaybackState({
-              currentToolCall: toolCall,
-              toolPlaybackIndex: newToolPlaybackIndex,
-            });
-
-            if (!isSidePanelOpen) {
-              onToggleSidePanel();
-            }
-
-            // Sync the step in Helium's core
-            if (onStepSync) {
-              onStepSync(newToolPlaybackIndex, currentChunk.toolName || '');
-            }
-
-            setCurrentToolIndex(newToolPlaybackIndex);
-
-            // Pause streaming briefly while showing the tool
-            isPaused = true;
-            setTimeout(() => {
-              isPaused = false;
-              updatePlaybackState({ currentToolCall: null });
-              chunkIndex++; // Move to next chunk
-              currentIndex = 0; // Reset index for next chunk
-              processNextCharacter();
-            }, 500); // Reduced from 1500ms to 500ms pause for tool display
-
-            return;
+          if (isToolInitialized) {
+            // TODO: better to change tool index by uniq tool id
+            setCurrentToolIndex((prev) => prev + 1);
+          } else {
+            setIsToolInitialized(true);
           }
+
+          // Pause streaming briefly while showing the tool
+          isPaused = true;
+          setTimeout(() => {
+            isPaused = false;
+            updatePlaybackState({ currentToolCall: null });
+            chunkIndex++; // Move to next chunk
+            currentIndex = 0; // Reset index for next chunk
+            processNextCharacter();
+          }, 500); // Reduced from 1500ms to 500ms pause for tool display
+
+          return;
         }
 
         // Handle normal text streaming for non-tool chunks or visible tool chunks
@@ -386,7 +340,6 @@ export const PlaybackControls = ({
       isPlaying,
       messages,
       currentMessageIndex,
-      toolPlaybackIndex,
       setCurrentToolIndex,
       isSidePanelOpen,
       onToggleSidePanel,
@@ -399,7 +352,6 @@ export const PlaybackControls = ({
   useEffect(() => {
     if (!isPlaying || messages.length === 0) return;
 
-    let playbackTimeout: NodeJS.Timeout;
     let cleanupStreaming: (() => void) | undefined;
 
     const playbackNextMessage = async () => {
@@ -410,12 +362,6 @@ export const PlaybackControls = ({
       }
 
       const currentMessage = messages[currentMessageIndex];
-      console.log(
-        `Playing message ${currentMessageIndex}:`,
-        currentMessage.type,
-        currentMessage.message_id,
-      );
-
       // If it's an assistant message, stream it
       if (currentMessage.type === 'assistant') {
         try {
@@ -437,30 +383,8 @@ export const PlaybackControls = ({
         } catch (error) {
           console.error('Error streaming message:', error);
         }
-      } else if (currentMessage.type === 'tool') {
-        // For tool messages, sync the step in Helium's core
-        if (onStepSync && toolCalls.length > 0) {
-          // Find the corresponding tool call index
-          const toolIndex = toolCalls.findIndex((tc, index) => {
-            // Try to match by content or metadata
-            return tc.assistantCall?.content === messages[currentMessageIndex - 1]?.content ||
-                   tc.toolResult?.content === currentMessage.content;
-          });
-          
-          if (toolIndex !== -1) {
-            onStepSync(toolIndex, toolCalls[toolIndex].assistantCall?.name || '');
-          }
-        }
-        
-        // Add tool message to visible messages
-        updatePlaybackState({
-          visibleMessages: [...visibleMessages, currentMessage],
-        });
-
-        // Wait a moment before showing the next message
-        await new Promise((resolve) => setTimeout(resolve, 500));
       } else {
-        // For other message types, just add them to visible messages
+        // For non-assistant messages, just add them to visible messages
         updatePlaybackState({
           visibleMessages: [...visibleMessages, currentMessage],
         });
@@ -476,10 +400,10 @@ export const PlaybackControls = ({
     };
 
     // Start playback with a small delay
-    playbackTimeout = setTimeout(playbackNextMessage, 500);
+    playbackTimeout.current = setTimeout(playbackNextMessage, 500);
 
     return () => {
-      clearTimeout(playbackTimeout);
+      clearTimeout(playbackTimeout.current);
       if (cleanupStreaming) cleanupStreaming();
     };
   }, [
@@ -493,37 +417,72 @@ export const PlaybackControls = ({
 
   // Floating playback controls position based on side panel state
   const controlsPositionClass = isSidePanelOpen
-    ? 'left-[25%] -translate-x-1/2'
+    ? 'left-1/2 -translate-x-1/4 sm:left-[calc(50%-225px)] md:left-[calc(50%-250px)] lg:left-[calc(50%-275px)] xl:left-[calc(50%-325px)]'
     : 'left-1/2 -translate-x-1/2';
+
+  const PlayButton = useCallback(
+    () => (
+      <Button
+        variant="ghost"
+        disabled={currentMessageIndex === messages.length}
+        size="icon"
+        onClick={togglePlayback}
+        className="h-8 w-8"
+        aria-label={isPlaying ? 'Pause Replay' : 'Play Replay'}
+      >
+        {isPlaying ? (
+          <Pause className="h-4 w-4" />
+        ) : (
+          <Play className="h-4 w-4" />
+        )}
+      </Button>
+    ),
+    [isPlaying, togglePlayback, currentMessageIndex, messages],
+  );
+
+  const ForwardButton = useCallback(
+    () => (
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => forward(1)}
+        disabled={currentMessageIndex === messages.length}
+        className="h-8 w-8"
+      >
+        <ArrowUp className="h-4 w-4 rotate-90" />
+      </Button>
+    ),
+    [currentMessageIndex, messages, forward],
+  );
+
+  const ResetButton = useCallback(
+    () => (
+      <Button
+        variant="ghost"
+        size="icon"
+        disabled={currentMessageIndex === 0}
+        onClick={resetPlayback}
+        className="h-8 w-8"
+        aria-label="Restart Replay"
+      >
+        <ArrowDown className="h-4 w-4 rotate-90" />
+      </Button>
+    ),
+    [currentMessageIndex, resetPlayback],
+  );
 
   // Header with playback controls
   const renderHeader = useCallback(
     () => (
-      <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-14 items-center gap-4 px-4 max-w-full">
-          <div className="flex-1 min-w-0">
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 relative z-[50]">
+        <div className="flex h-14 items-center gap-4 px-4">
+          <div className="flex-1">
             <div className="flex items-center gap-2">
-              {/* Back arrow - only show when chat thread is visible */}
-              {playbackState.visibleMessages.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    if (onCloseSidePanel) {
-                      onCloseSidePanel();
-                    }
-                  }}
-                  className="h-8 w-8"
-                  aria-label="Close Tool Panel"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              )}
               <div className="flex items-center justify-center w-6 h-6 rounded-md overflow-hidden bg-primary/10">
                 <Link href="/">
                   <img
-                    src="/full-logo.svg"
-                    alt="Helium"
+                    src="/kortix-symbol.svg"
+                    alt="Kortix"
                     width={16}
                     height={16}
                     className="object-contain"
@@ -538,58 +497,29 @@ export const PlaybackControls = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* <Button
-              variant="ghost"
-              size="icon"
-              onClick={onFileViewerOpen}
-              className="h-8 w-8"
-              aria-label="View Files"
-            >
-              <FileText className="h-4 w-4" />
-            </Button> */}
+            <PlayButton />
+            <ResetButton />
+            <ForwardButton />
             <Button
               variant="ghost"
               size="icon"
-              onClick={togglePlayback}
-              className="h-8 w-8"
-              aria-label={isPlaying ? 'Pause Replay' : 'Play Replay'}
+              onClick={onToggleSidePanel}
+              className={`h-8 w-8 ${isSidePanelOpen ? 'text-primary' : ''}`}
+              aria-label="Toggle Tool Panel"
             >
-              {isPlaying ? (
-                <Pause className="h-4 w-4" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
+              <PanelRightOpen className="h-4 w-4" />
             </Button>
-                          <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  resetPlayback();
-                  if (onCloseSidePanel) {
-                    onCloseSidePanel();
-                  }
-                }}
-                className="h-8 w-8"
-                aria-label="Restart Replay"
-              >
-                <ArrowDown className="h-4 w-4 rotate-90" />
-              </Button>
-
           </div>
         </div>
       </div>
     ),
     [
-      isPlaying,
       isSidePanelOpen,
-      onFileViewerOpen,
       onToggleSidePanel,
       projectName,
-      resetPlayback,
-      togglePlayback,
-      onBackNavigation,
-      onCloseSidePanel,
-      playbackState.visibleMessages.length,
+      PlayButton,
+      ResetButton,
+      ForwardButton,
     ],
   );
 
@@ -601,43 +531,15 @@ export const PlaybackControls = ({
             className={`fixed bottom-4 z-10 transform bg-background/90 backdrop-blur rounded-full border shadow-md px-3 py-1.5 transition-all duration-200 ${controlsPositionClass}`}
           >
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={togglePlayback}
-                className="h-8 w-8"
-              >
-                {isPlaying ? (
-                  <Pause className="h-4 w-4" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-              </Button>
-
+              <PlayButton />
               <div className="flex items-center text-xs text-muted-foreground">
                 <span>
-                  {Math.min(
-                    currentMessageIndex + (isStreamingText ? 0 : 1),
-                    messages.length,
-                  )}
-                  /{messages.length}
+                  {Math.max(1, Math.min(currentMessageIndex, messages.length))}/
+                  {messages.length}
                 </span>
               </div>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  resetPlayback();
-                  if (onCloseSidePanel) {
-                    onCloseSidePanel();
-                  }
-                }}
-                className="h-8 w-8"
-              >
-                <ArrowDown className="h-4 w-4 rotate-90" />
-              </Button>
-
+              <ResetButton />
+              <ForwardButton />
               <Button
                 variant="ghost"
                 size="sm"
@@ -654,13 +556,11 @@ export const PlaybackControls = ({
     [
       controlsPositionClass,
       currentMessageIndex,
-      isPlaying,
-      isStreamingText,
       messages.length,
-      resetPlayback,
       skipToEnd,
-      togglePlayback,
-      onCloseSidePanel,
+      PlayButton,
+      ResetButton,
+      ForwardButton,
     ],
   );
 
@@ -670,32 +570,29 @@ export const PlaybackControls = ({
       <>
         {visibleMessages.length === 0 && !streamingText && !currentToolCall && (
           <div className="fixed inset-0 flex flex-col items-center justify-center">
-            {/* Semi-transparent background overlay for better text visibility */}
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent dark:from-black/90 dark:via-black/50 dark:to-transparent" />
+
             <div className="text-center max-w-md mx-auto relative z-10 px-4">
-              {/* <div className="rounded-full bg-primary/10 backdrop-blur-sm w-12 h-12 mx-auto flex items-center justify-center mb-4">
+              <div className="rounded-full bg-primary/10 backdrop-blur-sm w-12 h-12 mx-auto flex items-center justify-center mb-4">
                 <Play className="h-5 w-5 text-primary" />
-              </div> */}
-              <h3 className="text-lg font-medium mb-2 text-foreground">
-                Watch Helium in action
+              </div>
+              <h3 className="text-lg font-medium mb-2 text-white">
+                Watch this agent in action
               </h3>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-white/80 mb-4">
                 This is a shared view-only agent run. Click play to replay the
                 entire conversation with realistic timing.
               </p>
-              <div className="flex justify-center">
-                <div className="p-[1px] rounded-full bg-gradient-to-r from-pink-400 to-blue-500 hover:from-pink-500 hover:to-blue-600 transition-all duration-300 hover:shadow-lg hover:scale-105">
-                  <button 
-                    onClick={togglePlayback}
-                    className="bg-white hover:bg-gray-50 text-gray-900 text-sm px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap"
-                  >
-                    Start Playback
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M8 6V18L18 12L8 6Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
+              <Button
+                onClick={togglePlayback}
+                className="flex items-center mx-auto bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border-white/20"
+                size="lg"
+                variant="outline"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Start Playback
+              </Button>
             </div>
           </div>
         )}
@@ -713,6 +610,7 @@ export const PlaybackControls = ({
     togglePlayback,
     resetPlayback,
     skipToEnd,
+    forward,
   };
 };
 

@@ -20,16 +20,12 @@ interface AgentBuilderChatProps {
   agentId: string;
   formData: any;
   handleFieldChange: (field: string, value: any) => void;
-  handleStyleChange: (emoji: string, color: string) => void;
-  currentStyle: { avatar: string; color: string };
 }
 
 export const AgentBuilderChat = React.memo(function AgentBuilderChat({
   agentId,
   formData,
   handleFieldChange,
-  handleStyleChange,
-  currentStyle
 }: AgentBuilderChatProps) {
   const [threadId, setThreadId] = useState<string | null>(null);
   const [agentRunId, setAgentRunId] = useState<string | null>(null);
@@ -47,18 +43,9 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
   const previousAgentIdRef = useRef<string | null>(null);
   const agentRunsCheckedRef = useRef(false);
 
-  // Debug mount/unmount
-  useEffect(() => {
-    console.log('[AgentBuilderChat] Component mounted');
-    return () => {
-      console.log('[AgentBuilderChat] Component unmounted');
-    };
-  }, []);
-
   // Reset hasInitiallyLoadedRef when agentId changes
   useEffect(() => {
     if (previousAgentIdRef.current !== null && previousAgentIdRef.current !== agentId) {
-      console.log('[AgentBuilderChat] Agent ID changed, resetting state');
       hasInitiallyLoadedRef.current = false;
       setMessages([]);
       setThreadId(null);
@@ -91,7 +78,6 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
 
   useEffect(() => {
     if (chatHistoryQuery.data && chatHistoryQuery.status === 'success' && !hasInitiallyLoadedRef.current) {
-      console.log('[AgentBuilderChat] Loading chat history for agent:', agentId);
       const { messages: historyMessages, thread_id } = chatHistoryQuery.data;
       if (historyMessages && historyMessages.length > 0) {
         const unifiedMessages = historyMessages
@@ -124,16 +110,13 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
 
   useEffect(() => {
     if (threadId && agentRunsQuery.data && !agentRunsCheckedRef.current) {
-      console.log('[AgentBuilderChat] Checking for active agent runs...');
       agentRunsCheckedRef.current = true;
 
       const activeRun = agentRunsQuery.data.find((run) => run.status === 'running');
       if (activeRun) {
-        console.log('[AgentBuilderChat] Found active run on load:', activeRun.id);
         setAgentRunId(activeRun.id);
         setAgentStatus('connecting');
       } else {
-        console.log('[AgentBuilderChat] No active agent runs found');
         setAgentStatus('idle');
       }
     }
@@ -151,7 +134,6 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
         );
 
         if (optimisticIndex !== -1) {
-          console.log(`[AGENT BUILDER] Replacing optimistic message with real message`);
           const newMessages = [...prev];
           newMessages[optimisticIndex] = message;
           return newMessages;
@@ -200,7 +182,6 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
   }, []);
 
   const handleStreamClose = useCallback(() => {
-    console.log(`[AGENT BUILDER] Stream closed`);
   }, []);
 
   const {
@@ -224,7 +205,6 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
 
   useEffect(() => {
     if (agentRunId && agentRunId !== currentHookRunId) {
-      console.log(`[AgentBuilderChat] Target agentRunId set to ${agentRunId}, initiating stream...`);
       startStreaming(agentRunId);
     }
   }, [agentRunId, startStreaming, currentHookRunId]);
@@ -269,7 +249,6 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
       if (result.thread_id) {
         setThreadId(result.thread_id);
         if (result.agent_run_id) {
-          console.log('[AGENT BUILDER] Setting agent run ID:', result.agent_run_id);
           setAgentRunId(result.agent_run_id);
         }
 
@@ -290,12 +269,11 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
       chatInputRef.current?.clearPendingFiles();
       setInputValue('');
     } catch (error: any) {
-      // DISABLED: Billing error handling for production
-      // if (error instanceof BillingError) {
-      //   toast.error('Billing limit reached. Please upgrade your plan.');
-      // } else {
+      if (error instanceof BillingError) {
+        toast.error('Billing limit reached. Please upgrade your plan.');
+      } else {
         toast.error('Failed to start agent builder session');
-      // }
+      }
       setHasStartedConversation(false);
       setSaveStatus('idle');
     } finally {
@@ -345,12 +323,11 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
         }
         if (results[1].status === 'rejected') {
           const error = results[1].reason;
-          // DISABLED: Billing error handling for production
-          // if (error instanceof BillingError) {
-          //   toast.error('Billing limit reached. Please upgrade your plan.');
-          //   setMessages(prev => prev.filter(m => m.message_id !== optimisticUserMessage.message_id));
-          //   return;
-          // }
+          if (error instanceof BillingError) {
+            toast.error('Billing limit reached. Please upgrade your plan.');
+            setMessages(prev => prev.filter(m => m.message_id !== optimisticUserMessage.message_id));
+            return;
+          }
           throw new Error(`Failed to start agent: ${error?.message || error}`);
         }
         const agentResult = results[1].value;
@@ -390,7 +367,7 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-hidden">
-        <div className="h-full overflow-y-auto scrollbar-hide">
+        <div className="h-full overflow-y-auto scrollbar-hide px-8">
           <ThreadContent
             messages={messages || []}
             streamingTextContent={streamingTextContent}
@@ -400,7 +377,7 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
             handleOpenFileViewer={handleOpenFileViewer}
             streamHookStatus={streamHookStatus}
             agentName="Agent Builder"
-            agentAvatar={'🤖'}
+            agentAvatar={undefined}
             emptyStateComponent={
               <div className="mt-6 flex flex-col items-center text-center text-muted-foreground/80">
                 <div className="flex w-20 aspect-square items-center justify-center rounded-2xl bg-muted-foreground/10 p-4 mb-4">
@@ -413,7 +390,7 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
           <div ref={messagesEndRef} />
         </div>
       </div>
-      <div className="flex-shrink-0 md:pb-4 md:px-6 px-4">
+      <div className="flex-shrink-0 md:pb-4 px-8">
         <ChatInput
           ref={chatInputRef}
           onSubmit={threadId ? handleSubmitMessage : handleSubmitFirstMessage}
@@ -437,9 +414,6 @@ export const AgentBuilderChat = React.memo(function AgentBuilderChat({
   return (
     prevProps.agentId === nextProps.agentId &&
     JSON.stringify(prevProps.formData) === JSON.stringify(nextProps.formData) &&
-    prevProps.currentStyle.avatar === nextProps.currentStyle.avatar &&
-    prevProps.currentStyle.color === nextProps.currentStyle.color &&
-    prevProps.handleFieldChange === nextProps.handleFieldChange &&
-    prevProps.handleStyleChange === nextProps.handleStyleChange
+    prevProps.handleFieldChange === nextProps.handleFieldChange
   );
 }); 

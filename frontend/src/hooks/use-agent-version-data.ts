@@ -108,22 +108,33 @@ function normalizeVersionData(version: any): NormalizedVersionData | null {
   }
 }
 
+// frontend/src/hooks/use-agent-version-data.ts
 export function useAgentVersionData({ agentId }: UseAgentVersionDataProps): UseAgentVersionDataReturn {
   const searchParams = useSearchParams();
   const versionParam = searchParams.get('version');
   
   const { data: agent, isLoading: agentLoading, error: agentError } = useAgent(agentId);
-  const shouldLoadVersion = versionParam || agent?.current_version_id;
+  
+  // Only try to load version if we have an agent
+  const shouldLoadVersion = agent && (versionParam || agent.current_version_id);
   const versionToLoad = versionParam || agent?.current_version_id || '';
   
-  const { data: rawVersionData, isLoading: versionLoading, error: versionError } = useAgentVersion(
+  const { 
+    data: rawVersionData, 
+    isLoading: versionLoading, 
+    error: versionError 
+  } = useAgentVersion(
     agentId,
-    shouldLoadVersion ? versionToLoad : null
+    shouldLoadVersion ? versionToLoad : null,
+    // {
+    //   enabled: !! shouldLoadVersion // Only enable the query if shouldLoadVersion is true
+    // }
   );
   
   const { setCurrentVersion, clearVersionState } = useVersionStore();
   
   const versionData = useMemo(() => {
+    if (!rawVersionData) return null;
     console.log('[useAgentVersionData] Raw version data:', rawVersionData);
     const normalized = normalizeVersionData(rawVersionData);
     console.log('[useAgentVersionData] Normalized version data:', normalized);
@@ -134,6 +145,11 @@ export function useAgentVersionData({ agentId }: UseAgentVersionDataProps): UseA
     return Boolean(versionParam && versionParam !== agent?.current_version_id);
   }, [versionParam, agent?.current_version_id]);
 
+  // Handle loading and error states
+  const isLoading = agentLoading || (shouldLoadVersion && versionLoading);
+  const error = agentError || versionError;
+
+  // Update version state when version data changes
   useEffect(() => {
     if (versionData) {
       setCurrentVersion({
@@ -148,22 +164,15 @@ export function useAgentVersionData({ agentId }: UseAgentVersionDataProps): UseA
         agentpress_tools: versionData.agentpress_tools,
         isActive: versionData.is_active,
         createdAt: new Date(versionData.created_at),
-        updatedAt: new Date(versionData.updated_at),
-        createdBy: { value: versionData.created_by || '' },
-        changeDescription: versionData.change_description,
+        updatedAt: versionData.updated_at ? new Date(versionData.updated_at) : new Date(versionData.created_at),
+        createdBy: versionData.created_by ? { value: versionData.created_by } : undefined,
+        changeDescription: versionData.change_description
       });
-    } else if (!versionParam) {
+    } else {
       clearVersionState();
     }
+  }, [versionData, setCurrentVersion, clearVersionState]);
 
-    return () => {
-      clearVersionState();
-    };
-  }, [versionData, versionParam, setCurrentVersion, clearVersionState]);
-  
-  const isLoading = agentLoading || (shouldLoadVersion ? versionLoading : false);
-  const error = agentError || versionError;
-  
   return {
     agent,
     versionData,
@@ -171,4 +180,4 @@ export function useAgentVersionData({ agentId }: UseAgentVersionDataProps): UseA
     isLoading,
     error
   };
-} 
+}

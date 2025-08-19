@@ -3,7 +3,8 @@ from typing import Optional
 from agentpress.tool import ToolResult, openapi_schema, usage_example
 from agentpress.thread_manager import ThreadManager
 from .base_tool import AgentBuilderBaseTool
-from pipedream import app_service, mcp_service
+from composio_integration.toolkit_service import ToolkitService
+from composio_integration.composio_service import get_integration_service
 from utils.logger import logger
 
 
@@ -15,13 +16,13 @@ class MCPSearchTool(AgentBuilderBaseTool):
         "type": "function",
         "function": {
             "name": "search_mcp_servers",
-            "description": "Search for Pipedream MCP servers based on user requirements. Use this when the user wants to add MCP tools to their agent.",
+            "description": "Search for Composio MCP servers based on user requirements. Use this when the user wants to add MCP tools to their agent.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Search query for finding relevant Pipedream apps (e.g., 'linear', 'github', 'database', 'search')"
+                        "description": "Search query for finding relevant Composio apps (e.g., 'linear', 'github', 'database', 'search')"
                     },
                     "limit": {
                         "type": "integer",
@@ -48,26 +49,26 @@ class MCPSearchTool(AgentBuilderBaseTool):
         limit: int = 10
     ) -> ToolResult:
         try:
-            search_result = await app_service.search_apps(
+            toolkit_service = ToolkitService()
+            search_result = await toolkit_service.search_toolkits(
                 query=query,
                 category=category,
-                page=1,
                 limit=limit
             )
             
-            apps = search_result.get("apps", [])
+            toolkits = search_result.get("items", [])
             
             formatted_apps = []
-            for app in apps:
+            for toolkit in toolkits:
                 formatted_apps.append({
-                    "name": app.name,
-                    "app_slug": app.slug.value if hasattr(app.slug, 'value') else str(app.slug),
-                    "description": app.description,
-                    "logo_url": getattr(app, 'logo_url', ''),
-                    "auth_type": app.auth_type.value if app.auth_type else '',
-                    "is_verified": getattr(app, 'is_verified', False),
-                    "url": getattr(app, 'url', ''),
-                    "tags": getattr(app, 'tags', [])
+                    "name": toolkit.name,
+                    "app_slug": toolkit.slug,
+                    "description": toolkit.description or "",
+                    "logo_url": toolkit.logo or "",
+                    "auth_type": toolkit.auth_schemes[0] if toolkit.auth_schemes else "",
+                    "is_verified": True,  # All toolkits in new API are verified
+                    "url": "",
+                    "tags": toolkit.tags
                 })
             
             if not formatted_apps:
@@ -82,13 +83,13 @@ class MCPSearchTool(AgentBuilderBaseTool):
             )
                 
         except Exception as e:
-            return self.fail_response(f"Error searching Pipedream apps: {str(e)}")
+            return self.fail_response(f"Error searching Composio toolkits: {str(e)}")
 
     @openapi_schema({
         "type": "function",
         "function": {
             "name": "get_app_details",
-            "description": "Get detailed information about a specific Pipedream app, including available tools and authentication requirements.",
+            "description": "Get detailed information about a specific Composio app, including available tools and authentication requirements.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -108,137 +109,108 @@ class MCPSearchTool(AgentBuilderBaseTool):
         </invoke>
         </function_calls>
         ''')
-    async def get_app_details(self, app_slug: str) -> ToolResult:
+
+    async def get_app_details(self, toolkit_slug: str) -> ToolResult:
         try:
-            app_data = await app_service.get_app_by_slug(app_slug)
+            toolkit_service = ToolkitService()
+            toolkit_data = await toolkit_service.get_toolkit_by_slug(toolkit_slug)
             
-            if not app_data:
-                return self.fail_response(f"Could not find app details for '{app_slug}'")
+            if not toolkit_data:
+                return self.fail_response(f"Could not find toolkit details for '{toolkit_slug}'")
             
-            formatted_app = {
-                "name": app_data.name,
-                "app_slug": app_data.slug.value if hasattr(app_data.slug, 'value') else str(app_data.slug),
-                "description": app_data.description,
-                "logo_url": getattr(app_data, 'logo_url', ''),
-                "auth_type": app_data.auth_type.value if app_data.auth_type else '',
-                "is_verified": getattr(app_data, 'is_verified', False),
-                "url": getattr(app_data, 'url', ''),
-                "tags": getattr(app_data, 'tags', []),
-                "pricing": getattr(app_data, 'pricing', ''),
-                "setup_instructions": getattr(app_data, 'setup_instructions', ''),
-                "available_actions": getattr(app_data, 'available_actions', []),
-                "available_triggers": getattr(app_data, 'available_triggers', [])
+            formatted_toolkit = {
+                "name": toolkit_data.name,
+                "toolkit_slug": toolkit_data.slug,
+                "description": toolkit_data.description or f"Toolkit for {toolkit_data.name}",
+                "logo_url": toolkit_data.logo or '',
+                "auth_schemes": toolkit_data.auth_schemes,
+                "tags": toolkit_data.tags,
+                "categories": toolkit_data.categories
             }
-            
-            available_tools = []
-            try:
-                import httpx
-                import json
-                
-                url = f"https://remote.mcp.pipedream.net/?app={app_slug}&externalUserId=tools_preview"
-                payload = {"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 1}
-                headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
-                
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    async with client.stream("POST", url, json=payload, headers=headers) as resp:
-                        resp.raise_for_status()
-                        async for line in resp.aiter_lines():
-                            if not line or not line.startswith("data:"):
-                                continue
-                            data_str = line[len("data:"):].strip()
-                            try:
-                                data_obj = json.loads(data_str)
-                                tools = data_obj.get("result", {}).get("tools", [])
-                                for tool in tools:
-                                    desc = tool.get("description", "") or ""
-                                    idx = desc.find("[")
-                                    if idx != -1:
-                                        desc = desc[:idx].strip()
-                                    
-                                    available_tools.append({
-                                        "name": tool.get("name", ""),
-                                        "description": desc
-                                    })
-                                break
-                            except json.JSONDecodeError:
-                                logger.warning(f"Failed to parse JSON data: {data_str}")
-                                continue
-                                
-            except Exception as tools_error:
-                logger.warning(f"Could not fetch MCP tools for {app_slug}: {tools_error}")
             
             result = {
-                "message": f"Retrieved details for {formatted_app['name']}",
-                "app": formatted_app,
-                "available_mcp_tools": available_tools,
-                "total_mcp_tools": len(available_tools)
+                "message": f"Retrieved details for {formatted_toolkit['name']}",
+                "toolkit": formatted_toolkit,
+                "supports_oauth": "OAUTH2" in toolkit_data.auth_schemes,
+                "auth_schemes": toolkit_data.auth_schemes
             }
-            
-            if available_tools:
-                result["message"] += f" - {len(available_tools)} MCP tools available"
             
             return self.success_response(result)
             
         except Exception as e:
-            return self.fail_response(f"Error getting app details: {str(e)}")
+            return self.fail_response(f"Error getting toolkit details: {str(e)}")
 
     @openapi_schema({
         "type": "function",
         "function": {
             "name": "discover_user_mcp_servers",
-            "description": "Discover available MCP servers for a specific user and app combination. Use this to see what MCP tools are available for a connected profile.",
+            "description": "Discover available MCP tools for a specific Composio profile. Use this to see what MCP tools are available for a connected profile.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "user_id": {
+                    "profile_id": {
                         "type": "string",
-                        "description": "The external user ID from the credential profile"
-                    },
-                    "app_slug": {
-                        "type": "string",
-                        "description": "The app slug to discover MCP servers for"
+                        "description": "The profile ID from the Composio credential profile"
                     }
                 },
-                "required": ["user_id", "app_slug"]
+                "required": ["profile_id"]
             }
         }
     })
     @usage_example('''
         <function_calls>
         <invoke name="discover_user_mcp_servers">
-        <parameter name="user_id">user_123456</parameter>
-        <parameter name="app_slug">github</parameter>
+        <parameter name="profile_id">profile-uuid-123</parameter>
         </invoke>
         </function_calls>
         ''')
-    async def discover_user_mcp_servers(self, user_id: str, app_slug: str) -> ToolResult:
+
+    async def discover_user_mcp_servers(self, profile_id: str) -> ToolResult:
         try:
-            from pipedream.mcp_service import ExternalUserId, AppSlug
-            external_user_id = ExternalUserId(user_id)
-            app_slug_obj = AppSlug(app_slug)
-            servers = await mcp_service.discover_servers_for_user(external_user_id, app_slug_obj)
+            account_id = await self._get_current_account_id()
+            from composio_integration.composio_profile_service import ComposioProfileService
+            from mcp_module.mcp_service import mcp_service
             
-            formatted_servers = []
-            for server in servers:
-                formatted_servers.append({
-                    "server_id": getattr(server, 'server_id', ''),
-                    "name": getattr(server, 'name', 'Unknown'),
-                    "app_slug": getattr(server, 'app_slug', app_slug),
-                    "status": getattr(server, 'status', 'unknown'),
-                    "available_tools": getattr(server, 'available_tools', []),
-                    "last_ping": getattr(server, 'last_ping', ''),
-                    "created_at": getattr(server, 'created_at', '')
-                })
+            profile_service = ComposioProfileService(self.db)
+            profiles = await profile_service.get_profiles(account_id)
             
-            connected_servers = [s for s in formatted_servers if s["status"] == "connected"]
-            total_tools = sum(len(s["available_tools"]) for s in connected_servers)
+            profile = None
+            for p in profiles:
+                if p.profile_id == profile_id:
+                    profile = p
+                    break
+            
+            if not profile:
+                return self.fail_response(f"Composio profile {profile_id} not found")
+            
+            if not profile.is_connected:
+                return self.fail_response("Profile is not connected yet. Please connect the profile first.")
+            
+            if not profile.mcp_url:
+                return self.fail_response("Profile has no MCP URL")
+            
+            result = await mcp_service.discover_custom_tools(
+                request_type="http",
+                config={"url": profile.mcp_url}
+            )
+            
+            if not result.success:
+                return self.fail_response(f"Failed to discover tools: {result.message}")
+            
+            available_tools = result.tools or []
             
             return self.success_response({
-                "message": f"Found {len(formatted_servers)} MCP servers for {app_slug} (user: {user_id}), {len(connected_servers)} connected with {total_tools} total tools available",
-                "servers": formatted_servers,
-                "connected_count": len(connected_servers),
-                "total_tools": total_tools
+                "message": f"Found {len(available_tools)} MCP tools available for {profile.toolkit_name} profile '{profile.profile_name}'",
+                "profile_info": {
+                    "profile_id": profile.profile_id,
+                    "profile_name": profile.profile_name,
+                    "toolkit_name": profile.toolkit_name,
+                    "toolkit_slug": profile.toolkit_slug,
+                    "is_connected": profile.is_connected
+                },
+                "tools": available_tools,
+                "total_tools": len(available_tools)
             })
             
         except Exception as e:
-            return self.fail_response(f"Error discovering MCP servers: {str(e)}") 
+            return self.fail_response(f"Error discovering MCP tools: {str(e)}")

@@ -1,5 +1,3 @@
-'use client';
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { composioApi } from './utils';
 import { composioKeys } from './keys';
@@ -7,18 +5,20 @@ import { toast } from 'sonner';
 
 export const useDeleteProfile = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async (profileId: string) => {
-      // This would need to be implemented in the backend
-      // For now, we'll simulate the deletion
-      return await composioApi.deleteProfile(profileId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: composioKeys.profiles.all() });
+    mutationFn: (profileId: string) => composioApi.deleteProfile(profileId),
+    onSuccess: async (data, profileId) => {
+      await queryClient.invalidateQueries({ 
+        queryKey: ['composio', 'profiles']
+      });
+      await queryClient.refetchQueries({ 
+        queryKey: ['composio', 'profiles']
+      });
+      queryClient.removeQueries({ queryKey: composioKeys.profiles.detail(profileId) });
       toast.success('Profile deleted successfully');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to delete profile');
     },
   });
@@ -26,19 +26,26 @@ export const useDeleteProfile = () => {
 
 export const useBulkDeleteProfiles = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async (profileIds: string[]) => {
-      // This would need to be implemented in the backend
-      // For now, we'll simulate the bulk deletion
-      const promises = profileIds.map(id => composioApi.deleteProfile(id));
-      return await Promise.all(promises);
+    mutationFn: (profileIds: string[]) => composioApi.bulkDeleteProfiles(profileIds),
+    onSuccess: async (data, profileIds) => {
+      await queryClient.invalidateQueries({ 
+        queryKey: ['composio', 'profiles']
+      });
+      await queryClient.refetchQueries({ 
+        queryKey: ['composio', 'profiles']
+      });
+      profileIds.forEach(profileId => {
+        queryClient.removeQueries({ queryKey: composioKeys.profiles.detail(profileId) });
+      });
+      if (data.failed_profiles.length > 0) {
+        toast.warning(`${data.deleted_count} profiles deleted successfully. ${data.failed_profiles.length} failed to delete.`);
+      } else {
+        toast.success(`${data.deleted_count} profiles deleted successfully`);
+      }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: composioKeys.profiles.all() });
-      toast.success('Profiles deleted successfully');
-    },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to delete profiles');
     },
   });
@@ -46,19 +53,20 @@ export const useBulkDeleteProfiles = () => {
 
 export const useSetDefaultProfile = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: async (profileId: string) => {
-      // This would need to be implemented in the backend
-      // For now, we'll simulate setting the default profile
-      return await composioApi.setDefaultProfile(profileId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: composioKeys.profiles.all() });
+    mutationFn: (profileId: string) => composioApi.setDefaultProfile(profileId),
+    onSuccess: async (data, profileId) => {
+      await queryClient.invalidateQueries({ 
+        queryKey: ['composio', 'profiles']
+      });
+      await queryClient.refetchQueries({ 
+        queryKey: ['composio', 'profiles']
+      });
       toast.success('Default profile updated successfully');
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || 'Failed to set default profile');
     },
   });
-};
+}; 

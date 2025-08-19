@@ -62,6 +62,7 @@ export interface CreateVersionRequest {
   agentpress_tools: Record<string, any>;
   version_name?: string;
   description?: string;
+  model?: string;
 }
 
 export interface UpdateVersionDetailsRequest {

@@ -879,9 +879,11 @@ export const ComposioConnector: React.FC<ComposioConnectorProps> = ({
                     )}
                     {!isLoadingToolkitDetails && toolkitDetails?.toolkit.connected_account_initiation_fields && (
                       <div className="space-y-4">
-                        <div className="text-sm font-medium text-muted-foreground">
-                          Connection Requirements
-                        </div>
+                        {(toolkitDetails.toolkit.connected_account_initiation_fields.required?.length ?? 0) > 0 && (
+                          <div className="text-sm font-medium text-muted-foreground">
+                            Connection Requirements
+                          </div>
+                        )}
                         {(toolkitDetails.toolkit.connected_account_initiation_fields.required?.length ?? 0) > 0 && (
                           <div className="space-y-3">
                             {toolkitDetails.toolkit.connected_account_initiation_fields.required.map((field) => (

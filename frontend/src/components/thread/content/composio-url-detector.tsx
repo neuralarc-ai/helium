@@ -87,34 +87,67 @@ function formatToolkitName(toolkitSlug: string): string {
 }
 
 function extractToolkitInfoFromContext(content: string, urlStartIndex: number): { toolkitName: string | null; toolkitSlug: string | null } {
-  // Look for toolkit information in the surrounding context
   const contextBefore = content.substring(Math.max(0, urlStartIndex - 500), urlStartIndex);
   const contextAfter = content.substring(urlStartIndex, Math.min(content.length, urlStartIndex + 200));
   const fullContext = contextBefore + contextAfter;
+  let match = contextBefore.match(/\[toolkit:([^:]+):([^\]]+)\]\s+Authentication:\s*$/i);
+  if (match) {
+    const toolkitSlug = match[1].trim();
+    const toolkitName = match[2].trim();
+    return { toolkitName, toolkitSlug };
+  }
   
-  // Try to extract toolkit name from various patterns
+  match = contextBefore.match(/([A-Za-z]+(?:\s+[A-Za-z]+)*)\s+Authentication:\s*$/i);
+  if (match) {
+    const serviceName = match[1].trim();
+    const slug = serviceName.toLowerCase().replace(/\s+/g, '_');
+    return { toolkitName: serviceName, toolkitSlug: slug };
+  }
   
-  // Pattern 1: "Successfully created credential profile 'ProfileName' for ToolkitName"
-  let match = fullContext.match(/Successfully created credential profile[^f]*for\s+([^.!?\n]+)/i);
+  match = contextBefore.match(/\d+\.\s*([A-Za-z]+)\s+Authentication(?:\s+\([^)]*\))?\s*:?\s*$/i);
+  if (match) {
+    const serviceName = match[1].trim();
+    const slug = serviceName.toLowerCase().replace(/\s+/g, '_');
+    return { toolkitName: serviceName, toolkitSlug: slug };
+  }
+  
+  match = contextBefore.match(/([A-Za-z]+)\s+Authentication\s+\(for[^)]*\)\s*:?\s*$/i);
+  if (match) {
+    const serviceName = match[1].trim();
+    const slug = serviceName.toLowerCase().replace(/\s+/g, '_');
+    return { toolkitName: serviceName, toolkitSlug: slug };
+  }
+  
+  match = fullContext.match(/Successfully created credential profile[^f]*for\s+([^.!?\n]+)/i);
   if (match) {
     return { toolkitName: match[1].trim(), toolkitSlug: match[1].toLowerCase().replace(/\s+/g, '_') };
   }
   
-  // Pattern 2: "connect your ToolkitName account"
   match = fullContext.match(/connect your\s+([^a]+)\s+account/i);
   if (match) {
     const name = match[1].trim();
     return { toolkitName: name, toolkitSlug: name.toLowerCase().replace(/\s+/g, '_') };
   }
   
-  // Pattern 3: "authorize access to your ToolkitName account"
   match = fullContext.match(/authorize access to your\s+([^a]+)\s+account/i);
   if (match) {
     const name = match[1].trim();
     return { toolkitName: name, toolkitSlug: name.toLowerCase().replace(/\s+/g, '_') };
   }
   
-  // Pattern 4: Look for common toolkit names in the context
+  match = fullContext.match(/Sign in to\s+([^.!?\n]+)/i);
+  if (match) {
+    const name = match[1].trim();
+    return { toolkitName: name, toolkitSlug: name.toLowerCase().replace(/\s+/g, '_') };
+  }
+  
+  match = contextBefore.match(/([A-Za-z]+)\s+authentication\s*(?:link|url)?:?\s*$/i);
+  if (match) {
+    const serviceName = match[1].trim();
+    const slug = serviceName.toLowerCase().replace(/\s+/g, '_');
+    return { toolkitName: serviceName, toolkitSlug: slug };
+  }
+  
   const commonToolkits = Object.keys(TOOLKIT_NAME_MAPPINGS);
   for (const toolkit of commonToolkits) {
     const toolkitName = TOOLKIT_NAME_MAPPINGS[toolkit];
@@ -127,26 +160,37 @@ function extractToolkitInfoFromContext(content: string, urlStartIndex: number): 
 }
 
 function detectComposioUrls(content: string): ComposioUrl[] {
-  // Detect Composio authentication URLs (these are typically OAuth URLs from various providers)
   const authUrlPatterns = [
-    // Google OAuth
     /https:\/\/accounts\.google\.com\/oauth\/authorize\?[^\s)]+/g,
-    // GitHub OAuth  
+    /https:\/\/accounts\.google\.com\/o\/oauth2\/[^\s)]+/g,
     /https:\/\/github\.com\/login\/oauth\/authorize\?[^\s)]+/g,
-    // Generic OAuth pattern for other providers
+    /https:\/\/api\.notion\.com\/v1\/oauth\/authorize\?[^\s)]+/g,
+    /https:\/\/slack\.com\/oauth\/[^\s)]+/g,
+    /https:\/\/[^\/\s]+\.slack\.com\/oauth\/[^\s)]+/g,
+    /https:\/\/login\.microsoftonline\.com\/[^\s)]+/g,
     /https:\/\/[^\/\s]+\/oauth2?\/authorize\?[^\s)]+/g,
-    // Composio backend URLs
     /https:\/\/backend\.composio\.dev\/[^\s)]+/g,
-    // Any HTTPS URL that looks like an auth callback
     /https:\/\/[^\/\s]+\/auth\/[^\s)]+/g,
+    /https:\/\/[^\/\s]+\/authorize\?[^\s)]+/g,
+    /https:\/\/[^\/\s]+\/connect\/[^\s)]+/g,
+    /https:\/\/[^\s)]+[?&](client_id|redirect_uri|response_type|scope)=[^\s)]+/g,
   ];
   
   const urls: ComposioUrl[] = [];
+  const processedUrls = new Set<string>(); // To avoid duplicates
   
   for (const pattern of authUrlPatterns) {
     let match;
+    pattern.lastIndex = 0; // Reset regex state
     while ((match = pattern.exec(content)) !== null) {
       const url = match[0];
+      
+      // Skip if we've already processed this URL
+      if (processedUrls.has(url)) {
+        continue;
+      }
+      
+      processedUrls.add(url);
       const { toolkitName, toolkitSlug } = extractToolkitInfoFromContext(content, match.index);
       
       urls.push({
@@ -164,7 +208,8 @@ function detectComposioUrls(content: string): ComposioUrl[] {
 
 function hasAuthUrlPattern(content: string, url: ComposioUrl): boolean {
   const beforeUrl = content.substring(Math.max(0, url.startIndex - 100), url.startIndex);
-  return /(?:authentication|auth|connect|visit)\s+(?:url|link):\s*$/i.test(beforeUrl);
+  // Updated pattern to also match [toolkit:slug:name] Authentication: format
+  return /(?:(?:\[toolkit:[^:]+:[^\]]+\]|[A-Za-z]+(?:\s+[A-Za-z]+)*)\s+)?(?:authentication|auth|connect|visit)\s+(?:url|link)?:\s*$/i.test(beforeUrl);
 }
 
 interface ComposioConnectButtonProps {
@@ -259,7 +304,12 @@ export const ComposioUrlDetector: React.FC<ComposioUrlDetectorProps> = ({
       const textBefore = content.substring(lastIndex, composioUrl.startIndex);
       
       const cleanedTextBefore = hasAuthUrlPattern(content, composioUrl)
-        ? textBefore.replace(/(?:authentication|auth|connect|visit)\s+(?:url|link):\s*$/i, '').trim()
+        ? textBefore
+            // Remove [toolkit:slug:name] pattern
+            .replace(/\[toolkit:[^:]+:[^\]]+\]\s+/gi, '')
+            // Remove authentication/auth/connect/visit url/link patterns
+            .replace(/(?:authentication|auth|connect|visit)\s+(?:url|link)?:\s*$/i, '')
+            .trim()
         : textBefore;
 
       if (cleanedTextBefore.trim()) {

@@ -9,25 +9,46 @@ import { generateRandomAvatar } from '@/lib/utils/_avatar-generator';
 import { AGENTPRESS_TOOL_DEFINITIONS } from '@/components/agents/tools';
 import { DEFAULT_AGENTPRESS_TOOLS } from '@/components/agents/tools';
 
-export const useAgents = (params: AgentsParams = {}) => {
+export const useAgents = (params: AgentsParams = {}, options: { enabled?: boolean } = {}) => {
   return createQueryHook(
     agentKeys.list(params),
     () => getAgents(params),
     {
       staleTime: 5 * 60 * 1000,
       gcTime: 10 * 60 * 1000,
+      enabled: options.enabled,
     }
   )();
 };
 
+// frontend/src/hooks/react-query/agents/use-agents.ts
 export const useAgent = (agentId: string) => {
   return createQueryHook(
     agentKeys.detail(agentId),
-    () => getAgent(agentId),
+    async () => {
+      try {
+        return await getAgent(agentId);
+      } catch (error) {
+        // Return null instead of throwing when agent is not found
+        if (error instanceof Error && error.message.includes('not found')) {
+          return null;
+        }
+        // Re-throw other errors
+        throw error;
+      }
+    },
     {
       enabled: !!agentId,
       staleTime: 5 * 60 * 1000,
       gcTime: 10 * 60 * 1000,
+      retry: (failureCount, error) => {
+        // Don't retry on 404 errors
+        if (error instanceof Error && error.message.includes('not found')) {
+          return false;
+        }
+        // Retry other errors up to 3 times
+        return failureCount < 3;
+      }
     }
   )();
 };

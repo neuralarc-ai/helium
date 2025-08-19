@@ -34,7 +34,10 @@ export const ComposioCredentialProfileSelector: React.FC<ComposioCredentialProfi
   className,
   showCreateOption = true,
 }) => {
-  const mcpQualifiedName = `composio.${toolkitSlug}`;
+  const mcpQualifiedName = toolkitSlug === 'composio' 
+    ? 'composio' 
+    : `composio.${toolkitSlug}`;
+    
   const { data: profiles, isLoading } = useCredentialProfilesForMcp(mcpQualifiedName);
 
   const selectedProfile = profiles?.find(p => p.profile_id === selectedProfileId);

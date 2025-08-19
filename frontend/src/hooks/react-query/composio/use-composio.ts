@@ -1,12 +1,14 @@
 'use client';
 
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { 
   composioApi, 
   type ComposioToolkitsResponse,
   type CompositoCategoriesResponse,
   type CreateComposioProfileRequest,
   type CreateComposioProfileResponse,
+  type DetailedComposioToolkitResponse,
+  type ComposioToolsResponse,
 } from './utils';
 import { composioKeys } from './keys';
 import { toast } from 'sonner';
@@ -16,7 +18,6 @@ export const useComposioCategories = () => {
     queryKey: composioKeys.categories(),
     queryFn: async (): Promise<CompositoCategoriesResponse> => {
       const result = await composioApi.getCategories();
-      console.log('📂 Composio Categories:', result);
       return result;
     },
     staleTime: 10 * 60 * 1000,
@@ -29,7 +30,6 @@ export const useComposioToolkits = (search?: string, category?: string) => {
     queryKey: composioKeys.toolkits(search, category),
     queryFn: async (): Promise<ComposioToolkitsResponse> => {
       const result = await composioApi.getToolkits(search, category);
-      console.log('🔍 Composio Toolkits:', result);
       return result;
     },
     staleTime: 5 * 60 * 1000, 
@@ -38,48 +38,16 @@ export const useComposioToolkits = (search?: string, category?: string) => {
 };
 
 export const useComposioToolkitsInfinite = (search?: string, category?: string) => {
-  return useQuery({
-    queryKey: composioKeys.toolkits(search, category),
-    queryFn: async (): Promise<ComposioToolkitsResponse> => {
-      const result = await composioApi.getToolkits(search, category);
-      console.log('🔍 Composio Toolkits (Infinite):', result);
+  return useInfiniteQuery({
+    queryKey: ['composio', 'toolkits', 'infinite', search, category],
+    queryFn: async ({ pageParam }): Promise<ComposioToolkitsResponse> => {
+      const result = await composioApi.getToolkits(search, category, pageParam);
       return result;
     },
-    staleTime: 5 * 60 * 1000, 
-    retry: 2,
-  });
-};
-
-export const useComposioTools = (toolkitSlug: string, options?: { enabled?: boolean; limit?: number }) => {
-  return useQuery({
-    queryKey: composioKeys.tools(toolkitSlug),
-    queryFn: async () => {
-      const result = await composioApi.discoverTools(toolkitSlug);
-      return result;
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => {
+      return lastPage.next_cursor || undefined;
     },
-    enabled: options?.enabled !== false,
-    staleTime: 5 * 60 * 1000,
-    retry: 2,
-  });
-};
-
-export const useComposioToolkitDetails = (toolkitSlug: string, options?: { enabled?: boolean }) => {
-  return useQuery({
-    queryKey: composioKeys.toolkitDetails(toolkitSlug),
-    queryFn: async () => {
-      // For now, return a mock structure - this would need to be implemented in the backend
-      return {
-        toolkit: {
-          slug: toolkitSlug,
-          name: 'Toolkit',
-          connected_account_initiation_fields: {
-            required: [],
-            optional: []
-          }
-        }
-      };
-    },
-    enabled: options?.enabled !== false,
     staleTime: 5 * 60 * 1000,
     retry: 2,
   });
@@ -87,12 +55,38 @@ export const useComposioToolkitDetails = (toolkitSlug: string, options?: { enabl
 
 export const useComposioToolkitIcon = (toolkitSlug: string, options?: { enabled?: boolean }) => {
   return useQuery({
-    queryKey: composioKeys.toolkitIcon(toolkitSlug),
-    queryFn: async () => {
+    queryKey: ['composio', 'toolkit-icon', toolkitSlug],
+    queryFn: async (): Promise<{ success: boolean; icon_url?: string }> => {
       const result = await composioApi.getToolkitIcon(toolkitSlug);
       return result;
     },
-    enabled: options?.enabled !== false && !!toolkitSlug,
+    enabled: options?.enabled !== undefined ? options.enabled : !!toolkitSlug,
+    staleTime: 60 * 60 * 1000,
+    retry: 2,
+  });
+};
+
+export const useComposioToolkitDetails = (toolkitSlug: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: ['composio', 'toolkit-details', toolkitSlug],
+    queryFn: async (): Promise<DetailedComposioToolkitResponse> => {
+      const result = await composioApi.getToolkitDetails(toolkitSlug);
+      return result;
+    },
+    enabled: options?.enabled !== undefined ? options.enabled : !!toolkitSlug,
+    staleTime: 10 * 60 * 1000,
+    retry: 2,
+  });
+};
+
+export const useComposioTools = (toolkitSlug: string, options?: { enabled?: boolean; limit?: number }) => {
+  return useQuery({
+    queryKey: ['composio', 'tools', toolkitSlug, options?.limit],
+    queryFn: async (): Promise<ComposioToolsResponse> => {
+      const result = await composioApi.getTools(toolkitSlug, options?.limit);
+      return result;
+    },
+    enabled: (options?.enabled ?? true) && !!toolkitSlug,
     staleTime: 10 * 60 * 1000,
     retry: 2,
   });
@@ -111,7 +105,6 @@ export const useCreateComposioProfile = () => {
       
       // If there's a redirect URL, open it automatically
       if (data.redirect_url) {
-        console.log('🔗 Opening OAuth URL:', data.redirect_url);
         window.open(data.redirect_url, '_blank', 'width=600,height=700,resizable=yes,scrollbars=yes');
       }
     },

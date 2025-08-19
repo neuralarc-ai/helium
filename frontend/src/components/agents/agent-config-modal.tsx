@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { DEFAULT_AGENTPRESS_TOOLS } from './tools';
+import { AGENTPRESS_TOOL_DEFINITIONS, DEFAULT_AGENTPRESS_TOOLS } from './tools';
 
 interface AgentConfigModalProps {
   isOpen: boolean;

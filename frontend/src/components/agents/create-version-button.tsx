@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Save, Loader2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -76,6 +77,25 @@ export function CreateVersionButton({
 
   return (
     <>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => setShowDialog(true)}
+              disabled={!hasChanges}
+            >
+              <Save className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{hasChanges ? 'Create Version' : 'No changes to save'}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader>
@@ -116,6 +136,19 @@ export function CreateVersionButton({
               disabled={createVersionMutation.isPending}
             >
               Cancel
+            </Button>
+            <Button
+              onClick={handleCreateVersion}
+              disabled={createVersionMutation.isPending}
+            >
+              {createVersionMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Version'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

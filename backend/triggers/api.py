@@ -748,3 +748,49 @@ async def execute_agent_workflow(
 # ===== INCLUDE WORKFLOWS ROUTER =====
 
 router.include_router(workflows_router)
+
+
+# ===== UTILITY FUNCTIONS =====
+
+async def sync_triggers_to_version_config(agent_id: str):
+    """
+    Sync triggers to the current version config for an agent.
+    This function is called when triggers are created or updated.
+    """
+    try:
+        client = await db.client
+        
+        # Get the current version of the agent
+        agent_result = await client.table('agents').select('current_version_id').eq('agent_id', agent_id).execute()
+        if not agent_result.data:
+            logger.warning(f"Agent {agent_id} not found for trigger sync")
+            return
+        
+        current_version_id = agent_result.data[0]['current_version_id']
+        if not current_version_id:
+            logger.warning(f"Agent {agent_id} has no current version for trigger sync")
+            return
+        
+        # Get all active triggers for this agent
+        triggers_result = await client.table('triggers').select('*').eq('agent_id', agent_id).eq('is_active', True).execute()
+        
+        # Update the version config with current triggers
+        trigger_configs = []
+        for trigger in triggers_result.data:
+            trigger_configs.append({
+                'trigger_id': trigger['trigger_id'],
+                'trigger_type': trigger['trigger_type'],
+                'provider_id': trigger['provider_id'],
+                'name': trigger['name'],
+                'config': trigger['config']
+            })
+        
+        # Update the version config
+        await client.table('agent_versions').update({
+            'trigger_configs': trigger_configs
+        }).eq('version_id', current_version_id).execute()
+        
+        logger.info(f"Synced {len(trigger_configs)} triggers to version config for agent {agent_id}")
+        
+    except Exception as e:
+        logger.error(f"Failed to sync triggers to version config for agent {agent_id}: {e}", exc_info=True)

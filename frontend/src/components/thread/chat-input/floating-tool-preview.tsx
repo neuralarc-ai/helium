@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, CheckCircle, Check, ListTodo } from 'lucide-react';
+import { ChevronUp, Check, ListTodo } from 'lucide-react';
 import { getUserFriendlyToolName } from '@/components/thread/utils';
 import { cn } from '@/lib/utils';
 

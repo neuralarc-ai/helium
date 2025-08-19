@@ -197,19 +197,23 @@ export const getAgents = async (params: AgentsParams = {}): Promise<AgentsRespon
   }
 };
 
-export const getAgent = async (agentId: string): Promise<Agent> => {
+export const getAgent = async (agentId: string): Promise<Agent | null> => {
   try {
+    console.log(`[getAgent] Fetching agent with ID: ${agentId}`);
     const agentPlaygroundEnabled = await isFlagEnabled('custom_agents');
     if (!agentPlaygroundEnabled) {
+      console.log('[getAgent] Custom agents not enabled');
       throw new Error('Custom agents is not enabled');
     }
+    
     const supabase = createClient();
     const { data: { session } } = await supabase.auth.getSession();
-
     if (!session) {
+      console.log('[getAgent] No active session');
       throw new Error('You must be logged in to get agent details');
     }
 
+    console.log(`[getAgent] Making request to: ${API_URL}/agents/${agentId}`);
     const response = await fetch(`${API_URL}/agents/${agentId}`, {
       method: 'GET',
       headers: {
@@ -219,15 +223,30 @@ export const getAgent = async (agentId: string): Promise<Agent> => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.detail || errorMessage;
+        console.log(`[getAgent] API Error: ${errorMessage}`, errorData);
+      } catch (e) {
+        console.log(`[getAgent] Failed to parse error response:`, e);
+      }
+      
+      // Return null for 404 errors instead of throwing
+      if (response.status === 404) {
+        console.log(`[getAgent] Agent not found: ${agentId}`);
+        return null;
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const agent = await response.json();
-    console.log('[API] Fetched agent:', agent.agent_id);
+    console.log(`[getAgent] Successfully fetched agent:`, agent.agent_id);
     return agent;
   } catch (err) {
-    console.error('Error fetching agent:', err);
+    console.error('[getAgent] Error:', err);
+    // Re-throw the error to be handled by the query
     throw err;
   }
 };

@@ -19,8 +19,9 @@ import {
   ExternalLink,
   Loader2
 } from 'lucide-react';
-import { TriggerProvider, TriggerConfiguration, ScheduleTriggerConfig } from './types';
+import { TriggerProvider, TriggerConfiguration, ScheduleTriggerConfig, EventTriggerConfig } from './types';
 import { ScheduleTriggerConfigForm } from './providers/schedule-config';
+import { EventTriggerConfigForm } from './providers/event-config';
 import { getDialogIcon } from './utils';
 
 
@@ -79,6 +80,17 @@ export const TriggerConfigDialog: React.FC<TriggerConfigDialogProps> = ({
           newErrors.agent_prompt = 'Agent prompt is required';
         }
       }
+    } else if (provider.trigger_type === 'webhook' || provider.provider_id === 'composio') {
+      // Validate event-based triggers
+      if (config.execution_type === 'workflow') {
+        if (!config.workflow_id) {
+          newErrors.workflow_id = 'Workflow selection is required';
+        }
+      } else {
+        if (!config.agent_prompt) {
+          newErrors.agent_prompt = 'Agent prompt is required';
+        }
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -113,7 +125,41 @@ export const TriggerConfigDialog: React.FC<TriggerConfigDialogProps> = ({
             onActiveChange={setIsActive}
           />
         );
+      case 'composio':
+        return (
+          <EventTriggerConfigForm
+            provider={provider}
+            config={config as EventTriggerConfig}
+            onChange={setConfig}
+            errors={errors}
+            agentId={agentId}
+            name={name}
+            description={description}
+            onNameChange={setName}
+            onDescriptionChange={setDescription}
+            isActive={isActive}
+            onActiveChange={setIsActive}
+          />
+        );
       default:
+        // Check if it's an event-based trigger (webhook type)
+        if (provider.trigger_type === 'webhook') {
+          return (
+            <EventTriggerConfigForm
+              provider={provider}
+              config={config as EventTriggerConfig}
+              onChange={setConfig}
+              errors={errors}
+              agentId={agentId}
+              name={name}
+              description={description}
+              onNameChange={setName}
+              onDescriptionChange={setDescription}
+              isActive={isActive}
+              onActiveChange={setIsActive}
+            />
+          );
+        }
         return (
           <div className="text-center py-8 text-muted-foreground">
             <Activity className="h-12 w-12 mx-auto mb-4" />
@@ -139,55 +185,7 @@ export const TriggerConfigDialog: React.FC<TriggerConfigDialogProps> = ({
         </DialogDescription>
       </DialogHeader>
       <div className="flex-1 overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-        {provider.provider_id === 'schedule' ? (
-          renderProviderSpecificConfig()
-        ) : (
-          <>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="trigger-name">Name *</Label>
-                <Input
-                  id="trigger-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter a name for this trigger"
-                  className={errors.name ? 'border-destructive' : ''}
-                />
-                {errors.name && (
-                  <p className="text-sm text-destructive">{errors.name}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="trigger-description">Description</Label>
-                <Textarea
-                  id="trigger-description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Optional description for this trigger"
-                  rows={2}
-                />
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="trigger-active"
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
-                <Label htmlFor="trigger-active">
-                  Enable trigger immediately
-                </Label>
-              </div>
-            </div>
-            <div className="border-t pt-6">
-              <h3 className="text-sm font-medium mb-4">
-                {provider.name} Configuration
-              </h3>
-              {renderProviderSpecificConfig()}
-            </div>
-          </>
-        )}
+        {renderProviderSpecificConfig()}
         {provider.webhook_enabled && existingConfig?.webhook_url && (
           <div className="border-t pt-6">
             <h3 className="text-sm font-medium mb-4">Webhook Information</h3>

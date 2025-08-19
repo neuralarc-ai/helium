@@ -14,6 +14,7 @@ interface AgentMCPConfigurationProps {
   };
   saveMode?: 'direct' | 'callback';
   versionId?: string;
+  isLoading?: boolean;
 }
 
 export const AgentMCPConfiguration: React.FC<AgentMCPConfigurationProps> = ({
@@ -23,18 +24,11 @@ export const AgentMCPConfiguration: React.FC<AgentMCPConfigurationProps> = ({
   agentId,
   versionData,
   saveMode = 'direct',
-  versionId
+  versionId,
+  isLoading = false
 }) => {
   const allMCPs = [
     ...(configuredMCPs || []),
-    // ...(customMCPs || []).map(customMcp => ({
-    //   name: customMcp.name,
-    //   qualifiedName: `custom_${customMcp.type || customMcp.customType}_${customMcp.name.replace(' ', '_').toLowerCase()}`,
-    //   config: customMcp.config,
-    //   enabledTools: customMcp.enabledTools,
-    //   isCustom: true,
-    //   customType: customMcp.type || customMcp.customType
-    // }))
     ...(customMCPs || []).map(customMcp => {
       if (customMcp.type === 'composio' || customMcp.customType === 'composio') {
         return {
@@ -66,13 +60,6 @@ export const AgentMCPConfiguration: React.FC<AgentMCPConfigurationProps> = ({
     const configured = mcps.filter(mcp => !mcp.isCustom);
     const custom = mcps
       .filter(mcp => mcp.isCustom)
-      // .map(mcp => ({
-      //   name: mcp.name,
-      //   type: mcp.customType,
-      //   customType: mcp.customType,
-      //   config: mcp.config,
-      //   enabledTools: mcp.enabledTools
-      // }));
       .map(mcp => {
         if (mcp.customType === 'composio' || mcp.isComposio) {
           return {
@@ -107,6 +94,7 @@ export const AgentMCPConfiguration: React.FC<AgentMCPConfigurationProps> = ({
       versionData={versionData}
       saveMode={saveMode}
       versionId={versionId}
+      isLoading={isLoading}
     />
   );
 }; 

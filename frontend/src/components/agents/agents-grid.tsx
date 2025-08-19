@@ -5,7 +5,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
-import { getAgentAvatar } from '../../lib/utils/get-agent-style';
 import { useCreateTemplate, useUnpublishTemplate } from '@/hooks/react-query/secure-mcp/use-secure-mcp';
 import { toast } from 'sonner';
 import { AgentCard } from './custom-agents-page/agent-card';
@@ -24,8 +23,6 @@ interface Agent {
   updated_at?: string;
   configured_mcps?: Array<{ name: string }>;
   agentpress_tools?: Record<string, any>;
-  avatar?: string;
-  avatar_color?: string;
   template_id?: string;
   current_version_id?: string;
   version_count?: number;
@@ -45,6 +42,7 @@ interface Agent {
       mcps_editable?: boolean;
     };
   };
+  profile_image_url?: string;
 }
 
 interface AgentsGridProps {
@@ -52,7 +50,7 @@ interface AgentsGridProps {
   onEditAgent: (agentId: string) => void;
   onDeleteAgent: (agentId: string) => void;
   onToggleDefault: (agentId: string, currentDefault: boolean) => void;
-  deleteAgentMutation: { isPending: boolean };
+  deleteAgentMutation?: { isPending: boolean }; // Made optional as we'll track per-agent state
   isDeletingAgent?: (agentId: string) => boolean;
   onPublish?: (agent: Agent) => void;
   publishingId?: string | null;
@@ -83,17 +81,6 @@ const AgentModal: React.FC<AgentModalProps> = ({
 }) => {
   if (!agent) return null;
 
-  const getAgentStyling = (agent: Agent) => {
-    if (agent.avatar && agent.avatar_color) {
-      return {
-        avatar: agent.avatar,
-        color: agent.avatar_color,
-      };
-    }
-    return getAgentAvatar(agent.agent_id);
-  };
-
-  const { avatar, color } = getAgentStyling(agent);
   const isSunaAgent = agent.metadata?.is_suna_default || false;
   
   const truncateDescription = (text?: string, maxLength = 120) => {
@@ -106,19 +93,21 @@ const AgentModal: React.FC<AgentModalProps> = ({
       <DialogContent className="max-w-md p-0 overflow-hidden border-none">
         <DialogTitle className="sr-only">Agent actions</DialogTitle>
         <div className="relative">
-          <div className={`h-32 flex items-center justify-center relative bg-gradient-to-br from-opacity-90 to-opacity-100`} style={{ backgroundColor: isSunaAgent ? '' : color }}>
+          <div className={`p-4 h-24 flex items-start justify-start relative`}>
             {isSunaAgent ? (
               <div className="p-6">
                 <HeliumLogo size={48} />
               </div>
+) : agent.profile_image_url ? (
+              <img src={agent.profile_image_url} alt={agent.name} className="h-16 w-16 rounded-xl object-cover" />
             ) : (
-              <div className="text-6xl drop-shadow-sm">
-                {avatar}
+              <div className="h-16 w-16 rounded-xl bg-muted flex items-center justify-center">
+                <span className="text-lg font-semibold">{agent.name.charAt(0).toUpperCase()}</span>
               </div>
             )}
           </div>
 
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-2">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <h2 className="text-xl font-semibold text-foreground">
@@ -269,15 +258,6 @@ export const AgentsGrid: React.FC<AgentsGridProps> = ({
     }
   };
 
-  const getAgentStyling = (agent: Agent) => {
-    if (agent.avatar && agent.avatar_color) {
-      return {
-        avatar: agent.avatar,
-        color: agent.avatar_color,
-      };
-    }
-    return getAgentAvatar(agent.agent_id);
-  };
 
   return (
     <>
@@ -287,16 +267,13 @@ export const AgentsGrid: React.FC<AgentsGridProps> = ({
             ...agent,
             id: agent.agent_id
           };
+          
           const isDeleting = isDeletingAgent?.(agent.agent_id) || false;
           const isGloballyDeleting = deleteAgentMutation?.isPending || false;
+          
           return (
             <div key={agent.agent_id} className="relative group flex flex-col h-full">
-              {/* <AgentCard
-                mode="agent"
-                data={agentData}
-                styling={getAgentStyling(agent)}
-                onClick={() => handleAgentClick(agent)}
-              /> */}
+              {/* Deletion overlay */}
               {isDeleting && (
                 <div className="absolute inset-0 bg-destructive/10 backdrop-blur-sm rounded-lg z-20 flex items-center justify-center">
                   <div className="bg-background/95 backdrop-blur-sm rounded-lg px-4 py-3 flex items-center gap-2 shadow-lg border">
@@ -310,7 +287,7 @@ export const AgentsGrid: React.FC<AgentsGridProps> = ({
                 <AgentCard
                   mode="agent"
                   data={agentData}
-                  styling={getAgentStyling(agent)}
+                  styling={undefined}
                   onClick={() => !isDeleting && handleAgentClick(agent)}
                 />
               </div>
@@ -359,7 +336,6 @@ export const AgentsGrid: React.FC<AgentsGridProps> = ({
                           disabled={isDeleting || isGloballyDeleting}
                           className="bg-destructive hover:bg-destructive/90 text-white"
                         >
-                          {/* {deleteAgentMutation.isPending ? 'Deleting...' : 'Delete'} */}
                           {isDeleting ? (
                             <>
                               <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2" />

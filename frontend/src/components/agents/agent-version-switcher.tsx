@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GitBranch, ChevronDown, Clock, RotateCcw, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -112,7 +113,6 @@ export function AgentVersionSwitcher({
     return (
       <div className="flex items-center gap-2 px-3 py-2">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm text-muted-foreground">Loading versions...</span>
       </div>
     );
   }
@@ -123,23 +123,23 @@ export function AgentVersionSwitcher({
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            <GitBranch className="h-4 w-4" />
-            {viewingVersion ? (
-              <>
-                {viewingVersion.versionName}
-                {viewingVersionId === currentVersionId && (
-                  <div className="h-2 w-2 rounded-full bg-green-500" />
-                )}
-              </>
-            ) : (
-              'Select Version'
-            )}
-            <ChevronDown className="h-4 w-4 ml-1" />
-          </Button>
-        </DropdownMenuTrigger>
+      <TooltipProvider>
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 relative">
+                  <GitBranch className="h-4 w-4" />
+                  {viewingVersionId === currentVersionId && (
+                    <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-green-500" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{viewingVersion ? `${viewingVersion.versionName}${viewingVersionId === currentVersionId ? ' (Current)' : ''}` : 'Version History'}</p>
+            </TooltipContent>
+          </Tooltip>
         <DropdownMenuContent align="start" className="w-80">
           <DropdownMenuLabel>Version History</DropdownMenuLabel>
           <DropdownMenuSeparator />
@@ -206,8 +206,9 @@ export function AgentVersionSwitcher({
               </AlertDescription>
             </Alert>
           )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TooltipProvider>
     </>
   );
 } 

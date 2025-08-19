@@ -4,21 +4,25 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-import { useAgents, useUpdateAgent, useOptimisticAgentUpdate, useDeleteAgent } from '@/hooks/react-query/agents/use-agents';
+import { useAgents, useUpdateAgent, useDeleteAgent, useOptimisticAgentUpdate } from '@/hooks/react-query/agents/use-agents';
 import { useMarketplaceTemplates, useInstallTemplate, useMyTemplates, useUnpublishTemplate, usePublishTemplate, useCreateTemplate } from '@/hooks/react-query/secure-mcp/use-secure-mcp';
 import { useFeatureFlag } from '@/lib/feature-flags';
 import { useAuth } from '@/components/AuthProvider';
-import { NewAgentDialog } from '@/components/agents/new-agent-dialog';
+
 import { StreamlinedInstallDialog } from '@/components/agents/installation/streamlined-install-dialog';
 import type { MarketplaceTemplate } from '@/components/agents/installation/types';
-import { getAgentAvatar } from '../../../lib/utils/get-agent-style';
-import { AgentsParams } from '@/hooks/react-query/agents/utils';
+
+import { AgentsParams, deleteAgent } from '@/hooks/react-query/agents/utils';
+
 import { AgentsPageHeader } from '@/components/agents/custom-agents-page/header';
 import { TabsNavigation } from '@/components/agents/custom-agents-page/tabs-navigation';
 import { MyAgentsTab } from '@/components/agents/custom-agents-page/my-agents-tab';
 import { MarketplaceTab } from '@/components/agents/custom-agents-page/marketplace-tab';
 import { PublishDialog } from '@/components/agents/custom-agents-page/publish-dialog';
 import { LoadingSkeleton } from '@/components/agents/custom-agents-page/loading-skeleton';
+import { NewAgentDialog } from '@/components/agents/new-agent-dialog';
+import { MarketplaceAgentPreviewDialog } from '@/components/agents/marketplace-agent-preview-dialog';
+import { AgentCountLimitDialog } from '@/components/agents/agent-count-limit-dialog';
 
 type ViewMode = 'grid' | 'list';
 type AgentSortOption = 'name' | 'created_at' | 'updated_at' | 'tools_count';
@@ -74,15 +78,15 @@ export default function AgentsPage() {
   const [installingItemId, setInstallingItemId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MarketplaceTemplate | null>(null);
   const [showInstallDialog, setShowInstallDialog] = useState(false);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [marketplaceFilter, setMarketplaceFilter] = useState<'all' | 'kortix' | 'community' | 'mine'>('all');
+
   const [templatesActioningId, setTemplatesActioningId] = useState<string | null>(null);
   const [publishDialog, setPublishDialog] = useState<PublishDialogData | null>(null);
-  const [publishTags, setPublishTags] = useState<string[]>([]);
+
   const [publishingAgentId, setPublishingAgentId] = useState<string | null>(null);
   const [showNewAgentDialog, setShowNewAgentDialog] = useState(false);
-
-  const deleteAgentMutation = useDeleteAgent();
-  const deleteTemplateMutation = useUnpublishTemplate();
+  const [showAgentLimitDialog, setShowAgentLimitDialog] = useState(false);
 
   const activeTab = useMemo(() => {
     return searchParams.get('tab') || 'my-agents';
@@ -123,6 +127,8 @@ export default function AgentsPage() {
   const { data: agentsResponse, isLoading: agentsLoading, error: agentsError, refetch: loadAgents } = useAgents(agentsQueryParams);
   const { data: marketplaceTemplates, isLoading: marketplaceLoading } = useMarketplaceTemplates(marketplaceQueryParams);
   const { data: myTemplates, isLoading: templatesLoading, error: templatesError } = useMyTemplates();
+
+  console.log(marketplaceTemplates);
   
   const updateAgentMutation = useUpdateAgent();
   const { optimisticallyUpdateAgent, revertOptimisticUpdate } = useOptimisticAgentUpdate();
@@ -151,19 +157,28 @@ export default function AgentsPage() {
           creator_name: template.creator_name || 'Anonymous',
           created_at: template.created_at,
           marketplace_published_at: template.marketplace_published_at,
-          avatar: template.avatar,
-          avatar_color: template.avatar_color,
+          profile_image_url: template.profile_image_url,
           template_id: template.template_id,
           is_kortix_team: template.is_kortix_team,
           mcp_requirements: template.mcp_requirements,
           metadata: template.metadata,
         };
 
+        const matchesSearch = !marketplaceSearchQuery.trim() || (() => {
+          const searchLower = marketplaceSearchQuery.toLowerCase();
+          return item.name.toLowerCase().includes(searchLower) ||
+                 item.description?.toLowerCase().includes(searchLower) ||
+                 item.tags.some(tag => tag.toLowerCase().includes(searchLower)) ||
+                 item.creator_name?.toLowerCase().includes(searchLower);
+        })();
+
+        if (!matchesSearch) return;
+
         if (user?.id === template.creator_id) {
           mineItems.push(item);
         }
         
-        if (template.is_kortix_team) {
+        if (template.is_kortix_team === true) {
           kortixItems.push(item);
         } else {
           communityItems.push(item);
@@ -171,8 +186,8 @@ export default function AgentsPage() {
       });
     }
 
-    const sortItems = (items: MarketplaceTemplate[]) => {
-      return items.sort((a, b) => {
+    const sortItems = (items: MarketplaceTemplate[]) =>
+      items.sort((a, b) => {
         switch (marketplaceSortBy) {
           case 'newest':
             return new Date(b.marketplace_published_at || b.created_at).getTime() - 
@@ -186,14 +201,13 @@ export default function AgentsPage() {
             return 0;
         }
       });
-    };
 
     return {
       kortixTeamItems: sortItems(kortixItems),
       communityItems: sortItems(communityItems),
       mineItems: sortItems(mineItems)
     };
-  }, [marketplaceTemplates, marketplaceSortBy, user?.id]);
+  }, [marketplaceTemplates, marketplaceSortBy, user?.id, marketplaceSearchQuery]);
 
   const allMarketplaceItems = useMemo(() => {
     if (marketplaceFilter === 'kortix') {
@@ -211,6 +225,7 @@ export default function AgentsPage() {
     params.set('tab', newTab);
     router.replace(`${pathname}?${params.toString()}`);
   };
+
 
   const clearAgentsFilters = () => {
     setAgentsSearchQuery('');
@@ -231,9 +246,20 @@ export default function AgentsPage() {
     setMarketplacePage(1);
   }, [marketplaceSearchQuery, marketplaceSelectedTags, marketplaceSortBy]);
 
+  useEffect(() => {
+    const agentId = searchParams.get('agent');
+    if (agentId && allMarketplaceItems.length > 0) {
+      const sharedAgent = allMarketplaceItems.find(agent => agent.id === agentId);
+      if (sharedAgent) {
+        setSelectedItem(sharedAgent);
+        setShowPreviewDialog(true);
+      }
+    }
+  }, [searchParams, allMarketplaceItems]);
+
   const handleDeleteAgent = async (agentId: string) => {
     try {
-      await deleteAgentMutation.mutateAsync(agentId);
+      await deleteAgent(agentId);
     } catch (error) {
       console.error('Error deleting agent:', error);
     }
@@ -261,35 +287,40 @@ export default function AgentsPage() {
     setShowNewAgentDialog(true);
   }, []);
 
-  const handleDeleteTemplate = async (item: MarketplaceTemplate) => {
-    try {
-      setTemplatesActioningId(item.template_id);
-      await deleteTemplateMutation.mutateAsync(item.template_id);
-      toast.success(`"${item.name}" has been permanently deleted`, {
-        description: 'The template is no longer available for installation.'
-      });
-    } catch (error: any) {
-      toast.error('Failed to delete template', {
-        description: error.message || 'Please try again later.'
-      });
-    } finally {
-      setTemplatesActioningId(null);
-    }
-  };
-
-  const handleAgentPublish = (agent: any) => {
-    setPublishDialog({
-      templateId: agent.agent_id,
-      templateName: agent.name
-    });
-  };
-
   const handleInstallClick = (item: MarketplaceTemplate, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
     }
     setSelectedItem(item);
     setShowInstallDialog(true);
+  };
+
+  const handlePreviewClose = () => {
+    setShowPreviewDialog(false);
+    setSelectedItem(null);
+    
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.searchParams.has('agent')) {
+      currentUrl.searchParams.delete('agent');
+      router.replace(currentUrl.pathname + (currentUrl.searchParams.toString() ? '?' + currentUrl.searchParams.toString() : ''), { scroll: false });
+    }
+  };
+
+  const handlePreviewInstall = (agent: MarketplaceTemplate) => {
+    setShowPreviewDialog(false);
+    setSelectedItem(agent);
+    setShowInstallDialog(true);
+  };
+
+  const handleAgentPreview = (agent: MarketplaceTemplate) => {
+    setSelectedItem(agent);
+    setShowPreviewDialog(true);
+    
+    // Update URL with agent parameter for sharing
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('agent', agent.id);
+    currentUrl.searchParams.set('tab', 'marketplace');
+    router.replace(currentUrl.toString(), { scroll: false });
   };
 
   const handleInstall = async (
@@ -309,9 +340,12 @@ export default function AgentsPage() {
       const regularRequirements = item.mcp_requirements?.filter(req => 
         !req.custom_type
       ) || [];
-      const missingProfiles = regularRequirements.filter(req => 
-        !profileMappings || !profileMappings[req.qualified_name] || profileMappings[req.qualified_name].trim() === ''
-      );
+      const missingProfiles = regularRequirements.filter(req => {
+        const profileKey = req.source === 'trigger' && req.trigger_index !== undefined
+          ? `${req.qualified_name}_trigger_${req.trigger_index}`
+          : req.qualified_name;
+        return !profileMappings || !profileMappings[profileKey] || profileMappings[profileKey].trim() === '';
+      });
       
       if (missingProfiles.length > 0) {
         const missingNames = missingProfiles.map(req => req.display_name).join(', ');
@@ -320,7 +354,7 @@ export default function AgentsPage() {
       }
 
       const customRequirements = item.mcp_requirements?.filter(req => 
-        req.custom_type && req.custom_type !== 'pipedream'
+        req.custom_type
       ) || [];
       const missingCustomConfigs = customRequirements.filter(req => 
         !customMcpConfigs || !customMcpConfigs[req.qualified_name] || 
@@ -330,20 +364,6 @@ export default function AgentsPage() {
       if (missingCustomConfigs.length > 0) {
         const missingNames = missingCustomConfigs.map(req => req.display_name).join(', ');
         toast.error(`Please provide all required configuration for: ${missingNames}`);
-        return;
-      }
-
-      const pipedreamRequirements = item.mcp_requirements?.filter(req => 
-        req.custom_type === 'pipedream'
-      ) || [];
-      const missingPipedreamConfigs = pipedreamRequirements.filter(req => 
-        !customMcpConfigs || !customMcpConfigs[req.qualified_name] || 
-        !customMcpConfigs[req.qualified_name].profile_id
-      );
-      
-      if (missingPipedreamConfigs.length > 0) {
-        const missingNames = missingPipedreamConfigs.map(req => req.display_name).join(', ');
-        toast.error(`Please select Pipedream profiles for: ${missingNames}`);
         return;
       }
 
@@ -359,14 +379,44 @@ export default function AgentsPage() {
         setShowInstallDialog(false);
         handleTabChange('my-agents');
       } else if (result.status === 'configs_required') {
-        toast.error('Please provide all required configurations');
-        return;
+        if (result.missing_regular_credentials && result.missing_regular_credentials.length > 0) {
+          const updatedRequirements = [
+            ...(item.mcp_requirements || []),
+            ...result.missing_regular_credentials.map((cred: any) => ({
+              qualified_name: cred.qualified_name,
+              display_name: cred.display_name,
+              enabled_tools: cred.enabled_tools || [],
+              required_config: cred.required_config || [],
+              custom_type: cred.custom_type,
+              toolkit_slug: cred.toolkit_slug,
+              app_slug: cred.app_slug,
+              source: cred.source,
+              trigger_index: cred.trigger_index
+            }))
+          ];
+          
+          setSelectedItem({
+            ...item,
+            mcp_requirements: updatedRequirements
+          });
+          
+          toast.warning('Additional configurations required. Please complete the setup.');
+          return;
+        } else {
+          toast.error('Please provide all required configurations');
+          return;
+        }
       } else {
         toast.error('Unexpected response from server. Please try again.');
         return;
       }
     } catch (error: any) {
       console.error('Installation error:', error);
+
+      if (error instanceof AgentCountLimitError) {
+        setShowAgentLimitDialog(true);
+        return;
+      }
 
       if (error.message?.includes('already in your library')) {
         toast.error('This agent is already in your library');
@@ -391,13 +441,10 @@ export default function AgentsPage() {
   };
 
   const getItemStyling = (item: MarketplaceTemplate) => {
-    if (item.avatar && item.avatar_color) {
-      return {
-        avatar: item.avatar,
-        color: item.avatar_color,
-      };
-    }
-    return getAgentAvatar(item.id);
+    return {
+      avatar: '🤖',
+      color: '#6366f1',
+    };
   };
 
   const handleUnpublish = async (templateId: string, templateName: string) => {
@@ -410,6 +457,36 @@ export default function AgentsPage() {
     } finally {
       setTemplatesActioningId(null);
     }
+  };
+
+  const handleDeleteTemplate = async (item: MarketplaceTemplate, e?: React.MouseEvent) => {
+    try {
+      setTemplatesActioningId(item.template_id);
+      await deleteTemplateMutation.mutateAsync(item.template_id);
+      toast.success(`"${item.name}" has been permanently deleted from the marketplace`, {
+        description: 'The template is no longer available for installation.'
+      });
+    } catch (error: any) {
+      toast.error('Failed to delete template', {
+        description: error.message || 'Please try again later.'
+      });
+    } finally {
+      setTemplatesActioningId(null);
+    }
+  };
+
+  const openPublishDialog = (template: any) => {
+    setPublishDialog({
+      templateId: template.template_id,
+      templateName: template.name
+    });
+  };
+
+  const handleAgentPublish = (agent: any) => {
+    setPublishDialog({
+      templateId: agent.agent_id,
+      templateName: agent.name
+    });
   };
 
   const handlePublish = async () => {
@@ -447,13 +524,10 @@ export default function AgentsPage() {
   };
 
   const getTemplateStyling = (template: any) => {
-    if (template.avatar && template.avatar_color) {
-      return {
-        avatar: template.avatar,
-        color: template.avatar_color,
-      };
-    }
-    return getAgentAvatar(template.template_id);
+    return {
+      avatar: '🤖',
+      color: '#6366f1',
+    };
   };
 
   if (flagLoading) {
@@ -465,11 +539,7 @@ export default function AgentsPage() {
         
         <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/40 shadow-sm">
           <div className="container max-w-7xl mx-auto px-4 py-4">
-            <TabsNavigation 
-              activeTab={activeTab} 
-              onTabChange={handleTabChange} 
-              onCreateAgent={handleCreateNewAgent} 
-            />
+            <TabsNavigation activeTab={activeTab} onTabChange={handleTabChange} onCreateAgent={handleCreateNewAgent} />
           </div>
         </div>
 
@@ -489,18 +559,14 @@ export default function AgentsPage() {
       <div className="container mx-auto max-w-7xl px-4 py-8">
         <AgentsPageHeader />
       </div>
-      <div className="sticky top-0 z-50 relative">
+      <div className="sticky top-0 z-50">
         <div className="absolute inset-0 backdrop-blur-md" style={{
           maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
           WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)'
         }}></div>
         <div className="relative bg-gradient-to-b from-background/95 via-background/70 to-transparent">
           <div className="container mx-auto max-w-7xl px-4 py-4">
-            <TabsNavigation 
-              activeTab={activeTab} 
-              onTabChange={handleTabChange} 
-              onCreateAgent={handleCreateNewAgent} 
-            />
+            <TabsNavigation activeTab={activeTab} onTabChange={handleTabChange} onCreateAgent={handleCreateNewAgent} />
           </div>
         </div>
       </div>
@@ -519,18 +585,16 @@ export default function AgentsPage() {
               onDeleteAgent={handleDeleteAgent}
               onToggleDefault={handleToggleDefault}
               onClearFilters={clearAgentsFilters}
-              isDeletingAgent={(agentId: string) => deleteAgentMutation.isPending}
               setAgentsPage={setAgentsPage}
               myTemplates={myTemplates}
               templatesLoading={templatesLoading}
               templatesError={templatesError}
               templatesActioningId={templatesActioningId}
-              onPublish={handleAgentPublish}
+              onPublish={openPublishDialog}
               onUnpublish={handleUnpublish}
               getTemplateStyling={getTemplateStyling}
               onPublishAgent={handleAgentPublish}
               publishingAgentId={publishingAgentId}
-              onDeleteTemplate={handleDeleteTemplate}
             />
           )}
 
@@ -573,6 +637,21 @@ export default function AgentsPage() {
           open={showNewAgentDialog} 
           onOpenChange={setShowNewAgentDialog}
         />
+
+        <MarketplaceAgentPreviewDialog
+          agent={selectedItem}
+          isOpen={showPreviewDialog}
+          onClose={handlePreviewClose}
+          onInstall={handlePreviewInstall}
+          isInstalling={installingItemId === selectedItem?.id}
+        />
+        {showAgentLimitDialog && (
+          <AgentCountLimitDialog
+            open={showAgentLimitDialog}
+            onOpenChange={setShowAgentLimitDialog}
+            tierName={agentLimitError.detail.tier_name}
+          />
+        )}
       </div>
     </div>
   );

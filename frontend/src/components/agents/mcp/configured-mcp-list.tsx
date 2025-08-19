@@ -2,10 +2,20 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Settings, X, Sparkles, Key, AlertTriangle } from 'lucide-react';
+import { Settings, X, Sparkles, Key, AlertTriangle, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { MCPConfiguration } from './types';
 import { useCredentialProfilesForMcp } from '@/hooks/react-query/mcp/use-credential-profiles';
-import { usePipedreamAppIcon } from '@/hooks/react-query/pipedream/use-pipedream';
+
 import { useComposioToolkits } from '@/hooks/react-query/composio/use-composio';
 
 interface ConfiguredMcpListProps {
@@ -15,20 +25,7 @@ interface ConfiguredMcpListProps {
   onConfigureTools?: (index: number) => void;
 }
 
-const extractAppSlug = (mcp: MCPConfiguration): { type: 'pipedream' | 'composio', slug: string } | null => {
-  if (mcp.customType === 'pipedream') {
-    if ((mcp as any).app_slug) {
-      return { type: 'pipedream', slug: (mcp as any).app_slug };
-    }
-    if (mcp.config?.headers?.['x-pd-app-slug']) {
-      return { type: 'pipedream', slug: mcp.config.headers['x-pd-app-slug'] };
-    }
-    const qualifiedMatch = mcp.qualifiedName.match(/^pipedream_([^_]+)_/);
-    if (qualifiedMatch) {
-      return { type: 'pipedream', slug: qualifiedMatch[1] };
-    }
-  }
-  
+const extractAppSlug = (mcp: MCPConfiguration): { type: 'composio', slug: string } | null => {
   if (mcp.customType === 'composio' || mcp.isComposio) {
     const slug = mcp.toolkitSlug || (mcp as any).toolkit_slug || mcp.config?.toolkit_slug;
     if (slug) {
@@ -49,10 +46,6 @@ const extractAppSlug = (mcp: MCPConfiguration): { type: 'pipedream' | 'composio'
 
 const MCPLogo: React.FC<{ mcp: MCPConfiguration }> = ({ mcp }) => {
   const appInfo = extractAppSlug(mcp);
-  const { data: pipedreamIconData } = usePipedreamAppIcon(
-    appInfo?.type === 'pipedream' ? appInfo.slug : '', 
-    { enabled: appInfo?.type === 'pipedream' }
-  );
   
   const { data: composioToolkits } = useComposioToolkits(
     appInfo?.type === 'composio' ? appInfo.slug : undefined,
@@ -60,16 +53,14 @@ const MCPLogo: React.FC<{ mcp: MCPConfiguration }> = ({ mcp }) => {
   );
   
   let logoUrl: string | undefined;
-  if (appInfo?.type === 'pipedream') {
-    logoUrl = pipedreamIconData?.icon_url;
-  } else if (appInfo?.type === 'composio' && composioToolkits?.toolkits?.[0]) {
+  if (appInfo?.type === 'composio' && composioToolkits?.toolkits?.[0]) {
     logoUrl = composioToolkits.toolkits[0].logo;
   }
 
   const firstLetter = mcp.name.charAt(0).toUpperCase();
 
   return (
-    <div className="w-6 h-6 flex items-center justify-center flex-shrink-0 overflow-hidden">
+    <div className="w-4 h-4 flex items-center justify-center flex-shrink-0 overflow-hidden">
       {logoUrl ? (
         <img
           src={logoUrl}
@@ -106,49 +97,51 @@ const MCPConfigurationItem: React.FC<{
   const hasCredentialProfile = !!profileId && !!selectedProfile;
 
   return (
-    <Card className="p-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
+    <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+      <div className="flex items-center space-x-4 flex-1">
+        <div className="p-2 rounded-lg bg-muted border">
           <MCPLogo mcp={mcp} />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="font-medium text-sm truncate">{mcp.name}</div>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span>{mcp.enabledTools?.length || 0} tools enabled</span>
-              {hasCredentialProfile && (
-                <div className="flex items-center gap-1">
-                  <Key className="h-3 w-3 text-green-600" />
-                  <span className="text-green-600 font-medium truncate max-w-24">
-                    {selectedProfile.profile_name}
-                  </span>
-                </div>
-              )}
-            </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2 mb-1">
+            <h4 className="text-sm font-medium truncate">{mcp.name}</h4>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <span>{mcp.enabledTools?.length || 0} tools enabled</span>
+            {hasCredentialProfile && (
+              <div className="flex items-center gap-1">
+                <Key className="h-3 w-3 text-green-600" />
+                <span className="text-green-600 font-medium truncate max-w-24">
+                  {selectedProfile.profile_name}
+                </span>
+              </div>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {onConfigureTools && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onConfigureTools(index)}
-              title="Configure tools"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          )}
+      </div>
+      <div className="flex items-center space-x-2 flex-shrink-0">
+        {onConfigureTools && (
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => onRemove(index)}
-            title="Remove integration"
+            className="h-8 w-8 p-0"
+            onClick={() => onConfigureTools(index)}
+            title="Configure tools"
           >
-            <X className="h-4 w-4" />
+            <Settings className="h-4 w-4" />
           </Button>
-        </div>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+          onClick={() => onRemove(index)}
+          title="Remove integration"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
-    </Card>
+    </div>
   );
 };
 
@@ -158,20 +151,58 @@ export const ConfiguredMcpList: React.FC<ConfiguredMcpListProps> = ({
   onRemove,
   onConfigureTools,
 }) => {
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [mcpToDelete, setMcpToDelete] = React.useState<{ mcp: MCPConfiguration; index: number } | null>(null);
+
+  const handleDeleteClick = (mcp: MCPConfiguration, index: number) => {
+    setMcpToDelete({ mcp, index });
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (mcpToDelete) {
+      onRemove(mcpToDelete.index);
+      setMcpToDelete(null);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   if (configuredMCPs.length === 0) return null;
 
   return (
-    <div className="space-y-2">
-      {configuredMCPs.map((mcp, index) => (
-        <MCPConfigurationItem
-          key={index}
-          mcp={mcp}
-          index={index}
-          onEdit={onEdit}
-          onRemove={onRemove}
-          onConfigureTools={onConfigureTools}
-        />
-      ))}
-    </div>
+    <>
+      <div className="space-y-2">
+        {configuredMCPs.map((mcp, index) => (
+          <MCPConfigurationItem
+            key={index}
+            mcp={mcp}
+            index={index}
+            onEdit={onEdit}
+            onRemove={(idx) => handleDeleteClick(mcp, idx)}
+            onConfigureTools={onConfigureTools}
+          />
+        ))}
+      </div>
+      
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Integration</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove the "{mcpToDelete?.mcp.name}" integration? This will disconnect all associated tools and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Remove Integration
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

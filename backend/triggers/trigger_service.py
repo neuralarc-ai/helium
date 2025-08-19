@@ -227,7 +227,16 @@ class TriggerService:
     
     def _map_to_trigger(self, data: Dict[str, Any]) -> Trigger:
         config_data = data.get('config', {})
-        provider_id = config_data.get('provider_id', data['trigger_type'])
+        # Prefer explicit provider_id saved in config; otherwise infer for backwards compatibility
+        provider_id = config_data.get('provider_id')
+        if not provider_id:
+            # Older event-based Composio triggers didn't persist provider_id. Infer from config.
+            if isinstance(config_data, dict) and (
+                'composio_trigger_id' in config_data or 'trigger_slug' in config_data
+            ):
+                provider_id = 'composio'
+            else:
+                provider_id = data['trigger_type']
         
         clean_config = {k: v for k, v in config_data.items() if k != 'provider_id'}
         

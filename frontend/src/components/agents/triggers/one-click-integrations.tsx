@@ -2,21 +2,23 @@
 
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, AlertCircle, Clock } from 'lucide-react';
+import { Loader2, AlertCircle, Clock, PlugZap } from 'lucide-react';
 import { TriggerConfigDialog } from './trigger-config-dialog';
 import { TriggerProvider } from './types';
 import { Dialog } from '@/components/ui/dialog';
-import { 
-  useInstallOAuthIntegration, 
+import {
+  useInstallOAuthIntegration,
   useUninstallOAuthIntegration,
-  useOAuthCallbackHandler 
+  useOAuthCallbackHandler
 } from '@/hooks/react-query/triggers/use-oauth-integrations';
-import { 
-  useAgentTriggers, 
-  useCreateTrigger, 
-  useDeleteTrigger 
+import {
+  useAgentTriggers,
+  useCreateTrigger,
+  useDeleteTrigger
 } from '@/hooks/react-query/triggers';
 import { toast } from 'sonner';
+import { EventBasedTriggerDialog } from './event-based-trigger-dialog';
+import { config, EnvMode } from '@/lib/config';
 
 interface OneClickIntegrationsProps {
   agentId: string;
@@ -24,7 +26,7 @@ interface OneClickIntegrationsProps {
 
 const OAUTH_PROVIDERS = {
   schedule: {
-    name: 'Schedule',
+    name: 'Create Schedule Trigger',
     icon: <Clock className="h-4 w-4" color="#10b981" />,
     isOAuth: false
   }
@@ -36,6 +38,7 @@ export const OneClickIntegrations: React.FC<OneClickIntegrationsProps> = ({
   agentId
 }) => {
   const [configuringSchedule, setConfiguringSchedule] = useState(false);
+  const [showEventDialog, setShowEventDialog] = useState(false);
   const { data: triggers = [] } = useAgentTriggers(agentId);
   const installMutation = useInstallOAuthIntegration();
   const uninstallMutation = useUninstallOAuthIntegration();
@@ -52,7 +55,7 @@ export const OneClickIntegrations: React.FC<OneClickIntegrationsProps> = ({
       setConfiguringSchedule(true);
       return;
     }
-    
+
     try {
       await installMutation.mutateAsync({
         agent_id: agentId,
@@ -77,7 +80,7 @@ export const OneClickIntegrations: React.FC<OneClickIntegrationsProps> = ({
       }
       return;
     }
-    
+
     try {
       await uninstallMutation.mutateAsync(triggerId!);
     } catch (error) {
@@ -131,17 +134,18 @@ export const OneClickIntegrations: React.FC<OneClickIntegrationsProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3">
+
         {Object.entries(OAUTH_PROVIDERS).map(([providerId, config]) => {
           const provider = providerId as ProviderKey;
           const isInstalled = isProviderInstalled(provider);
-          const isLoading = installMutation.isPending || uninstallMutation.isPending || 
-                           (provider === 'schedule' && (createTriggerMutation.isPending || deleteTriggerMutation.isPending));
+          const isLoading = installMutation.isPending || uninstallMutation.isPending ||
+            (provider === 'schedule' && (createTriggerMutation.isPending || deleteTriggerMutation.isPending));
           const triggerId = getTriggerId(provider);
-          
-          const buttonText = provider === 'schedule' 
-            ? config.name 
+
+          const buttonText = provider === 'schedule'
+            ? config.name
             : (isInstalled ? `Disconnect ${config.name}` : `Connect ${config.name}`);
-          
+
           return (
             <Button
               key={providerId}
@@ -149,7 +153,7 @@ export const OneClickIntegrations: React.FC<OneClickIntegrationsProps> = ({
               size='sm'
               onClick={() => {
                 if (provider === 'schedule') {
-                  handleInstall(provider); 
+                  handleInstall(provider);
                 } else {
                   // eslint-disable-next-line @typescript-eslint/no-unused-expressions
                   isInstalled ? handleUninstall(provider, triggerId) : handleInstall(provider);
@@ -167,7 +171,16 @@ export const OneClickIntegrations: React.FC<OneClickIntegrationsProps> = ({
             </Button>
           );
         })}
+        {config.ENV_MODE !== EnvMode.PRODUCTION && <Button
+          variant="default"
+          size='sm'
+          onClick={() => setShowEventDialog(true)}
+          className="flex items-center gap-2"
+        >
+          <PlugZap className="h-4 w-4" /> App-based Trigger
+        </Button>}
       </div>
+      <EventBasedTriggerDialog open={showEventDialog} onOpenChange={setShowEventDialog} agentId={agentId} />
       {configuringSchedule && (
         <Dialog open={configuringSchedule} onOpenChange={setConfiguringSchedule}>
           <TriggerConfigDialog
