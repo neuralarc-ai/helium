@@ -702,9 +702,23 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     setUserHasScrolled(isScrolledUp);
   };
 
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  
+    timeoutRef.current = setTimeout(() => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior,
+        });
+        setUserHasScrolled(false);
+      }
+    }, 100);
   }, []);
+  
+  
 
   // Auto-scroll to bottom when new messages arrive or agent status changes
   React.useEffect(() => {
@@ -769,6 +783,21 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       scrollToBottom('auto');
     }
   }, [streamHookStatus, scrollToBottom]);
+
+  // Auto-scroll when response generation completes or when chat history loads
+  React.useEffect(() => {
+    // Scroll when agent status changes from 'running' to 'idle' (completed)
+    // or when messages first load and user hasn't scrolled up
+    const shouldScroll = 
+      (agentStatus === 'idle' && messages.some(m => m.type === 'assistant')) || 
+      (messages.length > 0 && 
+       (!messagesContainerRef.current?.scrollTop || 
+        messagesContainerRef.current.scrollHeight - messagesContainerRef.current.clientHeight < 100));
+    
+    if (shouldScroll) {
+      scrollToBottom('smooth');
+    }
+  }, [agentStatus, messages, scrollToBottom]);
 
   // Complete auto-scroll strategy:
   // 1. Smooth scroll for user interactions (new messages, status changes)

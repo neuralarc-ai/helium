@@ -357,7 +357,7 @@ function LoginContent() {
                   height={40}
                   className="mb-0"
                 />
-                <p className="text-xl text-black">Helium</p>
+                {/* <p className="text-xl text-black">Helium</p> */}
               </div>
             </div>
           </Link>
