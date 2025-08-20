@@ -10,7 +10,7 @@ import { CircleDashed, X, Minimize2, SkipForward, SkipBack } from 'lucide-react'
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { ToolView } from './tool-views/wrapper';
+import { ToolView, extractFilePathFromToolCall } from './tool-views/wrapper';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useMediumScreen } from '@/hooks/react-query/se-medium-screen';
@@ -265,6 +265,25 @@ export function ToolCallSidePanel({
   };
 
   const isSuccess = isStreaming ? true : getActualSuccess(displayToolCall);
+
+  const isFirstFileOperation = React.useMemo(() => {
+    if (!currentToolCall) return false;
+
+    const currentFilePath = extractFilePathFromToolCall(currentToolCall);
+    if (!currentFilePath) return false;
+
+    for (let i = 0; i < safeInternalIndex; i++) {
+      const previousToolCall = toolCallSnapshots[i]?.toolCall;
+      if (previousToolCall) {
+        const previousFilePath = extractFilePathFromToolCall(previousToolCall);
+        if (previousFilePath === currentFilePath) {
+          return false; // Found a previous operation on the same file
+        }
+      }
+    }
+
+    return true; // This is the first operation on this file
+  }, [safeInternalIndex, toolCallSnapshots, currentToolCall]);
 
   const internalNavigate = React.useCallback((newIndex: number, source: string = 'internal') => {
     if (newIndex < 0 || newIndex >= totalCalls) return;
@@ -919,6 +938,7 @@ export function ToolCallSidePanel({
         currentIndex={displayIndex}
         totalCalls={displayTotalCalls}
         onFileClick={onFileClick}
+        isFirstFileOperation={isFirstFileOperation}
       />
     );
 
