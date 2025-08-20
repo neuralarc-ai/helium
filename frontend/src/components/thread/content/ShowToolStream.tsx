@@ -261,7 +261,7 @@ export const ShowToolStream: React.FC<ShowToolStreamProps> = ({
             <div className="relative border-t border-neutral-200 dark:border-neutral-700/50">
               <div
                 ref={containerRef}
-                className="max-h-[300px] overflow-y-auto scrollbar-none text-xs font-mono whitespace-pre-wrap p-3 text-foreground transition-all duration-500 ease-in-out"
+                className="max-h-[300px] overflow-y-auto scrollbar-none text-xs font-mono whitespace-pre-wrap text-foreground transition-all duration-500 ease-in-out "
                 style={{
                   maskImage:
                     'linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)',
