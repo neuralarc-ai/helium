@@ -211,6 +211,17 @@ class Configuration:
     OPENROUTER_API_BASE: Optional[str] = "https://openrouter.ai/api/v1"
     OR_SITE_URL: Optional[str] = "https://he2.ai"
     OR_APP_NAME: Optional[str] = "Helium AI"    
+
+    # Back-compat alias for Google (Gemini) API key expected by some modules
+    @property
+    def GOOGLE_API_KEY(self) -> Optional[str]:
+        """Alias to maintain compatibility with modules checking GOOGLE_API_KEY.
+
+        The codebase uses Gemini via Google; elsewhere the key is stored as
+        GEMINI_API_KEY. Provide a stable accessor so references to
+        config.GOOGLE_API_KEY do not fail.
+        """
+        return self.GEMINI_API_KEY
     
     # AWS Bedrock credentials
     AWS_ACCESS_KEY_ID: Optional[str] = None

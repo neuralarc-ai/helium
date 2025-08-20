@@ -20,8 +20,9 @@ from services.billing import check_billing_status, can_use_model
 from utils.config import config
 from sandbox.sandbox import create_sandbox, delete_sandbox, get_or_start_sandbox
 from services.llm import make_llm_api_call
-from run_agent_background import run_agent_background, _cleanup_redis_response_list, update_agent_run_status
+from run_agent_background import run_agent_background, _cleanup_redis_response_list, update_agent_run_status, check_health
 from utils.constants import MODEL_NAME_ALIASES
+from services.orchestration import route_query_for_thread
 from flags.flags import is_enabled
 
 from .config_helper import extract_agent_config, build_unified_config, extract_tools_for_agent_run, get_mcp_configs
@@ -325,13 +326,31 @@ async def start_agent(
     if is_agent_builder:
         logger.info(f"Thread {thread_id} is in agent builder mode, target_agent_id: {target_agent_id}")
     
-    # Load agent configuration with version support
+    # Route every time to decide agent vs model
+    routing = await route_query_for_thread(client, account_id, thread_id=thread_id)
+    router_agent_cfg = routing.get('agent_config')
+    router_model = routing.get('model_name')
+    routing_debug = routing.get('debug', {})
+    logger.info({
+        "event": "router_decision",
+        "thread_id": thread_id,
+        "mode": routing_debug.get('mode') or ("agent" if router_agent_cfg else "model"),
+        "agent_id": router_agent_cfg.get('agent_id') if router_agent_cfg else None,
+        "agent_name": router_agent_cfg.get('name') if router_agent_cfg else None,
+        "confidence": routing_debug.get('confidence'),
+        "llm_reason": routing_debug.get('llm_reason'),
+        "model": router_model,
+        "reason": routing_debug.get('reason')
+    })
+
     agent_config = None
-    effective_agent_id = body.agent_id  # Optional agent ID from request
-    
+    effective_agent_id = router_agent_cfg.get('agent_id') if router_agent_cfg else None
+    if router_model:
+        model_name = MODEL_NAME_ALIASES.get(router_model, router_model)
+
     logger.info(f"[AGENT LOAD] Agent loading flow:")
-    logger.info(f"  - body.agent_id: {body.agent_id}")
-    logger.info(f"  - effective_agent_id: {effective_agent_id}")
+    logger.info(f"  - body.agent_id (ignored by router): {body.agent_id}")
+    logger.info(f"  - effective_agent_id (from router): {effective_agent_id}")
     
     if effective_agent_id:
         logger.info(f"[AGENT LOAD] Querying for agent: {effective_agent_id}")
@@ -370,43 +389,43 @@ async def start_agent(
                 logger.info(f"Using agent {agent_config['name']} ({effective_agent_id}) version {agent_config.get('version_name', 'v1')}")
             else:
                 logger.info(f"Using agent {agent_config['name']} ({effective_agent_id}) - no version data")
-            source = "request" if body.agent_id else "fallback"
+            source = "router"
     else:
         logger.info(f"[AGENT LOAD] No effective_agent_id, will try default agent")
     
-    if not agent_config:
-        logger.info(f"[AGENT LOAD] No agent config yet, querying for default agent")
-        default_agent_result = await client.table('agents').select('*').eq('account_id', account_id).eq('is_default', True).execute()
-        logger.info(f"[AGENT LOAD] Default agent query result: found {len(default_agent_result.data) if default_agent_result.data else 0} default agents")
+    # if not agent_config:
+    #     logger.info(f"[AGENT LOAD] No agent config yet, querying for default agent")
+    #     default_agent_result = await client.table('agents').select('*').eq('account_id', account_id).eq('is_default', True).execute()
+    #     logger.info(f"[AGENT LOAD] Default agent query result: found {len(default_agent_result.data) if default_agent_result.data else 0} default agents")
         
-        if default_agent_result.data:
-            agent_data = default_agent_result.data[0]
+    #     if default_agent_result.data:
+    #         agent_data = default_agent_result.data[0]
             
-            # Use versioning system to get current version
-            version_data = None
-            if agent_data.get('current_version_id'):
-                try:
-                    version_service = await _get_version_service()
-                    version_obj = await version_service.get_version(
-                        agent_id=agent_data['agent_id'],
-                        version_id=agent_data['current_version_id'],
-                        user_id=user_id
-                    )
-                    version_data = version_obj.to_dict()
-                    logger.info(f"[AGENT LOAD] Got default agent version from version manager: {version_data.get('version_name')}")
-                except Exception as e:
-                    logger.warning(f"[AGENT LOAD] Failed to get default agent version data: {e}")
+    #         # Use versioning system to get current version
+    #         version_data = None
+    #         if agent_data.get('current_version_id'):
+    #             try:
+    #                 version_service = await _get_version_service()
+    #                 version_obj = await version_service.get_version(
+    #                     agent_id=agent_data['agent_id'],
+    #                     version_id=agent_data['current_version_id'],
+    #                     user_id=user_id
+    #                 )
+    #                 version_data = version_obj.to_dict()
+    #                 logger.info(f"[AGENT LOAD] Got default agent version from version manager: {version_data.get('version_name')}")
+    #             except Exception as e:
+    #                 logger.warning(f"[AGENT LOAD] Failed to get default agent version data: {e}")
             
-            logger.info(f"[AGENT LOAD] About to call extract_agent_config for DEFAULT agent with version data: {version_data is not None}")
+    #         logger.info(f"[AGENT LOAD] About to call extract_agent_config for DEFAULT agent with version data: {version_data is not None}")
             
-            agent_config = extract_agent_config(agent_data, version_data)
+    #         agent_config = extract_agent_config(agent_data, version_data)
             
-            if version_data:
-                logger.info(f"Using default agent: {agent_config['name']} ({agent_config['agent_id']}) version {agent_config.get('version_name', 'v1')}")
-            else:
-                logger.info(f"Using default agent: {agent_config['name']} ({agent_config['agent_id']}) - no version data")
-        else:
-            logger.warning(f"[AGENT LOAD] No default agent found for account {account_id}")
+    #         if version_data:
+    #             logger.info(f"Using default agent: {agent_config['name']} ({agent_config['agent_id']}) version {agent_config.get('version_name', 'v1')}")
+    #         else:
+    #             logger.info(f"Using default agent: {agent_config['name']} ({agent_config['agent_id']}) - no version data")
+    #     else:
+    #         logger.warning(f"[AGENT LOAD] No default agent found for account {account_id}")
     
     logger.info(f"[AGENT LOAD] Final agent_config: {agent_config is not None}")
     if agent_config:
@@ -465,18 +484,51 @@ async def start_agent(
 
     request_id = structlog.contextvars.get_contextvars().get('request_id')
 
-    # Run the agent in the background
-    run_agent_background.send(
-        agent_run_id=agent_run_id, thread_id=thread_id, instance_id=instance_id,
-        project_id=project_id,
-        model_name=model_name,  # Already resolved above
-        enable_thinking=body.enable_thinking, reasoning_effort=body.reasoning_effort,
-        stream=body.stream, enable_context_manager=body.enable_context_manager,
-        agent_config=agent_config,  # Pass agent configuration
-        is_agent_builder=is_agent_builder,
-        target_agent_id=target_agent_id,
-        request_id=request_id,
-    )
+    # Run the agent using a dramatiq worker if available; otherwise fall back to inline execution
+    worker_available = False
+    try:
+        health_key = f"agent_worker_health:{agent_run_id}"
+        check_health.send(health_key)
+        # Give the worker a brief moment to respond
+        await asyncio.sleep(0.75)
+        health_val = await redis.get(health_key)
+        worker_available = bool(health_val)
+        if worker_available:
+            logger.info("Detected dramatiq worker availability via health check")
+    except Exception as e:
+        logger.warning(f"Worker health check failed, will fall back to inline execution if needed: {e}")
+
+    if worker_available:
+        run_agent_background.send(
+            agent_run_id=agent_run_id, thread_id=thread_id, instance_id=instance_id,
+            project_id=project_id,
+            model_name=model_name,  # Already resolved above
+            enable_thinking=body.enable_thinking, reasoning_effort=body.reasoning_effort,
+            stream=body.stream, enable_context_manager=body.enable_context_manager,
+            agent_config=agent_config,  # Pass agent configuration
+            is_agent_builder=is_agent_builder,
+            target_agent_id=target_agent_id,
+            request_id=request_id,
+        )
+    else:
+        logger.warning("No dramatiq worker detected; running agent inline in this process (dev fallback)")
+        asyncio.create_task(
+            run_agent_background.fn(
+                agent_run_id=agent_run_id,
+                thread_id=thread_id,
+                instance_id=instance_id,
+                project_id=project_id,
+                model_name=model_name,
+                enable_thinking=body.enable_thinking,
+                reasoning_effort=body.reasoning_effort,
+                stream=body.stream,
+                enable_context_manager=body.enable_context_manager,
+                agent_config=agent_config,
+                is_agent_builder=is_agent_builder,
+                target_agent_id=target_agent_id,
+                request_id=request_id,
+            )
+        )
 
     return {"agent_run_id": agent_run_id, "status": "running"}
 
@@ -949,14 +1001,32 @@ async def initiate_agent_with_files(
     logger.info(f"[\033[91mDEBUG\033[0m] Initiating new agent with prompt and {len(files)} files (Instance: {instance_id}), model: {model_name}, enable_thinking: {enable_thinking}")
     client = await db.client
     account_id = user_id # In Basejump, personal account_id is the same as user_id
+
+    # Always route: decide agent vs model from prompt (frontend-agnostic)
+    routing = await route_query_for_thread(client, account_id, thread_id=None, prompt=prompt)
+    router_agent_cfg = routing.get('agent_config')
+    router_model = routing.get('model_name')
+    routing_debug = routing.get('debug', {})
+    logger.info({
+        "event": "router_decision",
+        "mode": routing_debug.get('mode') or ("agent" if router_agent_cfg else "model"),
+        "agent_id": router_agent_cfg.get('agent_id') if router_agent_cfg else None,
+        "agent_name": router_agent_cfg.get('name') if router_agent_cfg else None,
+        "confidence": routing_debug.get('confidence'),
+        "llm_reason": routing_debug.get('llm_reason'),
+        "model": router_model,
+        "reason": routing_debug.get('reason')
+    })
+    if router_model:
+        model_name = MODEL_NAME_ALIASES.get(router_model, router_model)
     
     # Load agent configuration with version support (same as start_agent endpoint)
-    agent_config = None
+    agent_config = router_agent_cfg or None
     
     logger.info(f"[AGENT INITIATE] Agent loading flow:")
     logger.info(f"  - agent_id param: {agent_id}")
     
-    if agent_id:
+    if agent_id and not agent_config:
         logger.info(f"[AGENT INITIATE] Querying for specific agent: {agent_id}")
         # Get agent
         agent_result = await client.table('agents').select('*').eq('agent_id', agent_id).eq('account_id', account_id).execute()
@@ -991,6 +1061,12 @@ async def initiate_agent_with_files(
             logger.info(f"Using custom agent: {agent_config['name']} ({agent_id}) version {agent_config.get('version_name', 'v1')}")
         else:
             logger.info(f"Using custom agent: {agent_config['name']} ({agent_id}) - no version data")
+
+    elif not agent_config:
+        logger.info(f"[AGENT INITIATE] No agent_id provided, querying for default agent")
+        # Try to get default agent for the account
+        default_agent_result = await client.table('agents').select('*').eq('account_id', account_id).eq('is_default', True).execute()
+        
     else:
         logger.info(f"[AGENT INITIATE] No agent_id provided, querying for default agent")
         # Try to get default agent for the account

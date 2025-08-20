@@ -206,25 +206,58 @@ export async function POST(
 
     console.log('Table access verified for creation');
 
-    // Create a new agent run
-    const { data, error } = await supabase
+    // Idempotent create: return existing if present, else create
+    const existing = await supabase
+      .from('agent_runs')
+      .select('*')
+      .eq('id', runId)
+      .maybeSingle();
+
+    if (existing.data) {
+      return NextResponse.json({
+        run_id: runId,
+        thread_id: existing.data.thread_id,
+        status: existing.data.status,
+        started_at: existing.data.started_at
+      });
+    }
+
+    // Create a new agent run (handle race-condition duplicates gracefully)
+    const insertResult = await supabase
       .from('agent_runs')
       .insert({
         id: runId,
         thread_id,
         status: 'running',
-        started_at: new Date().toISOString(),
-        total_runtime_ms: 0,
-        last_heartbeat: new Date().toISOString(),
-        metadata: {} // Add empty metadata object
+        started_at: new Date().toISOString()
       })
       .select()
       .single();
 
-    if (error) {
-      console.error('Database insert error:', error);
+    if (insertResult.error) {
+      console.error('Database insert error:', insertResult.error);
+      // If duplicate key, fetch and return existing row
+      const code = (insertResult.error as any)?.code || (insertResult.error as any)?.details;
+      if (code === '23505' || String(code).includes('duplicate key')) {
+        const fetched = await supabase
+          .from('agent_runs')
+          .select('*')
+          .eq('id', runId)
+          .maybeSingle();
+        if (fetched.data) {
+          return NextResponse.json({
+            run_id: runId,
+            thread_id: fetched.data.thread_id,
+            status: fetched.data.status,
+            started_at: fetched.data.started_at
+          });
+        }
+      }
       return NextResponse.json(
-        { error: 'Failed to create agent run' },
+        { 
+          error: 'Failed to create agent run',
+          details: insertResult.error.message || (insertResult.error as any).hint || (insertResult.error as any).code
+        },
         { status: 500 }
       );
     }
@@ -232,8 +265,8 @@ export async function POST(
     return NextResponse.json({
       run_id: runId,
       thread_id,
-      status: data.status,
-      started_at: data.started_at
+      status: insertResult.data.status,
+      started_at: insertResult.data.started_at
     });
 
   } catch (error) {
