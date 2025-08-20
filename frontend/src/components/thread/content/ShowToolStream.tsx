@@ -158,8 +158,6 @@ export const ShowToolStream: React.FC<ShowToolStreamProps> = ({
         const paramDisplayForLang = extractPrimaryParam(rawToolName || '', content);
         let language = getLanguageFromFileName(paramDisplayForLang || '') || 'plaintext';
         
-        console.log('Language detection:', { paramDisplayForLang, language, rawToolName });
-
         // Force CSS language for testing if content looks like CSS
         if (contentToHighlight.includes('background-color') || contentToHighlight.includes('font-family')) {
           language = 'css';
@@ -193,8 +191,6 @@ export const ShowToolStream: React.FC<ShowToolStreamProps> = ({
             language = 'c';
         }
 
-        console.log('Final language used:', language);
-
         // Ensure language is loaded
         if (!highlighter.getLoadedLanguages().includes(language)) {
           await highlighter.loadLanguage(language as any).catch((e: any) => console.error(`Failed to load language ${language}`, e));
@@ -205,7 +201,6 @@ export const ShowToolStream: React.FC<ShowToolStreamProps> = ({
           theme: 'light-plus', // force light theme
         });
 
-        console.log('Shiki HTML output:', html.substring(0, 200));
         setHighlightedContent(html);
       } catch (error) {
         console.error('Error highlighting code:', error);
