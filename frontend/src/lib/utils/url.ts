@@ -25,5 +25,28 @@ export function constructHtmlPreviewUrl(
   // Join the segments back together with forward slashes
   const encodedPath = pathSegments.join('/');
 
-  return `${sandboxUrl}/${encodedPath}`;
+  // Build base URL safely and canonicalize Daytona proxy domain to 8080/https
+  let base = sandboxUrl;
+  try {
+    const u = new URL(sandboxUrl);
+    const host = u.hostname;
+    const m = host.match(/^(\d+)-(.*\.proxy\.daytona\.works)$/);
+    if (m) {
+      // Force 8080 subdomain and https scheme for consistency across UI
+      u.hostname = `8080-${m[2]}`;
+      u.protocol = 'https:';
+      u.port = '';
+      base = u.toString().replace(/\/$/, '');
+    }
+  } catch {
+    // leave base as-is if it's not a standard URL
+  }
+
+  // Ensure directory-like paths end with index.html
+  const needsIndex = !encodedPath.match(/\.[^/.]+$/); // no file extension
+  const pathWithIndex = needsIndex
+    ? (encodedPath.endsWith('/') ? `${encodedPath}index.html` : `${encodedPath}/index.html`)
+    : encodedPath;
+
+  return `${base}/${pathWithIndex}`;
 }

@@ -4,6 +4,8 @@ load_dotenv()
 from fastapi import FastAPI, Request, HTTPException, Response, Depends, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
+import httpx
+
 from services import redis
 import sentry
 from contextlib import asynccontextmanager
@@ -130,7 +132,7 @@ async def log_requests_middleware(request: Request, call_next):
         raise
 
 # Define allowed origins based on environment
-allowed_origins = ["https://www.he2.ai", "https://he2.ai"]
+allowed_origins = ["https://www.he2.ai", "https://demo.he2.ai"]
 allow_origin_regex = None
 
 # Add staging-specific origins
@@ -175,7 +177,6 @@ api_router.include_router(email_api.router)
 
 from knowledge_base import api as knowledge_base_api
 api_router.include_router(knowledge_base_api.router)
-
 api_router.include_router(triggers_api.router)
 
 from pipedream import api as pipedream_api
@@ -222,6 +223,46 @@ async def health_check():
 
 
 app.include_router(api_router, prefix="/api")
+
+
+# Reverse proxy for static site: mirror port 8080 content on port 8000
+# This ensures http://8000-.../index.html is identical to https://8080-.../index.html
+@app.get("/{full_path:path}")
+async def proxy_static(full_path: str, request: Request):
+    # Do not proxy API routes
+    if request.url.path.startswith("/api/") or request.url.path == "/api":
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    base = "http://127.0.0.1:8080"
+    # Build target URL with query string
+    path = "/" + full_path if not full_path.startswith("/") else full_path
+    target_url = f"{base}{path}"
+    if request.url.query:
+        target_url += f"?{request.url.query}"
+
+    try:
+        async with httpx.AsyncClient(follow_redirects=False, timeout=30.0) as client:
+            upstream = await client.get(target_url)
+
+        # Copy headers, dropping hop-by-hop
+        headers = dict(upstream.headers)
+        for h in [
+            "content-encoding",
+            "transfer-encoding",
+            "connection",
+            "keep-alive",
+            "proxy-authenticate",
+            "proxy-authorization",
+            "te",
+            "trailers",
+            "upgrade",
+        ]:
+            headers.pop(h, None)
+
+        return Response(content=upstream.content, status_code=upstream.status_code, headers=headers)
+    except Exception as e:
+        logger.error(f"Static proxy error for {target_url}: {e}")
+        raise HTTPException(status_code=502, detail="Bad Gateway")
 
 
 if __name__ == "__main__":

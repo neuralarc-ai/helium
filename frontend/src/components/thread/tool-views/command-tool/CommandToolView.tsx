@@ -50,6 +50,17 @@ export function CommandToolView({
     assistantTimestamp
   );
 
+  // Normalize output to string for safe string operations
+  const outputStr = React.useMemo(() => {
+    if (output === null || output === undefined) return '';
+    if (typeof output === 'string') return output;
+    try {
+      return JSON.stringify(output, null, 2);
+    } catch {
+      return String(output);
+    }
+  }, [output]);
+
   const displayText = name === 'check-command-output' ? sessionName : command;
   const displayLabel = name === 'check-command-output' ? 'Session' : 'Command';
   const displayPrefix = name === 'check-command-output' ? 'tmux:' : '$';
@@ -58,7 +69,7 @@ export function CommandToolView({
 
   // Check if this is a non-blocking command with just a status message
   const isNonBlockingCommand = React.useMemo(() => {
-    if (!output) return false;
+    if (!outputStr) return false;
 
     // Check if output contains typical non-blocking command messages
     const nonBlockingPatterns = [
@@ -69,13 +80,13 @@ export function CommandToolView({
     ];
 
     return nonBlockingPatterns.some(pattern =>
-      output.toLowerCase().includes(pattern.toLowerCase())
+      outputStr.toLowerCase().includes(pattern.toLowerCase())
     );
-  }, [output]);
+  }, [outputStr]);
 
   // Check if there's actual command output to display
   const hasActualOutput = React.useMemo(() => {
-    if (!output) return false;
+    if (!outputStr) return false;
 
     // If it's a non-blocking command, don't show output section
     if (isNonBlockingCommand) return false;
@@ -91,26 +102,26 @@ export function CommandToolView({
     ];
 
     return actualOutputPatterns.some(pattern =>
-      output.includes(pattern)
-    ) || output.trim().length > 50; // Arbitrary threshold for "substantial" output
-  }, [output, isNonBlockingCommand]);
+      outputStr.includes(pattern)
+    ) || outputStr.trim().length > 50; // Arbitrary threshold for "substantial" output
+  }, [outputStr, isNonBlockingCommand]);
 
   const formattedOutput = React.useMemo(() => {
-    if (!output || !hasActualOutput) return [];
-    let processedOutput = output;
+    if (!outputStr || !hasActualOutput) return [];
+    let processedOutput = outputStr;
 
     // Handle case where output is already an object
-    if (typeof output === 'object' && output !== null) {
+    if (typeof outputStr === 'object' && outputStr !== null) {
       try {
-        processedOutput = JSON.stringify(output, null, 2);
+        processedOutput = JSON.stringify(outputStr as any, null, 2);
       } catch (e) {
-        processedOutput = String(output);
+        processedOutput = String(outputStr as any);
       }
-    } else if (typeof output === 'string') {
+    } else if (typeof outputStr === 'string') {
       // Try to parse as JSON first
       try {
-        if (output.trim().startsWith('{') || output.trim().startsWith('[')) {
-          const parsed = JSON.parse(output);
+        if (outputStr.trim().startsWith('{') || outputStr.trim().startsWith('[')) {
+          const parsed = JSON.parse(outputStr);
           if (parsed && typeof parsed === 'object') {
             // If it's a complex object, stringify it nicely
             processedOutput = JSON.stringify(parsed, null, 2);
@@ -118,14 +129,14 @@ export function CommandToolView({
             processedOutput = String(parsed);
           }
         } else {
-          processedOutput = output;
+          processedOutput = outputStr;
         }
       } catch (e) {
         // If parsing fails, use as plain text
-        processedOutput = output;
+        processedOutput = outputStr;
       }
     } else {
-      processedOutput = String(output);
+      processedOutput = String(outputStr);
     }
 
     processedOutput = processedOutput.replace(/\\\\/g, '\\');
@@ -139,7 +150,7 @@ export function CommandToolView({
       return String.fromCharCode(parseInt(group, 16));
     });
     return processedOutput.split('\n');
-  }, [output, hasActualOutput]);
+  }, [outputStr, hasActualOutput]);
 
   const hasMoreLines = formattedOutput.length > 10;
   const previewLines = formattedOutput.slice(0, 10);
@@ -203,17 +214,17 @@ export function CommandToolView({
               </div>
 
               {/* Show status message for non-blocking commands */}
-              {isNonBlockingCommand && output && (
+              {isNonBlockingCommand && outputStr && (
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg mt-2 p-4 border border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-2 mb-2">
                     <CircleDashed className="h-4 w-4 text-blue-500" />
                     <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Command Status</span>
                   </div>
-                  <p className="text-sm text-blue-600 dark:text-blue-400">{output}</p>
+                  <p className="text-sm text-blue-600 dark:text-blue-400">{outputStr}</p>
                 </div>
               )}
 
-              {!output && !isStreaming && !isNonBlockingCommand && (
+              {!outputStr && !isStreaming && !isNonBlockingCommand && (
                 <div className="bg-black rounded-lg overflow-hidden border border-zinc-700/20 shadow-md p-6 flex items-center justify-center">
                   <div className="text-center">
                     <CircleDashed className="h-8 w-8 text-zinc-500 mx-auto mb-2" />

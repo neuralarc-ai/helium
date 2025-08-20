@@ -5,6 +5,7 @@ import { BrowserToolView } from '../BrowserToolView';
 import { CommandToolView } from '../command-tool/CommandToolView';
 import { CheckCommandOutputToolView } from '../command-tool/CheckCommandOutputToolView';
 import { ExposePortToolView } from '../expose-port-tool/ExposePortToolView';
+import { extractExposePortData } from '../expose-port-tool/_utils';
 import { FileOperationToolView } from '../file-operation/FileOperationToolView';
 import { FileEditToolView } from '../file-operation/FileEditToolView';
 import { StrReplaceToolView } from '../str-replace/StrReplaceToolView';
@@ -76,6 +77,14 @@ const defaultRegistry: ToolViewRegistryType = {
 
 
   'expose-port': ExposePortToolView,
+  // Alias for snake_case tool names emitted by backend
+  'expose_port': ExposePortToolView,
+  // Daytona sandbox URL emitters should also render under Port Exposure
+  // Add multiple aliases to be robust against different naming conventions
+  'start-server': ExposePortToolView,
+  'start_server': ExposePortToolView,
+  'start-dev-server': ExposePortToolView,
+  'start_dev_server': ExposePortToolView,
 
   'see-image': SeeImageToolView,
 
@@ -142,6 +151,25 @@ export function useToolView(toolName: string): ToolViewComponent {
 }
 
 export function ToolView({ name = 'default', ...props }: ToolViewProps) {
-  const ToolViewComponent = useToolView(name);
+  let ToolViewComponent = useToolView(name);
+
+  // Dynamic fallback: if the mapped component is too generic but the payload
+  // clearly contains Daytona port exposure info, render the ExposePort view.
+  try {
+    const { port, url } = extractExposePortData(
+      props.assistantContent,
+      props.toolContent,
+      props.isSuccess ?? true,
+      props.toolTimestamp,
+      props.assistantTimestamp
+    );
+
+    const isExposeLike = !!port || !!url;
+    const isGeneric = ToolViewComponent === GenericToolView || ToolViewComponent === FileOperationToolView;
+    if (isExposeLike && isGeneric) {
+      ToolViewComponent = ExposePortToolView;
+    }
+  } catch {}
+
   return <ToolViewComponent name={name} {...props} />;
 }

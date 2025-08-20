@@ -100,6 +100,18 @@ export function GenericToolView({
     [toolContent],
   );
 
+  // Ensure tool output is a string before string operations/rendering
+  const toolOutputStr = React.useMemo(() => {
+    const out = formattedToolContent?.output;
+    if (out === null || out === undefined) return '';
+    if (typeof out === 'string') return out;
+    try {
+      return JSON.stringify(out, null, 2);
+    } catch {
+      return String(out);
+    }
+  }, [formattedToolContent]);
+
   const renderArguments = (args: Record<string, any>) => {
     if (!args || Object.keys(args).length === 0) return null;
 
@@ -416,10 +428,10 @@ export function GenericToolView({
               )}
 
               {/* Tool Output */}
-              {formattedToolContent?.output && (
-                (isSuccess && !formattedToolContent.output.includes('Error')) 
-                  ? renderOutput(formattedToolContent.output, 'Result')
-                  : renderErrorOutput(formattedToolContent.output)
+              {toolOutputStr && (
+                (isSuccess && !toolOutputStr.includes('Error')) 
+                  ? renderOutput(toolOutputStr, 'Result')
+                  : renderErrorOutput(toolOutputStr)
               )}
 
               {/* Tool Summary */}

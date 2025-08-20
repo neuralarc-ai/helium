@@ -19,6 +19,28 @@ const parseContent = (content: any): any => {
   return content;
 };
 
+// Canonicalize Daytona proxy subdomain to ensure consistent displayed/used URL
+// Force links to use the 8080 Daytona proxy host (and https) for uniformity
+export const canonicalizeExposeUrl = (input: string): string => {
+  try {
+    const u = new URL(input);
+    const host = u.hostname;
+    // Match leading port segment like 8080-abc.proxy.daytona.works
+    const m = host.match(/^(\d+)-(.*\.proxy\.daytona\.works)$/);
+    if (m) {
+      const rest = m[2];
+      u.hostname = `8080-${rest}`;
+      u.protocol = 'https:'; // canonical choice to match daytona 8080
+      // Clear default port if any so URL stays clean
+      u.port = '';
+      return u.toString();
+    }
+    return input;
+  } catch {
+    return input;
+  }
+};
+
 const extractFromNewFormat = (content: any): { 
   port: number | null; 
   url: string | null;
@@ -59,6 +81,45 @@ const extractFromNewFormat = (content: any): {
       success: extractedData.success
     });
     
+    return extractedData;
+  }
+
+  // Support the structured tool result format: { tool_name|xml_tag_name, parameters, result }
+  if (('tool_name' in parsedContent) || ('xml_tag_name' in parsedContent)) {
+    const parameters = (parsedContent as any).parameters || {};
+    let result = (parsedContent as any).result || undefined;
+
+    // Newer payloads may be nested under a content field
+    if (!result && 'content' in parsedContent && typeof (parsedContent as any).content === 'object') {
+      const inner = (parsedContent as any).content;
+      result = inner.result || result;
+    }
+
+    let output = result?.output;
+    if (typeof output === 'string') {
+      try { output = JSON.parse(output); } catch {}
+    }
+
+    // Prefer explicit numbers in parameters or output; otherwise check result directly
+    const port = parameters.port ? parseInt(String(parameters.port), 10)
+      : (output?.port ? parseInt(String(output.port), 10)
+      : (result?.port ? parseInt(String(result.port), 10) : null));
+
+    const extractedData = {
+      port,
+      url: output?.url || result?.url || (parameters as any).url || null,
+      message: output?.message || result?.message || (parsedContent as any).summary || null,
+      success: result?.success,
+      timestamp: result?.timestamp || (parsedContent as any).timestamp
+    };
+
+    console.log('ExposePortToolView: Extracted from structured format:', {
+      port: extractedData.port,
+      hasUrl: !!extractedData.url,
+      hasMessage: !!extractedData.message,
+      success: extractedData.success
+    });
+
     return extractedData;
   }
 
@@ -159,6 +220,30 @@ const extractFromLegacyFormat = (content: any): {
   }
 };
 
+// Normalize exposed URLs so that directory-like paths end with index.html
+export const normalizeExposeUrl = (input: string): string => {
+  try {
+    const u = new URL(input);
+    const pathname = u.pathname || '/';
+
+    const lastSeg = pathname.split('/').filter(Boolean).pop() || '';
+    const hasExtension = !!lastSeg && /\.[^/.]+$/.test(lastSeg);
+    const endsWithIndex = pathname.endsWith('/index.html') || pathname.endsWith('index.html');
+
+    if (endsWithIndex || hasExtension) {
+      return u.toString();
+    }
+
+    u.pathname = pathname.endsWith('/') ? `${pathname}index.html` : `${pathname}/index.html`;
+    return u.toString();
+  } catch {
+    if (!input) return input;
+    if (input.endsWith('/index.html') || input.endsWith('index.html')) return input;
+    if (input.endsWith('/')) return input + 'index.html';
+    return input + '/index.html';
+  }
+};
+
 export function extractExposePortData(
   assistantContent: any,
   toolContent: any,
@@ -198,7 +283,7 @@ export function extractExposePortData(
 
   if (assistantNewFormat.port || assistantNewFormat.url || assistantNewFormat.message) {
     port = assistantNewFormat.port;
-    url = assistantNewFormat.url;
+    url = assistantNewFormat.url ? canonicalizeExposeUrl(normalizeExposeUrl(assistantNewFormat.url)) : null;
     message = assistantNewFormat.message;
     if (assistantNewFormat.success !== undefined) {
       actualIsSuccess = assistantNewFormat.success;
@@ -209,7 +294,7 @@ export function extractExposePortData(
     console.log('ExposePortToolView: Using assistant new format data');
   } else if (toolNewFormat.port || toolNewFormat.url || toolNewFormat.message) {
     port = toolNewFormat.port;
-    url = toolNewFormat.url;
+    url = toolNewFormat.url ? canonicalizeExposeUrl(normalizeExposeUrl(toolNewFormat.url)) : null;
     message = toolNewFormat.message;
     if (toolNewFormat.success !== undefined) {
       actualIsSuccess = toolNewFormat.success;
@@ -223,7 +308,8 @@ export function extractExposePortData(
     const toolLegacy = extractFromLegacyFormat(toolContent);
 
     port = assistantLegacy.port || toolLegacy.port;
-    url = assistantLegacy.url || toolLegacy.url;
+    const legacyUrl = assistantLegacy.url || toolLegacy.url || null;
+    url = legacyUrl ? canonicalizeExposeUrl(normalizeExposeUrl(legacyUrl)) : null;
     message = assistantLegacy.message || toolLegacy.message;
     
     if (!port) {
