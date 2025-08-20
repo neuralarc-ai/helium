@@ -32,6 +32,7 @@ import { isLocalMode } from '@/lib/config';
 import { BillingModal } from '@/components/billing/billing-modal';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { BorderBeam } from '@/components/magicui/border-beam';
 // import posthog from 'posthog-js';
 
 export interface ChatInputHandles {
@@ -169,14 +170,24 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     // Get unique app slugs from connected profiles
     const connectedAppSlugs = [...new Set(connectedProfiles.map(p => p.app_slug))];
     
-    // Fetch icons for all connected apps - use static hook calls
+    // Fetch icons for all connected apps - use static hook calls for common apps
     const googleDriveIcon = usePipedreamToolkitIcon('googledrive', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('googledrive') });
     const slackIcon = usePipedreamToolkitIcon('slack', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('slack') });
     const notionIcon = usePipedreamToolkitIcon('notion', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('notion') });
     const githubIcon = usePipedreamToolkitIcon('github', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('github') });
     const discordIcon = usePipedreamToolkitIcon('discord', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('discord') });
     const zapierIcon = usePipedreamToolkitIcon('zapier', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('zapier') });
-    
+    const gmailIcon = usePipedreamToolkitIcon('gmail', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('gmail') });
+    const trelloIcon = usePipedreamToolkitIcon('trello', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('trello') });
+    const asanaIcon = usePipedreamToolkitIcon('asana', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('asana') });
+    const jiraIcon = usePipedreamToolkitIcon('jira', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('jira') });
+    const figmaIcon = usePipedreamToolkitIcon('figma', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('figma') });
+    const airtableIcon = usePipedreamToolkitIcon('airtable', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('airtable') });
+    const hubspotIcon = usePipedreamToolkitIcon('hubspot', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('hubspot') });
+    const salesforceIcon = usePipedreamToolkitIcon('salesforce', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('salesforce') });
+    const stripeIcon = usePipedreamToolkitIcon('stripe', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('stripe') });
+    const shopifyIcon = usePipedreamToolkitIcon('shopify', { enabled: isLoggedIn && !!enableAdvancedConfig && connectedAppSlugs.includes('shopify') });
+
     // Create a map of app slugs to icon URLs with better error handling
     const appIconMap = connectedAppSlugs.reduce((acc, appSlug) => {
       let iconUrl = null;
@@ -201,6 +212,36 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
         case 'zapier':
           iconUrl = zapierIcon?.data;
           break;
+        case 'gmail':
+          iconUrl = gmailIcon?.data;
+          break;
+        case 'trello':
+          iconUrl = trelloIcon?.data;
+          break;
+        case 'asana':
+          iconUrl = asanaIcon?.data;
+          break;
+        case 'jira':
+          iconUrl = jiraIcon?.data;
+          break;
+        case 'figma':
+          iconUrl = figmaIcon?.data;
+          break;
+        case 'airtable':
+          iconUrl = airtableIcon?.data;
+          break;
+        case 'hubspot':
+          iconUrl = hubspotIcon?.data;
+          break;
+        case 'salesforce':
+          iconUrl = salesforceIcon?.data;
+          break;
+        case 'stripe':
+          iconUrl = stripeIcon?.data;
+          break;
+        case 'shopify':
+          iconUrl = shopifyIcon?.data;
+          break;
         default:
           // For other apps, we'll show initials
           iconUrl = null;
@@ -209,6 +250,9 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       
       if (iconUrl) {
         acc[appSlug] = iconUrl;
+        console.log(`✅ Icon loaded for ${appSlug}:`, iconUrl);
+      } else {
+        console.log(`❌ No icon for ${appSlug}, will show initial`);
       }
       return acc;
     }, {} as Record<string, string>);
@@ -220,6 +264,11 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       }
       return acc;
     }, {} as Record<string, string>);
+
+    // Debug logging
+    console.log('🔍 Connected app slugs:', connectedAppSlugs);
+    console.log('🎨 App icon map:', appIconMap);
+    console.log('📱 App name map:', appNameMap);
 
     // Show usage preview logic:
     // - Always show to free users when showToLowCreditUsers is true
@@ -554,7 +603,23 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             }}
           >
             <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
-              <CardContent className={`w-full p-1.5 pb-2 ${bgColor} border rounded-3xl`}>
+              <CardContent className={`w-full p-1.5 pb-2 ${bgColor} rounded-3xl relative overflow-hidden`}>
+                {/* Border Beam Effect */}
+                <div className="absolute inset-0 rounded-[inherit] overflow-hidden">
+                  <BorderBeam 
+                    duration={6}
+                    borderWidth={1}
+                    size={200}
+                    className="from-transparent via-helium-teal to-transparent"
+                  />
+                  <BorderBeam 
+                    duration={6}
+                    borderWidth={1}
+                    delay={3}
+                    size={200}
+                    className="from-transparent via-helium-pink to-transparent"
+                  />
+                </div>
                 <AttachmentGroup
                   files={uploadedFiles || []}
                   sandboxId={sandboxId}
@@ -620,14 +685,19 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                         connectedAppSlugs.slice(0, 3).map((appSlug, index) => {
                           const iconUrl = appIconMap[appSlug];
                           const appName = appNameMap[appSlug] || appSlug;
+                          const isLoading = !iconUrl && appSlug !== 'unknown';
+                          
                           return (
-                            <div key={appSlug} className="w-4 h-4 bg-white dark:bg-muted border border-border rounded-full flex items-center justify-center shadow-sm">
-                              {iconUrl ? (
+                            <div key={appSlug} className="w-4 h-4 bg-white dark:bg-muted border border-border rounded-full flex items-center justify-center shadow-sm relative overflow-hidden">
+                              {isLoading ? (
+                                <div className="w-2.5 h-2.5 border border-muted-foreground/20 rounded-full animate-pulse bg-muted-foreground/10"></div>
+                              ) : iconUrl ? (
                                 <img 
                                   src={iconUrl} 
-                                  className="w-2.5 h-2.5" 
+                                  className="w-3 h-3 object-contain rounded-sm" 
                                   alt={appName} 
                                   title={appName}
+                                  loading="lazy"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = 'none';
@@ -636,8 +706,8 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                                 />
                               ) : null}
                               <span className={cn(
-                                "text-xs font-medium text-muted-foreground",
-                                iconUrl ? "hidden" : "block"
+                                "text-xs font-medium text-muted-foreground absolute inset-0 flex items-center justify-center",
+                                (iconUrl || isLoading) ? "hidden" : "block"
                               )}>
                                 {appName.charAt(0).toUpperCase()}
                               </span>
@@ -647,13 +717,13 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                       ) : (
                         <>
                           <div className="w-4 h-4 bg-white dark:bg-muted border border-border rounded-full flex items-center justify-center shadow-sm">
-                            <Skeleton className="w-2.5 h-2.5 rounded" />
+                            <div className="w-2.5 h-2.5 border border-muted-foreground/20 rounded-full animate-pulse bg-muted-foreground/10"></div>
                           </div>
                           <div className="w-4 h-4 bg-white dark:bg-muted border border-border rounded-full flex items-center justify-center shadow-sm">
-                            <Skeleton className="w-2.5 h-2.5 rounded" />
+                            <div className="w-2.5 h-2.5 border border-muted-foreground/20 rounded-full animate-pulse bg-muted-foreground/10"></div>
                           </div>
                           <div className="w-4 h-4 bg-white dark:bg-muted border border-border rounded-full flex items-center justify-center shadow-sm">
-                            <Skeleton className="w-2.5 h-2.5 rounded" />
+                            <div className="w-2.5 h-2.5 border border-muted-foreground/20 rounded-full animate-pulse bg-muted-foreground/10"></div>
                           </div>
                         </>
                       )}
