@@ -1,4 +1,4 @@
--- Fix function overloading for get_smart_kb_context
+-- Fix function overloading for get_smart_kb_context (FIXED VERSION)
 -- Run this in your Supabase SQL editor
 
 -- 1. First, let's see what functions exist with this name
@@ -13,12 +13,13 @@ WHERE p.proname = 'get_smart_kb_context'
 AND n.nspname = 'public';
 
 -- 2. Drop ALL existing functions with this name (regardless of signature)
+-- FIXED: Use p.oid to be specific about which table's oid we want
 DO $$
 DECLARE
     func_record RECORD;
 BEGIN
     FOR func_record IN
-        SELECT oid::regprocedure AS funcsig
+        SELECT p.oid::regprocedure AS funcsig
         FROM pg_proc p
         JOIN pg_namespace n ON p.pronamespace = n.oid
         WHERE p.proname = 'get_smart_kb_context'
