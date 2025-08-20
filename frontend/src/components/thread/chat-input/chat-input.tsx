@@ -17,7 +17,7 @@ import { useModelSelection } from './_use-model-selection';
 import { useFileDelete } from '@/hooks/react-query/files';
 import { useQueryClient } from '@tanstack/react-query';
 import { ToolCallInput } from './floating-tool-preview';
-import { ChatSnack } from './chat-snack';
+import { ChatSnack, type AgentStatus } from './chat-snack';
 import { AgentConfigModal } from '@/components/agents/agent-config-modal';
 import { PipedreamRegistry } from '@/components/agents/pipedream/pipedream-registry';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -140,6 +140,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const [showSnackbar, setShowSnackbar] = useState(defaultShowSnackbar);
     const [userDismissedUsage, setUserDismissedUsage] = useState(false);
     const [billingModalOpen, setBillingModalOpen] = useState(false);
+    const [wasManuallyStopped, setWasManuallyStopped] = useState(false);
 
     const {
       selectedModel,
@@ -152,6 +153,19 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     } = useModelSelection();
 
     const { data: subscriptionData } = useSubscriptionWithStreaming(isAgentRunning);
+
+    const agentStatus: AgentStatus = (() => {
+      if (isAgentRunning || loading) {
+        return 'running';
+      }
+      if (wasManuallyStopped) {
+        return 'stopped';
+      }
+      if (toolCalls && toolCalls.length > 0) {
+        return 'completed';
+      }
+      return 'idle';
+    })();
     const deleteFileMutation = useFileDelete();
     const queryClient = useQueryClient();
 
@@ -262,10 +276,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       )
         return;
 
-      if (isAgentRunning && onStopAgent) {
-        onStopAgent();
-        return;
-      }
+      setWasManuallyStopped(false);
 
       let message = value;
 
@@ -301,6 +312,13 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
         controlledOnChange(newValue);
       } else {
         setUncontrolledValue(newValue);
+      }
+    };
+
+    const handleStopAgent = () => {
+      if (onStopAgent) {
+        onStopAgent();
+        setWasManuallyStopped(true);
       }
     };
 
@@ -373,6 +391,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             onExpandToolPreview={onExpandToolPreview}
             agentName={agentName}
             showToolPreview={showToolPreview}
+            agentStatus={agentStatus}
             showUsagePreview={showSnackbar}
             subscriptionData={subscriptionData}
             onCloseUsage={() => { setShowSnackbar(false); setUserDismissedUsage(true); }}
@@ -493,7 +512,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                   loading={loading}
                   disabled={disabled}
                   isAgentRunning={isAgentRunning}
-                  onStopAgent={onStopAgent}
+                  onStopAgent={handleStopAgent}
                   isDraggingOver={isDraggingOver}
                   uploadedFiles={uploadedFiles}
 
