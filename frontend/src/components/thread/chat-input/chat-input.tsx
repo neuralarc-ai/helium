@@ -18,14 +18,14 @@ import { useModelSelection } from './_use-model-selection';
 import { useFileDelete } from '@/hooks/react-query/files';
 import { useQueryClient } from '@tanstack/react-query';
 import { ToolCallInput } from './floating-tool-preview';
-import { ChatSnack } from './chat-snack';
 import { Brain, Zap, Workflow, Database, ArrowDown } from 'lucide-react';
 import { usePipedreamToolkitIcon } from '@/hooks/react-query/pipedream/use-pipedream';
 import { usePipedreamProfiles } from '@/hooks/react-query/pipedream/use-pipedream-profiles';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-
 import { IntegrationsRegistry } from '@/components/agents/integrations-registry';
+import { ChatSnack, type AgentStatus } from './chat-snack';
+import { AgentConfigModal } from '@/components/agents/agent-config-modal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useSubscriptionWithStreaming } from '@/hooks/react-query/subscriptions/use-subscriptions';
 import { isLocalMode } from '@/lib/config';
@@ -148,6 +148,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     const [userDismissedUsage, setUserDismissedUsage] = useState(false);
     const [billingModalOpen, setBillingModalOpen] = useState(false);
     const [isAddingTools, setIsAddingTools] = useState(false);
+    const [wasManuallyStopped, setWasManuallyStopped] = useState(false);
 
     const {
       selectedModel,
@@ -160,6 +161,19 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
     } = useModelSelection();
 
     const { data: subscriptionData } = useSubscriptionWithStreaming(isAgentRunning);
+
+    const agentStatus: AgentStatus = (() => {
+      if (isAgentRunning || loading) {
+        return 'running';
+      }
+      if (wasManuallyStopped) {
+        return 'stopped';
+      }
+      if (toolCalls && toolCalls.length > 0) {
+        return 'completed';
+      }
+      return 'idle';
+    })();
     const deleteFileMutation = useFileDelete();
     const queryClient = useQueryClient();
 
@@ -397,10 +411,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       )
         return;
 
-      if (isAgentRunning && onStopAgent) {
-        onStopAgent();
-        return;
-      }
+      setWasManuallyStopped(false);
 
       let message = value;
 
@@ -493,6 +504,13 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
       }
     };
 
+    const handleStopAgent = () => {
+      if (onStopAgent) {
+        onStopAgent();
+        setWasManuallyStopped(true);
+      }
+    };
+
     const handleTranscription = (transcribedText: string) => {
       const currentValue = isControlled ? controlledValue : uncontrolledValue;
       const newValue = currentValue ? `${currentValue} ${transcribedText}` : transcribedText;
@@ -562,6 +580,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             onExpandToolPreview={onExpandToolPreview}
             agentName={agentName}
             showToolPreview={showToolPreview}
+            agentStatus={agentStatus}
             showUsagePreview={showSnackbar}
             subscriptionData={subscriptionData}
             onCloseUsage={() => { setShowSnackbar(false); setUserDismissedUsage(true); }}
@@ -638,7 +657,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
                   loading={loading}
                   disabled={disabled}
                   isAgentRunning={isAgentRunning}
-                  onStopAgent={onStopAgent}
+                  onStopAgent={handleStopAgent}
                   isDraggingOver={isDraggingOver}
                   uploadedFiles={uploadedFiles}
 

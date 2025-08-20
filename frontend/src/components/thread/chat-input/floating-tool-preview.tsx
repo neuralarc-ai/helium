@@ -1,8 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, Check, ListTodo } from 'lucide-react';
+import { ChevronUp, Check, ListTodo, Loader, XCircle, CircleDashed } from 'lucide-react';
 import { getUserFriendlyToolName } from '@/components/thread/utils';
 import { cn } from '@/lib/utils';
+
+export type AgentStatus = 'running' | 'stopped' | 'idle' | 'completed';
 
 export interface ToolCallInput {
   assistantCall: {
@@ -29,6 +31,7 @@ interface FloatingToolPreviewProps {
   indicatorIndex?: number;
   indicatorTotal?: number;
   onIndicatorClick?: (index: number) => void;
+  agentStatus?: AgentStatus;
 }
 
 const FLOATING_LAYOUT_ID = 'tool-panel-float';
@@ -106,73 +109,33 @@ const getTaskProgressInfo = (toolCall: ToolCallInput): { currentTask: string | n
 };
 
 // Function to extract meaningful task description from tool call content
-const extractTaskDescription = (toolCall: ToolCallInput): string => {
-  // First try to get task list data
-  const taskData = extractTaskListData(toolCall);
-  if (taskData && taskData.sections && taskData.sections.length > 0) {
-    const allTasks = taskData.sections.flatMap((section: any) => section.tasks || []);
-    if (allTasks.length > 0) {
-      // Return the first task as the main description
-      return allTasks[0].content || 'Task List';
-    }
-  }
-
+const extractTaskDescription = (toolCall: ToolCallInput): string | null => {
   const content = toolCall.assistantCall?.content;
-  if (!content) return 'Tool Call';
+  if (!content) return null;
 
   try {
-    // Try to parse as JSON first
     const parsed = typeof content === 'string' ? JSON.parse(content) : content;
-    
-    // Check if it's the new structured format
-    if (parsed && typeof parsed === 'object') {
-      // If it has a content field, use that
-      if (parsed.content && typeof parsed.content === 'string') {
-        return parsed.content;
-      }
-      
-      // If it has tool_calls, extract the first one's description
-      if (parsed.tool_calls && Array.isArray(parsed.tool_calls) && parsed.tool_calls.length > 0) {
-        const firstToolCall = parsed.tool_calls[0];
-        if (firstToolCall.function?.description) {
-          return firstToolCall.function.description;
-        }
-        if (firstToolCall.function?.arguments) {
-          const args = typeof firstToolCall.function.arguments === 'string' 
-            ? JSON.parse(firstToolCall.function.arguments) 
-            : firstToolCall.function.arguments;
-          
-          // Look for common task description fields
-          if (args.task || args.description || args.prompt || args.query) {
-            return args.task || args.description || args.prompt || args.query;
-          }
-        }
+
+    if (parsed && typeof parsed === 'object' && parsed.tool_calls && Array.isArray(parsed.tool_calls) && parsed.tool_calls.length > 0) {
+      const firstToolCall = parsed.tool_calls[0];
+      if (firstToolCall.function?.arguments) {
+        const args = typeof firstToolCall.function.arguments === 'string'
+          ? JSON.parse(firstToolCall.function.arguments)
+          : firstToolCall.function.arguments;
+
+        // Look for common task description fields and return the first one found
+        if (args.task) return args.task;
+        if (args.description) return args.description;
+        if (args.prompt) return args.prompt;
+        if (args.query) return args.query;
       }
     }
   } catch (e) {
-    // If JSON parsing fails, treat as string
+    // If parsing fails, it's not the structured data we're looking for.
+    return null;
   }
 
-  // If it's a string, try to extract meaningful content
-  if (typeof content === 'string') {
-    // Remove XML tags and extract content
-    const cleanContent = content
-      .replace(/<[^>]*>/g, '') // Remove XML tags
-      .replace(/function_calls?/gi, '') // Remove function_calls text
-      .replace(/tool_calls?/gi, '') // Remove tool_calls text
-      .trim();
-    
-    if (cleanContent && cleanContent.length > 10) {
-      // Truncate if too long
-      return cleanContent.length > 100 
-        ? cleanContent.substring(0, 100) + '...' 
-        : cleanContent;
-    }
-  }
-
-  // Fallback to tool name if no meaningful description found
-  const toolName = toolCall.assistantCall?.name || 'Tool Call';
-  return getUserFriendlyToolName(toolName);
+  return null;
 };
 
 // Function to check if task is completed
@@ -188,8 +151,9 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
   isVisible,
   showIndicators = false,
   indicatorIndex = 0,
-  indicatorTotal = 1,
+  indicatorTotal,
   onIndicatorClick,
+  agentStatus,
 }) => {
   const [isExpanding, setIsExpanding] = React.useState(false);
   const currentToolCall = toolCalls[currentIndex];
@@ -208,6 +172,44 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
   const taskProgress = getTaskProgressInfo(currentToolCall);
   const hasTaskList = taskProgress.totalTasks > 0;
 
+  const getStatusInfo = () => {
+    switch (agentStatus) {
+      case 'stopped':
+        return {
+          text: 'Task Stopped',
+          icon: <XCircle className="h-3 w-3 text-white" />,
+          bgColor: 'bg-red-500',
+        };
+      case 'completed':
+        return {
+          text: 'Task Completed',
+          icon: <Check className="h-3 w-3 text-white" />,
+          bgColor: 'bg-helium-teal',
+        };
+      case 'running':
+        if (hasTaskList && taskProgress.currentTask) {
+          return {
+            text: taskProgress.currentTask,
+            icon: <ListTodo className="h-3 w-3 text-white" />,
+            bgColor: 'bg-blue-500',
+          };
+        }
+        return {
+          text: taskDescription || getUserFriendlyToolName(currentToolCall.assistantCall?.name) || 'Task Running...',
+          icon: <Loader className="h-3 w-3 text-white animate-spin" />,
+          bgColor: 'bg-blue-500',
+        };
+      case 'idle':
+      default:
+        return {
+          text: 'Task Starting...',
+          icon: <CircleDashed className="h-3 w-3 text-white" />,
+          bgColor: 'bg-gray-400',
+        };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
   const handleClick = () => {
     setIsExpanding(true);
     requestAnimationFrame(() => {
@@ -241,19 +243,13 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
               {/* Task description and progress */}
               <div className="flex-1 min-w-0" style={{ opacity: isExpanding ? 0 : 1 }}>
                 <motion.div layoutId="tool-title" className="flex items-center gap-2">
-                  {isCompleted && (
-                    <div className="w-5 h-5 rounded-full bg-helium-teal flex items-center justify-center flex-shrink-0">
-                      <Check className="h-3 w-3 text-white" />
-                    </div>
-                  )}
-                  {!isCompleted && hasTaskList && (
-                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                      <ListTodo className="h-3 w-3 text-white" />
-                    </div>
-                  )}
+
+                  <div className={`w-5 h-5 rounded-full ${statusInfo.bgColor} flex items-center justify-center flex-shrink-0`}>
+                    {statusInfo.icon}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 leading-tight">
-                      {isCompleted ? "Task Completed" : hasTaskList ? taskProgress.currentTask || 'Processing tasks...' : taskDescription}
+                      {statusInfo.text}
                     </h4>
                     {hasTaskList && !isCompleted && (
                       <div className="flex items-center gap-2 mt-1">
