@@ -19,5 +19,7 @@ export const pipedreamKeys = {
       [...pipedreamKeys.profiles.all(), 'list', params?.app_slug || '', params?.is_active ?? ''] as const,
     detail: (profileId: string) => [...pipedreamKeys.profiles.all(), 'detail', profileId] as const,
     connections: (profileId: string) => [...pipedreamKeys.profiles.all(), 'connections', profileId] as const,
-  }
+  },
+  appTools: (appSlug: string) => [...pipedreamKeys.all, 'app-tools', appSlug] as const,
+  appIcon: (appSlug: string) => [...pipedreamKeys.all, 'app-icon', appSlug] as const
 }; 
