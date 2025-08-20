@@ -600,7 +600,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             </button>
           )}
           <Card
-            className={`-mb-2 shadow-none w-full max-w-4xl mx-auto bg-transparent border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? '' : 'rounded-3xl'} relative z-10`}
+            className={`-mb-2 p-0 mt-4 z-30 bg-white shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] w-full max-w-4xl mx-auto border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl mb-6' : 'rounded-4xl'} relative`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={(e) => {
@@ -621,8 +621,8 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
               }
             }}
           >
-            <div className="w-full text-sm flex flex-col justify-between items-start rounded-lg">
-              <CardContent className={`w-full p-1.5 pb-2 ${bgColor} rounded-3xl relative overflow-hidden`}>
+            <div className="w-full text-sm flex flex-col justify-between items-start rounded-4xl">
+            <CardContent className={`w-full border border-black/10 rounded-4xl p-2 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl' : 'rounded-3xl'} overflow-hidden relative`}>
                 {/* Border Beam Effect */}
                 <div className="absolute inset-0 rounded-[inherit] overflow-hidden">
                   <BorderBeam 
@@ -687,8 +687,8 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
           </Card>
 
           {enableAdvancedConfig && selectedAgentId && (
-            <div className="w-full max-w-4xl mx-auto -mt-12 relative z-20">
-              <div className="bg-gradient-to-b from-transparent via-transparent to-muted/30 pt-8 pb-2 px-4 rounded-b-3xl border border-t-0 border-border/50 transition-all duration-300 ease-out">
+            <div className="w-full max-w-4xl mx-auto -mt-12 relative z-1">
+              <div className="bg-gradient-to-b from-transparent via-trasnparent to-helium-teal/20 pt-8 pb-2 px-4 rounded-b-3xl border border-t-0 border-border/50 transition-all duration-300 ease-out">
                 <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-none relative">
                   <button
                     onClick={() => setRegistryDialogOpen(true)}
