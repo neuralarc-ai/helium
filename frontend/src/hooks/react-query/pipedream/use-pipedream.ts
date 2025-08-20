@@ -95,12 +95,31 @@ export const usePipedreamAppIcon = (appSlug: string, options?: { enabled?: boole
 
 export const usePipedreamAppTools = (appSlug: string, options?: { enabled?: boolean }) => {
   return useQuery({
-    queryKey: ['pipedream', 'app-tools', appSlug],
-    queryFn: async (): Promise<{ success: boolean; tools: PipedreamTool[] }> => {
+    queryKey: pipedreamKeys.appTools(appSlug),
+    queryFn: async () => {
       return await pipedreamApi.getAppTools(appSlug);
     },
-    enabled: options?.enabled ?? !!appSlug,
-    staleTime: 5 * 60 * 1000,
-    retry: 2,
+    enabled: options?.enabled !== false,
   });
-}; 
+};
+
+export const usePipedreamToolkitIcon = (appSlug: string, options?: { enabled?: boolean }) => {
+  return useQuery({
+    queryKey: pipedreamKeys.appIcon(appSlug),
+    queryFn: async () => {
+      try {
+        const response = await pipedreamApi.getAppIcon(appSlug);
+        return {
+          data: response.success ? response.icon_url : null,
+        };
+      } catch (error) {
+        console.warn(`Failed to load icon for ${appSlug}:`, error);
+        // Return null to prevent UI errors
+        return { data: null };
+      }
+    },
+    enabled: options?.enabled !== false,
+    retry: 1, // Only retry once on failure
+    staleTime: 60 * 60 * 1000, // Cache for 1 hour
+  });
+};
