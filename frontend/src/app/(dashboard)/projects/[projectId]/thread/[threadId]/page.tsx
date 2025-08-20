@@ -714,7 +714,8 @@ export default function ThreadPage({
                 setIsSidePanelOpen(true);
                 userClosedPanelRef.current = false;
               }}
-              defaultShowSnackbar="tokens"
+              // defaultShowSnackbar="tokens"
+              enableAdvancedConfig={true}
             />
             </div>
           </div>

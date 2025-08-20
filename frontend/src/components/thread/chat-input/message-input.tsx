@@ -157,26 +157,20 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
 
     const renderDropdown = () => {
       if (isLoggedIn) {
-        // In production mode, show Helium logo with Helio o1 text
+        // In production mode, show Helio o1 branding, agent selector, and model selector
         if (!isLocalMode()) {
+          const showAdvancedFeatures = enableAdvancedConfig || (customAgentsEnabled && !flagsLoading);
+          
           return (
-            <div className='flex items-center gap-[10px]'>
-              {/* Pill-shaped toggle with Helium gradient */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="relative flex items-center rounded-full shadow-xs border border-black/10 gap-1.5 p-2 px-4 cursor-pointer">
-                      {/* Inner Helio o1 section with dark background */}
-                        <HeliumLogo size={16} />
-                        <span className="text-sm font-medium text-foreground">Helio o1</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    Our most powerful agent system
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <span className='h-6 w-[1px] bg-muted-foreground/20'></span>
+            <div className="flex items-center gap-2">
+              {showAdvancedFeatures && !hideAgentSelection && (
+                <AgentSelector
+                  selectedAgentId={selectedAgentId}
+                  onAgentSelect={onAgentSelect}
+                  disabled={loading || (disabled && !isAgentRunning)}
+                  isSunaAgent={true}
+                />
+              )}
             </div>
           );
         }
@@ -244,6 +238,27 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                 messages={messages}
                 isLoggedIn={isLoggedIn}
               />
+            )}
+
+            {/* Helio o1 branding - PRODUCTION ONLY, positioned on the left */}
+            {!isLocalMode() && (
+              <>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="relative flex items-center rounded-full shadow-xs border border-black/10 gap-1.5 p-2 px-4 cursor-pointer">
+                        {/* Inner Helio o1 section with dark background */}
+                          <HeliumLogo size={16} />
+                          <span className="text-sm font-medium text-foreground">Helio o1</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      Our most powerful agent system
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <span className='h-6 w-[1px] bg-muted-foreground/20'></span>
+              </>
             )}
 
             {/* Spacer to push the rest of the buttons to the right */}
