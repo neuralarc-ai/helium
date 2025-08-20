@@ -442,29 +442,40 @@ class MessageManager:
             except Exception as e:
                 logger.error(f"Error parsing browser state: {e}")
 
-        latest_image_context_msg = await self.client.table('messages').select('*').eq('thread_id', self.thread_id).eq('type', 'image_context').order('created_at', desc=True).limit(1).execute()
-        if latest_image_context_msg.data and len(latest_image_context_msg.data) > 0:
+        # Collect up to 5 recent image_context messages to support multiple images
+        image_context_msgs = await self.client.table('messages').select('*').eq('thread_id', self.thread_id).eq('type', 'image_context').order('created_at', desc=True).limit(5).execute()
+        if image_context_msgs.data and len(image_context_msgs.data) > 0:
+            to_delete_ids = []
             try:
-                image_context_content = latest_image_context_msg.data[0]["content"] if isinstance(latest_image_context_msg.data[0]["content"], dict) else json.loads(latest_image_context_msg.data[0]["content"])
-                base64_image = image_context_content.get("base64")
-                mime_type = image_context_content.get("mime_type")
-                file_path = image_context_content.get("file_path", "unknown file")
+                # Reverse so older images appear first in the list
+                for msg in reversed(image_context_msgs.data):
+                    content_obj = msg["content"] if isinstance(msg.get("content"), dict) else json.loads(msg.get("content", "{}"))
+                    base64_image = content_obj.get("base64")
+                    mime_type = content_obj.get("mime_type")
+                    file_path = content_obj.get("file_path", "unknown file")
 
-                if base64_image and mime_type:
-                    temp_message_content_list.append({
-                        "type": "text",
-                        "text": f"Here is the image you requested to see: '{file_path}'"
-                    })
-                    temp_message_content_list.append({
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:{mime_type};base64,{base64_image}",
-                        }
-                    })
-
-                await self.client.table('messages').delete().eq('message_id', latest_image_context_msg.data[0]["message_id"]).execute()
+                    if base64_image and mime_type:
+                        temp_message_content_list.append({
+                            "type": "text",
+                            "text": f"Here is the image you requested to see: '{file_path}'"
+                        })
+                        temp_message_content_list.append({
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{mime_type};base64,{base64_image}",
+                            }
+                        })
+                        to_delete_ids.append(msg.get("message_id"))
             except Exception as e:
                 logger.error(f"Error parsing image context: {e}")
+            finally:
+                if to_delete_ids:
+                    try:
+                        # Delete processed image_context messages
+                        for mid in to_delete_ids:
+                            await self.client.table('messages').delete().eq('message_id', mid).execute()
+                    except Exception as e:
+                        logger.error(f"Failed cleaning up image_context messages: {e}")
 
         if temp_message_content_list:
             return {"role": "user", "content": temp_message_content_list}

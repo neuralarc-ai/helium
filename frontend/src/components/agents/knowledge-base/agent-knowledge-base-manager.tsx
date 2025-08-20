@@ -428,7 +428,7 @@ export const AgentKnowledgeBaseManager = ({ agentId, agentName }: AgentKnowledge
       const zipContent = await zip.loadAsync(zipFile);
       const extractedFiles: UploadedFile[] = [];
       const rejectedFiles: string[] = [];
-      const supportedExtensions = ['.txt', '.pdf', '.docx'];
+      const supportedExtensions = ['.txt', '.csv', '.pdf', '.docx', '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp'];
 
       for (const [path, file] of Object.entries(zipContent.files)) {
         if (!file.dir && !path.startsWith('__MACOSX/') && !path.includes('/.')) {
@@ -486,7 +486,8 @@ export const AgentKnowledgeBaseManager = ({ agentId, agentName }: AgentKnowledge
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     
-    const supportedExtensions = ['.txt', '.pdf', '.docx', '.csv'];
+    const supportedExtensions = ['.txt', '.csv', '.pdf', '.docx', '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp'];
+
     const newFiles: UploadedFile[] = [];
     const rejectedFiles: string[] = [];
     
@@ -515,7 +516,7 @@ export const AgentKnowledgeBaseManager = ({ agentId, agentName }: AgentKnowledge
     }
     
     if (rejectedFiles.length > 0) {
-      toast.error(`Unsupported file format(s): ${rejectedFiles.join(', ')}. Only .txt, .pdf, .docx, .csv, and .zip files are supported.`);
+      toast.error(`Unsupported file format(s): ${rejectedFiles.join(', ')}. Supported: .txt, .csv, .pdf, .docx, common image files (.png, .jpg, .jpeg, .bmp, .tiff, .webp), and .zip.`);
     }
     
     if (newFiles.length > 0) {
@@ -604,7 +605,7 @@ export const AgentKnowledgeBaseManager = ({ agentId, agentName }: AgentKnowledge
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+          <AlertCircle className="h-8 w-8 mx-auto mb-4 text-red-500" />
           <p className="text-sm text-red-600 dark:text-red-400">Failed to load agent knowledge base</p>
         </div>
       </div>
@@ -630,10 +631,11 @@ export const AgentKnowledgeBaseManager = ({ agentId, agentName }: AgentKnowledge
       {dragActive && (
         <div className="fixed inset-0 bg-blue-500/20 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-white dark:bg-gray-900 rounded-lg p-8 shadow-lg border-2 border-dashed border-blue-500">
-            <Upload className="h-12 w-12 text-blue-500 mx-auto mb-4" />
+            <Upload className="h-12 w-12 mx-auto mb-4 text-blue-500" />
             <p className="text-lg font-medium text-center">Drop files here to upload</p>
             <p className="text-sm text-muted-foreground text-center mt-2">
-              Supports documents, images, code files, and ZIP archives
+              Drag and drop files here or click to browse.<br />
+              Supports: Documents, Code, ZIP archives, and common image files
             </p>
           </div>
         </div>
@@ -835,7 +837,7 @@ export const AgentKnowledgeBaseManager = ({ agentId, agentName }: AgentKnowledge
         multiple
         onChange={(e) => handleFileUpload(e.target.files)}
         className="hidden"
-        accept=".txt,.pdf,.docx,.zip"
+        accept=".txt,.csv,.pdf,.docx,.zip,image/*"
       />
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -957,7 +959,7 @@ export const AgentKnowledgeBaseManager = ({ agentId, agentName }: AgentKnowledge
                       <h3 className="text-lg font-medium mb-2">Upload Files</h3>
                       <p className="text-sm text-muted-foreground mb-4">
                         Drag and drop files here or click to browse.<br />
-                        Supports: Documents, Code, ZIP archives
+                        Supports: Documents, Code, common image files (PNG, JPG, JPEG, BMP, TIFF, WEBP), and ZIP archives
                       </p>
                       <Button 
                         onClick={() => fileInputRef.current?.click()}

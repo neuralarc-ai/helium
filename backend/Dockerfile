@@ -3,7 +3,18 @@ FROM ghcr.io/astral-sh/uv:python3.11-alpine
 ENV ENV_MODE production
 WORKDIR /app
 
-RUN apk add --no-cache curl git
+RUN apk add --no-cache \
+    curl \
+    git \
+    tesseract-ocr \
+    tesseract-ocr-data \
+    tesseract-ocr-data-eng \
+    leptonica \
+    libjpeg-turbo \
+    zlib
+
+# Ensure Tesseract can locate language data
+ENV TESSDATA_PREFIX=/usr/share/tessdata
 
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./

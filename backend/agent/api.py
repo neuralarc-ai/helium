@@ -10,6 +10,10 @@ import jwt
 from pydantic import BaseModel
 import tempfile
 import os
+import base64
+import mimetypes
+from io import BytesIO
+from PIL import Image
 
 from agentpress.thread_manager import ThreadManager
 from services.supabase import DBConnection
@@ -144,6 +148,69 @@ class ThreadAgentResponse(BaseModel):
     agent: Optional[AgentResponse]
     source: str  # "thread", "default", "none", "missing"
     message: str
+
+
+# ---- Image helpers for preparing LLM-compatible image context ----
+DEFAULT_MAX_WIDTH = 1920
+DEFAULT_MAX_HEIGHT = 1080
+DEFAULT_JPEG_QUALITY = 85
+DEFAULT_PNG_COMPRESS_LEVEL = 6
+MAX_COMPRESSED_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+def _compress_image(image_bytes: bytes, mime_type: str, file_path: str) -> tuple[bytes, str]:
+    """Compress an image for LLM consumption while keeping quality reasonable.
+
+    Returns a tuple of (compressed_bytes, output_mime_type).
+    """
+    try:
+        img = Image.open(BytesIO(image_bytes))
+
+        # Convert alpha formats to RGB for JPEG when needed
+        if img.mode in ("RGBA", "LA", "P"):
+            background = Image.new("RGB", img.size, (255, 255, 255))
+            if img.mode == "P":
+                img = img.convert("RGBA")
+            background.paste(img, mask=img.split()[-1] if img.mode in ("RGBA", "LA") else None)
+            img = background
+
+        # Resize if too large
+        width, height = img.size
+        if width > DEFAULT_MAX_WIDTH or height > DEFAULT_MAX_HEIGHT:
+            ratio = min(DEFAULT_MAX_WIDTH / width, DEFAULT_MAX_HEIGHT / height)
+            new_size = (int(width * ratio), int(height * ratio))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+
+        output = BytesIO()
+        if mime_type == "image/gif":
+            img.save(output, format="GIF", optimize=True)
+            out_mime = "image/gif"
+        elif mime_type == "image/png":
+            img.save(output, format="PNG", optimize=True, compress_level=DEFAULT_PNG_COMPRESS_LEVEL)
+            out_mime = "image/png"
+        else:
+            img.save(output, format="JPEG", quality=DEFAULT_JPEG_QUALITY, optimize=True)
+            out_mime = "image/jpeg"
+
+        compressed = output.getvalue()
+        if len(compressed) > MAX_COMPRESSED_SIZE:
+            # If still too large, try one more downscale step and reduce JPEG quality
+            try:
+                img2 = Image.open(BytesIO(compressed))
+            except Exception:
+                img2 = img
+            width2, height2 = img2.size
+            ratio2 = 0.75
+            img2 = img2.resize((int(width2 * ratio2), int(height2 * ratio2)), Image.Resampling.LANCZOS)
+            output2 = BytesIO()
+            img2.save(output2, format="JPEG", quality=75, optimize=True)
+            compressed = output2.getvalue()
+            out_mime = "image/jpeg"
+
+        return compressed, out_mime
+    except Exception:
+        # On any failure, return original bytes and mime
+        return image_bytes, mime_type
 
 def initialize(
     _db: DBConnection,
@@ -1155,6 +1222,7 @@ async def initiate_agent_with_files(
         if files:
             successful_uploads = []
             failed_uploads = []
+            image_context_inserts: List[Dict[str, Any]] = []
             for file in files:
                 if file.filename:
                     try:
@@ -1182,6 +1250,28 @@ async def initiate_agent_with_files(
                                 if safe_filename in file_names_in_dir:
                                     successful_uploads.append(target_path)
                                     logger.info(f"Successfully uploaded and verified file {safe_filename} to sandbox path {target_path}")
+
+                                    # If this is an image, also prepare an image_context message for the LLM
+                                    guessed_mime, _ = mimetypes.guess_type(safe_filename)
+                                    mime_type = file.content_type or guessed_mime or 'application/octet-stream'
+                                    if mime_type.startswith('image/'):
+                                        compressed_bytes, out_mime = _compress_image(content, mime_type, target_path)
+                                        base64_image = base64.b64encode(compressed_bytes).decode('utf-8')
+                                        image_context_data = {
+                                            "mime_type": out_mime,
+                                            "base64": base64_image,
+                                            "file_path": target_path,
+                                            "original_size": len(content),
+                                            "compressed_size": len(compressed_bytes)
+                                        }
+                                        image_context_inserts.append({
+                                            "message_id": str(uuid.uuid4()),
+                                            "thread_id": thread_id,
+                                            "type": "image_context",
+                                            "is_llm_message": False,
+                                            "content": image_context_data,
+                                            "created_at": datetime.now(timezone.utc).isoformat()
+                                        })
                                 else:
                                     logger.error(f"Verification failed for {safe_filename}: File not found in {parent_dir} after upload attempt.")
                                     failed_uploads.append(safe_filename)
@@ -1202,6 +1292,13 @@ async def initiate_agent_with_files(
             if failed_uploads:
                 message_content += "\n\nThe following files failed to upload:\n"
                 for failed_file in failed_uploads: message_content += f"- {failed_file}\n"
+
+            # Bulk insert any prepared image context messages
+            if image_context_inserts:
+                try:
+                    await client.table('messages').insert(image_context_inserts).execute()
+                except Exception as e:
+                    logger.error(f"Failed to insert image_context messages: {e}")
 
         # 5. Add initial user message to thread
         message_id = str(uuid.uuid4())

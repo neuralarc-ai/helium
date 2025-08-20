@@ -13,6 +13,8 @@ import chardet
 
 import PyPDF2
 import docx
+from PIL import Image
+import pytesseract
 
 from utils.logger import logger
 from services.supabase import DBConnection
@@ -26,12 +28,25 @@ class FileProcessor:
         '.pdf', '.docx'
     }
     
+    SUPPORTED_IMAGE_EXTENSIONS = {
+        '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp'
+    }
+    
     MAX_FILE_SIZE = 100 * 1024 * 1024
     MAX_ZIP_ENTRIES = 1000
     MAX_CONTENT_LENGTH = 100000
     
     def __init__(self):
         self.db = DBConnection()
+        # Allow overriding tesseract binary via env for non-docker hosts (e.g., Windows)
+        try:
+            tess_cmd = os.getenv('TESSERACT_CMD')
+            if tess_cmd:
+                import pytesseract as _pyt
+                _pyt.pytesseract.tesseract_cmd = tess_cmd
+                logger.info(f"Configured Tesseract binary from TESSERACT_CMD: {tess_cmd}")
+        except Exception as _cfg_err:
+            logger.warning(f"Unable to configure Tesseract from TESSERACT_CMD: {_cfg_err}")
     
     async def process_thread_file_upload(
         self,
@@ -700,31 +715,110 @@ class FileProcessor:
     async def _extract_file_content(self, file_content: bytes, filename: str, mime_type: str) -> str:
         file_extension = Path(filename).suffix.lower()
         logger.info(f"Extracting content from file: {filename}, extension: {file_extension}, mime_type: {mime_type}")
-        
+
         try:
-            if file_extension in self.SUPPORTED_TEXT_EXTENSIONS or mime_type.startswith('text/'):
-                logger.info("Processing as text file")
-                if file_extension == '.csv':
-                    logger.info("Processing as CSV file")
-                    return self._extract_csv_content(file_content)
-                else:
-                    return self._extract_text_content(file_content)
-            
-            elif file_extension == '.pdf':
+            detected_type = self._detect_file_type(file_content, filename, mime_type)
+            logger.info(f"Detected file type: {detected_type}")
+
+            if detected_type == 'csv':
+                logger.info("Processing as CSV file")
+                return self._extract_csv_content(file_content)
+            elif detected_type == 'text':
+                logger.info("Processing as TEXT file")
+                return self._extract_text_content(file_content)
+            elif detected_type == 'pdf':
                 logger.info("Processing as PDF file")
                 return self._extract_pdf_content(file_content)
-            
-            elif file_extension == '.docx':
+            elif detected_type == 'docx':
                 logger.info("Processing as DOCX file")
                 return self._extract_docx_content(file_content)
-            
+            elif detected_type == 'image':
+                logger.info("Processing as IMAGE file via OCR")
+                return self._extract_image_content(file_content)
             else:
-                logger.error(f"Unsupported file format: {file_extension}")
-                raise ValueError(f"Unsupported file format: {file_extension}. Only .txt, .csv, .pdf, and .docx files are supported.")
-        
+                logger.error("Unsupported or unrecognized file content; could not determine type")
+                raise ValueError("Unsupported file: unable to detect a supported format from content. Supported categories: text, csv, pdf, docx, image.")
+
         except Exception as e:
             logger.error(f"Error extracting content from {filename}: {str(e)}", exc_info=True)
             return f"Error extracting content: {str(e)}"
+
+    def _detect_file_type(self, file_content: bytes, filename: str, mime_type: str) -> str:
+        """Best-effort detection of file type using MIME, magic bytes, and lightweight parsing.
+        Returns one of: 'image', 'pdf', 'docx', 'csv', 'text', or 'unknown'.
+        """
+        try:
+            ext = Path(filename).suffix.lower()
+
+            # 1) Prefer declared MIME type if trustworthy
+            if mime_type:
+                if mime_type.startswith('image/'):
+                    return 'image'
+                if mime_type == 'application/pdf':
+                    return 'pdf'
+                if mime_type in {'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}:
+                    return 'docx'
+                if mime_type in {'text/csv', 'application/csv'} or (mime_type.startswith('text/') and b',' in file_content.splitlines()[0:2][0] if file_content else False):
+                    # Rough CSV heuristic if text/* and early line contains commas
+                    return 'csv'
+                if mime_type.startswith('text/'):
+                    return 'text'
+
+            # 2) Magic bytes / structural sniffing
+            # PDF magic header
+            if file_content.startswith(b'%PDF'):
+                return 'pdf'
+
+            # DOCX is a ZIP with specific members
+            try:
+                if zipfile.is_zipfile(io.BytesIO(file_content)):
+                    with zipfile.ZipFile(io.BytesIO(file_content)) as zf:
+                        names = set(zf.namelist())
+                        if 'word/document.xml' in names:
+                            return 'docx'
+            except Exception:
+                pass
+
+            # Try opening as image with PIL
+            try:
+                with io.BytesIO(file_content) as bio:
+                    with Image.open(bio) as img:
+                        img.verify()  # lightweight check
+                        return 'image'
+            except Exception:
+                pass
+
+            # 3) Text vs CSV heuristic
+            try:
+                # If we can decode reasonably, treat as text/csv
+                detected = chardet.detect(file_content)
+                encoding = detected.get('encoding') or 'utf-8'
+                sample = file_content[:4096].decode(encoding, errors='ignore')
+                # CSV if first non-empty line has multiple commas or semicolons
+                for line in sample.splitlines():
+                    if line.strip():
+                        if line.count(',') >= 2 or line.count(';') >= 2:
+                            return 'csv'
+                        break
+                return 'text'
+            except Exception:
+                pass
+
+            # 4) Fall back to extension hints (last resort)
+            if ext in self.SUPPORTED_IMAGE_EXTENSIONS:
+                return 'image'
+            if ext == '.pdf':
+                return 'pdf'
+            if ext == '.docx':
+                return 'docx'
+            if ext == '.csv':
+                return 'csv'
+            if ext == '.txt':
+                return 'text'
+
+        except Exception:
+            logger.exception("File type detection failed; returning unknown")
+        return 'unknown'
     
     def _extract_text_content(self, file_content: bytes) -> str:
         detected = chardet.detect(file_content)
@@ -889,6 +983,35 @@ class FileProcessor:
         
         raw_text = '\n'.join(text_content)
         return self._sanitize_content(raw_text)
+
+    def _extract_image_content(self, file_content: bytes) -> str:
+        """Extract text from an image using Tesseract OCR.
+        Requires Tesseract OCR binary installed on the host system.
+        """
+        try:
+            with io.BytesIO(file_content) as bio:
+                with Image.open(bio) as img:
+                    # Convert to RGB to avoid mode issues, then to grayscale for better OCR
+                    try:
+                        img = img.convert('RGB')
+                    except Exception:
+                        pass
+                    gray = img.convert('L')
+                    # Simple thresholding can sometimes help
+                    try:
+                        import numpy as np
+                        arr = np.array(gray)
+                        # Otsu-like simple threshold at 0.5 of 0-255
+                        thresh = (arr > 127).astype('uint8') * 255
+                        from PIL import Image as _Image
+                        prepped = _Image.fromarray(thresh)
+                    except Exception:
+                        prepped = gray
+                    text = pytesseract.image_to_string(prepped)
+            return self._sanitize_content(text)
+        except Exception as e:
+            logger.error(f"OCR extraction failed: {e}")
+            return f"Error extracting image text: {str(e)}"
     
     def _sanitize_content(self, content: str) -> str:
         if not content:
@@ -916,6 +1039,8 @@ class FileProcessor:
             return 'text encoding detection'
         elif file_extension == '.csv':
             return 'csv parsing'
+        elif file_extension in {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp'} or (mime_type and mime_type.startswith('image/')):
+            return 'pytesseract OCR'
         else:
             return 'text encoding detection'
     

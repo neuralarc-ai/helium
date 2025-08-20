@@ -221,7 +221,8 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
       const previewFilesToUpload = previewFiles.filter(fileData => {
         const isPdf = fileData.file.type.includes('pdf') || fileData.file.name.toLowerCase().endsWith('.pdf');
         const isCsv = fileData.file.type.includes('csv') || fileData.file.name.toLowerCase().endsWith('.csv');
-        return (isPdf || isCsv) && fileData.status === 'ready';
+        const isImage = fileData.file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|tiff|svg)$/i.test(fileData.file.name);
+        return (isPdf || isCsv || isImage) && fileData.status === 'ready';
       });
 
       if (previewFilesToUpload.length > 0) {
@@ -355,9 +356,12 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
       }
       setPreviewFiles(prev => [...prev, { file, status: 'processing' }]);
 
-      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') ||
-          file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
-        // For PDF and CSV files, just add to preview without uploading yet
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const isCsv = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
+      const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|tiff|svg)$/i.test(file.name);
+
+      if (isPdf || isCsv || isImage) {
+        // For PDF, CSV, and image files, just add to preview without uploading yet
         setPreviewFiles(prev => prev.map(f => 
           f.file === file ? { ...f, status: 'ready' } : f
         ));
@@ -940,7 +944,8 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
                       const FileIcon = getFileIcon(fileData.file);
                       const isPdf = fileData.file.type.includes('pdf') || fileData.file.name.toLowerCase().endsWith('.pdf');
                       const isCsv = fileData.file.type.includes('csv') || fileData.file.name.toLowerCase().endsWith('.csv');
-                      const needsUpload = isPdf || isCsv;
+                      const isImage = fileData.file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|tiff|svg)$/i.test(fileData.file.name);
+                      const needsUpload = isPdf || isCsv || isImage;
                       
                       return (
                         <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-md border">
@@ -962,7 +967,22 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
                                     CSV
                                   </Badge>
                                 )}
+                                {isImage && (
+                                  <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800">
+                                    Image
+                                  </Badge>
+                                )}
                               </div>
+                              {isImage && fileData.status === 'ready' && (
+                                <div className="mt-2">
+                                  {/* Preview thumbnail */}
+                                  <img
+                                    src={URL.createObjectURL(fileData.file)}
+                                    alt={fileData.file.name}
+                                    className="max-h-32 rounded border"
+                                  />
+                                </div>
+                              )}
                               {fileData.status === 'processing' && (
                                 <div className="flex items-center gap-2 mt-1">
                                   <Loader2 className="h-3 w-3 animate-spin" />
