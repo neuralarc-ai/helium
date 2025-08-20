@@ -1,6 +1,6 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
-# Install system dependencies
+# Install system dependencies (optimized single RUN command)
 RUN apt-get update && apt-get install -y \
     wget \
     netcat-traditional \
@@ -29,7 +29,6 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     dbus \
     xauth \
-    xvfb \
     x11vnc \
     tigervnc-tools \
     supervisor \
@@ -71,15 +70,27 @@ RUN apt-get update && apt-get install -y \
     # OCR Tools
     tesseract-ocr \
     tesseract-ocr-eng \
-    && rm -rf /var/lib/apt/lists/*
+    # Web development tools
+    nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Install Node.js and npm
+# Install Node.js and npm properly
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && npm install -g npm@latest
 
-# Install Cloudflare Wrangler CLI globally
-RUN npm install -g wrangler
+# Install pnpm via npm (faster and more efficient)
+RUN npm install -g pnpm@9.1.0
+
+# Configure pnpm for better performance
+ENV PNPM_HOME=/root/.local/share/pnpm
+ENV PATH="$PNPM_HOME:$PATH"
+RUN pnpm config set store-dir /root/.pnpm-store && \
+    pnpm config set cache-dir /root/.pnpm-cache
+
+# Install Cloudflare Wrangler CLI globally with pnpm
+RUN pnpm add -g wrangler
 
 # Install noVNC
 RUN git clone https://github.com/novnc/noVNC.git /opt/novnc \
@@ -111,7 +122,7 @@ COPY . /app
 COPY server.py /app/server.py
 COPY browser_api.py /app/browser_api.py
 
-# Set environment variables
+# Set environment variables (enhanced for better performance)
 ENV PYTHONUNBUFFERED=1
 ENV CHROME_PATH=/ms-playwright/chromium-*/chrome-linux/chrome
 ENV ANONYMIZED_TELEMETRY=false
@@ -121,12 +132,19 @@ ENV VNC_PASSWORD=vncpassword
 ENV CHROME_PERSISTENT_SESSION=true
 ENV RESOLUTION_WIDTH=1024
 ENV RESOLUTION_HEIGHT=768
-# Add Chrome flags to prevent multiple tabs/windows
+ENV PYTHONOPTIMIZE=1
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS=--max-old-space-size=2048
+# Enhanced Chrome flags for better browser performance
 ENV CHROME_FLAGS="--single-process --no-first-run --no-default-browser-check --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-breakpad --disable-component-extensions-with-background-pages --disable-dev-shm-usage --disable-extensions --disable-features=TranslateUI --disable-ipc-flooding-protection --disable-renderer-backgrounding --enable-features=NetworkServiceInProcess2 --force-color-profile=srgb --metrics-recording-only --mute-audio --no-sandbox --disable-gpu"
 
 # Set up supervisor configuration
 RUN mkdir -p /var/log/supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Health check for better monitoring
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
 
 EXPOSE 7788 6080 5901 8000 8080
 

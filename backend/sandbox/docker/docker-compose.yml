@@ -1,12 +1,12 @@
 services:
-  kortix-suna:
+  kortix-he2:
     platform: linux/amd64
     build:
       context: .
       dockerfile: ${DOCKERFILE:-Dockerfile}
       args:
         TARGETPLATFORM: ${TARGETPLATFORM:-linux/amd64}
-    image: kortix/suna:0.1.3
+    image: kortix/he2
     ports:
       - "6080:6080"  # noVNC web interface
       - "5901:5901"  # VNC port

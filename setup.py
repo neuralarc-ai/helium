@@ -649,8 +649,8 @@ class SetupWizard:
             f"Visit {Colors.GREEN}https://app.daytona.io/dashboard/snapshots{Colors.ENDC}{Colors.CYAN} to create a snapshot."
         )
         print_info("Create a snapshot with these exact settings:")
-        print_info(f"   - Name:\t\t{Colors.GREEN}kortix/suna:0.1.3{Colors.ENDC}")
-        print_info(f"   - Snapshot name:\t{Colors.GREEN}kortix/suna:0.1.3{Colors.ENDC}")
+        print_info(f"   - Name:\t\t{Colors.GREEN}kortix/he2{Colors.ENDC}")
+        print_info(f"   - Snapshot name:\t{Colors.GREEN}kortix/he2{Colors.ENDC}")
         print_info(
             f"   - Entrypoint:\t{Colors.GREEN}/usr/bin/supervisord -n -c /etc/supervisor/conf.d/supervisord.conf{Colors.ENDC}"
         )

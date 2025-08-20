@@ -1,6 +1,62 @@
+# Core web framework
 fastapi==0.115.12
 uvicorn==0.34.0
-pyautogui==0.9.54
-pillow==10.2.0
+
+# Data analysis and visualization (CSV analysis + dashboards)
+pandas==2.3.0
+numpy==1.24.3
+matplotlib==3.7.2
+seaborn==0.12.2
+plotly==5.17.0
+
+# Dashboard creation (interactive websites)
+dash==2.14.2
+dash-bootstrap-components==1.5.0
+dash-html-components==2.0.0
+dash-core-components==2.0.0
+dash-table==5.0.0
+
+# Document creation (PDF, DOCX, PPTX)
+python-docx==1.1.0
+python-pptx==0.6.23
+reportlab==4.0.7
+fpdf2==2.7.6
+pymupdf==1.23.8
+
+# Excel and CSV processing
+openpyxl==3.1.2
+xlsxwriter==3.1.9
+
+# Web development and templating
+jinja2==3.1.2
+markdown==3.5.1
+weasyprint==60.2
+html5lib==1.1
+
+# Web automation and testing
+requests==2.31.0
+beautifulsoup4==4.12.2
+selenium==4.15.2
+lxml==4.9.3
+
+# Data validation
 pydantic==2.6.1
+
+# OCR for legal docs
 pytesseract==0.3.13
+
+# Image processing
+pillow==10.2.0
+
+# Automation and UI
+pyautogui==0.9.54
+
+# Utilities
+python-multipart==0.0.6
+aiofiles==23.2.1
+orjson==3.9.10
+
+# Additional data processing (Python 3.11 compatible)
+ydata-profiling==4.6.3
+tabula-py==2.8.2
+camelot-py==0.11.0
