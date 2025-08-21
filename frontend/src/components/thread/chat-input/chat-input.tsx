@@ -380,7 +380,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             isVisible={showToolPreview || !!showSnackbar}
           />
           <Card
-            className={`-mb-2 p-0 mt-4 bg-white shadow-[0px_12px_32px_0px_rgba(0,0,0,0.02)] w-full max-w-4xl mx-auto border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-4xl' : 'rounded-4xl'} relative`}
+            className={`-mb-2 p-0 mt-4 bg-white shadow-[0px_12px_32px_0px_rgba(0,0,0,0.1)] w-full max-w-4xl mx-auto border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-4xl' : 'rounded-4xl'} relative`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={(e) => {
@@ -402,7 +402,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             }}
           >
             <div className="w-full text-sm flex flex-col justify-between items-start rounded-4xl">
-              <CardContent className={`w-full border border-black/10 rounded-4xl p-2 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-2'} ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl' : 'rounded-3xl'} overflow-hidden relative`}>
+              <CardContent className={`w-full border border-black/10 rounded-4xl p-1 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-1'} rounded-3xl overflow-hidden relative`}>
               <div className="absolute inset-0 overflow-hidden rounded-3xl bg-white">
                 <BorderBeam duration={6} borderWidth={1} size={200} className="from-transparent via-helium-teal to-transparent"/>
                 <BorderBeam duration={6} borderWidth={1} delay={3} size={200} className="from-transparent via-helium-pink to-transparent"/>

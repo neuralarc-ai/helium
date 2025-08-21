@@ -2,7 +2,7 @@
 
 import React, { forwardRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Paperclip, Loader2 } from 'lucide-react';
+import { Paperclip, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -42,7 +42,7 @@ const handleLocalFiles = (
       path: `/workspace/${normalizedName}`,
       size: file.size,
       type: file.type || 'application/octet-stream',
-      localUrl: URL.createObjectURL(file)
+      localUrl: URL.createObjectURL(file),
     };
   });
 
@@ -77,8 +77,9 @@ const uploadFiles = async (
       const uploadPath = `/workspace/${normalizedName}`;
 
       // Check if this filename already exists in chat messages
-      const isFileInChat = messages.some(message => {
-        const content = typeof message.content === 'string' ? message.content : '';
+      const isFileInChat = messages.some((message) => {
+        const content =
+          typeof message.content === 'string' ? message.content : '';
         return content.includes(`[Uploaded File: ${uploadPath}]`);
       });
 
@@ -114,13 +115,20 @@ const uploadFiles = async (
         console.log(`Invalidating cache for existing file: ${uploadPath}`);
 
         // Invalidate all content types for this file
-        ['text', 'blob', 'json'].forEach(contentType => {
-          const queryKey = fileQueryKeys.content(sandboxId, uploadPath, contentType);
+        ['text', 'blob', 'json'].forEach((contentType) => {
+          const queryKey = fileQueryKeys.content(
+            sandboxId,
+            uploadPath,
+            contentType,
+          );
           queryClient.removeQueries({ queryKey });
         });
 
         // Also invalidate directory listing
-        const directoryPath = uploadPath.substring(0, uploadPath.lastIndexOf('/'));
+        const directoryPath = uploadPath.substring(
+          0,
+          uploadPath.lastIndexOf('/'),
+        );
         queryClient.invalidateQueries({
           queryKey: fileQueryKeys.directory(sandboxId, directoryPath),
         });
@@ -162,7 +170,14 @@ const handleFiles = async (
 ) => {
   if (sandboxId) {
     // If we have a sandboxId, upload files directly
-    await uploadFiles(files, sandboxId, setUploadedFiles, setIsUploading, messages, queryClient);
+    await uploadFiles(
+      files,
+      sandboxId,
+      setUploadedFiles,
+      setIsUploading,
+      messages,
+      queryClient,
+    );
   } else {
     // Otherwise, store files locally
     handleLocalFiles(files, setPendingFiles, setUploadedFiles);
@@ -206,8 +221,8 @@ export const FileUploadHandler = forwardRef<
     useEffect(() => {
       return () => {
         // Clean up any object URLs to avoid memory leaks
-        setUploadedFiles(prev => {
-          prev.forEach(file => {
+        setUploadedFiles((prev) => {
+          prev.forEach((file) => {
             if (file.localUrl) {
               URL.revokeObjectURL(file.localUrl);
             }
@@ -253,22 +268,38 @@ export const FileUploadHandler = forwardRef<
                   type="button"
                   onClick={handleFileUpload}
                   variant="outline"
-                  size="sm"
-                  className="h-fit aspect-square p-2 bg-transparent cursor-pointer border border-border rounded-full text-muted-foreground hover:text-foreground hover:bg-accent/50 flex items-center gap-2"
+                  className="h-fit aspect-square p-0 bg-transparent rounded-full cursor-pointer border-none text-muted-foreground hover:text-foreground hover:bg-accent/50 flex items-center gap-2 shadow-none"
                   disabled={
-                    !isLoggedIn || loading || (disabled && !isAgentRunning) || isUploading
+                    !isLoggedIn ||
+                    loading ||
+                    (disabled && !isAgentRunning) ||
+                    isUploading
                   }
                 >
                   {isUploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <Paperclip className="h-4 w-4" />
+                    <svg
+                      className="h-5 w-5 text-black/80"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                    >
+                      <path
+                        d="M12 3v18M3 12h18"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   )}
                 </Button>
               </span>
             </TooltipTrigger>
             <TooltipContent side="top">
-              <p>{isLoggedIn ? 'Attach files' : 'Please login to attach files'}</p>
+              <p>
+                {isLoggedIn ? 'Attach files' : 'Please login to attach files'}
+              </p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

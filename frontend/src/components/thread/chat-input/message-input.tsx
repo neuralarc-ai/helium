@@ -212,7 +212,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
 
     return (
       <div className="relative flex flex-col w-full h-full gap-4 justify-between">
-        <div className="flex flex-col px-2 flex-grow">
+        <div className="flex flex-col px-4 flex-grow">
           <Textarea
             ref={ref}
             value={value}
@@ -220,7 +220,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             className={cn(
-              'w-full bg-transparent dark:bg-transparent z-20 border-none shadow-none focus-visible:ring-0 px-1 pb-6 pt-4 min-h-[86px] max-h-[200px] overflow-y-auto scrollbar-hide resize-none md:text-base md:placeholder:text-base',
+              "font-[-apple-system,BlinkMacSystemFont,'Segoe_UI',Roboto,'Helvetica_Neue',Arial,sans-serif] w-full bg-transparent dark:bg-transparent z-20 border-none shadow-none focus-visible:ring-0 px-1 pb-6 pt-4 min-h-[86px] max-h-[200px] overflow-y-auto scrollbar-hide resize-none md:text-base md:placeholder:text-base",
               isDraggingOver ? 'opacity-40' : '',
             )}
             disabled={loading || (disabled && !isAgentRunning)}
@@ -272,7 +272,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                 onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
                 size="icon"
                 className={cn(
-                  'w-8 h-8 flex-shrink-0 rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
+                  'w-9 h-9 flex-shrink-0 rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
                   (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
                     loading ||
                     (disabled && !isAgentRunning)
