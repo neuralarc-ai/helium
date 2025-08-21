@@ -603,7 +603,6 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   const [streamingFeedback, setStreamingFeedback] = useState<
     'up' | 'down' | null
   >(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // React Query file preloader
   const { preloadFiles } = useFilePreloader();
