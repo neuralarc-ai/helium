@@ -30,146 +30,17 @@ export interface CustomModel {
 
 // SINGLE SOURCE OF TRUTH for all model data - aligned with backend constants
 export const MODELS = {
-  // Free tier models (available to all users)
-  // 'claude-sonnet-4': { 
-  //   tier: 'free',
-  //   priority: 100, 
-  //   recommended: true,
-  //   lowQuality: false
-  // },
-  // 'gemini-flash-2.5': { 
-  //   tier: 'free', 
-  //   priority: 70,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'qwen3': { 
-  //   tier: 'free', 
-  //   priority: 60,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-
-  // Premium/Paid tier models (require subscription) - except specific free models
-  // 'moonshot/moonshot-v1-8k': { 
-  //   tier: 'free', 
-  //   priority: 99,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  'moonshot/kimi-k2-0711-preview': { 
-    tier: 'free', 
-    priority: 98,
-    recommended: false,
-    lowQuality: false
-  },
-  'moonshot/kimi-k2-turbo-preview': { 
-    tier: 'free', 
-    priority: 97,
-    recommended: false,
-    lowQuality: false
-  },
   'openrouter/z-ai/glm-4.5-air:free': { 
     tier: 'free', 
     priority: 96,
     recommended: false,
     lowQuality: false
   },
-  'openrouter/qwen/qwen3-235b-a22b:free': { 
-    tier: 'free', 
-    priority: 95,
-    recommended: false,
-    lowQuality: false
-  },
-  
-  // // AWS Bedrock Models
-  // 'bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0': { 
-  //   tier: 'free', 
-  //   priority: 95,
-  //   recommended: true,
-  //   lowQuality: false
-  // },
-  // 'bedrock/anthropic.claude-sonnet-4-20250514-v1:0': { 
-  //   tier: 'free', 
-  //   priority: 96,
-  //   recommended: true,
-  //   lowQuality: false
-  // },
-  // 'bedrock/meta.llama4-scout-17b-instruct-v1:0': { 
-  //   tier: 'free', 
-  //   priority: 90,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'bedrock/meta.llama4-maverick-17b-instruct-v1:0': { 
-  //   tier: 'free', 
-  //   priority: 92,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  'bedrock/deepseek.r1-v1:0': { 
-    tier: 'free', 
-    priority: 88,
-    recommended: false,
-    lowQuality: false
-  },
-  
-  // 'grok-4': { 
-  //   tier: 'premium', 
-  //   priority: 98,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'sonnet-3.7': { 
-  //   tier: 'premium', 
-  //   priority: 97, 
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'google/gemini-2.5-pro': { 
-  //   tier: 'premium', 
-  //   priority: 96,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'gpt-4.1': { 
-  //   tier: 'premium', 
-  //   priority: 96,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'sonnet-3.5': { 
-  //   tier: 'premium', 
-  //   priority: 90,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'gpt-4o': { 
-  //   tier: 'premium', 
-  //   priority: 88,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
-  // 'gemini-2.5-flash:thinking': { 
-  //   tier: 'premium', 
-  //   priority: 84,
-  //   recommended: false,
-  //   lowQuality: false
-  // },
   'openrouter/deepseek/deepseek-chat-v3-0324:free': { 
     tier: 'free', 
     priority: 96,
     recommended: false,
     lowQuality: false
-  },
-  
-  // Z.AI GLM Models from OpenRouter
-  'openrouter/z-ai/glm-4.5v': { 
-    tier: 'free', 
-    priority: 95,
-    recommended: false,
-    lowQuality: false,
-    features: ['vision', 'multimodal', 'reasoning']
   },
   'openrouter/z-ai/glm-4.5': { 
     tier: 'free', 
@@ -185,22 +56,6 @@ export const MODELS = {
     lowQuality: false,
     features: ['lightweight', 'real-time', 'cost-effective']
   },
-  'openrouter/z-ai/glm-4-32b': { 
-    tier: 'free', 
-    priority: 92,
-    recommended: false,
-    lowQuality: false,
-    features: ['cost-effective', 'tool-use']
-  },
-  
-  // Mistral Models from OpenRouter
-  'openrouter/mistralai/mistral-small-3.2-24b-instruct': { 
-    tier: 'free', 
-    priority: 93,
-    recommended: false,
-    lowQuality: false,
-    features: ['instruction-following', 'function-calling', 'coding', 'stem', 'vision', 'structured-output', '131k-context']
-  }
 };
 
 // Add model descriptions for better user experience

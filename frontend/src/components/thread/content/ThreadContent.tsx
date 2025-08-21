@@ -262,28 +262,8 @@ export function renderMarkdownContent(
             </div>,
           );
         } else if (toolName === 'think') {
-          // Handle think tool specially - extract text content
-          const thinkText =
-            toolCall.parameters.text || toolCall.parameters.content || '';
-
-          // Check if this think tag is currently streaming
-          const isCurrentlyStreaming =
-            streamingTextContent &&
-            streamingTextContent.includes('<think') &&
-            !streamingTextContent.includes('</think>');
-
-          // Render think tool content with thinking UI
-          contentParts.push(
-            <ThinkingAccordion
-              key={`think-${match.index}-${index}`}
-              content={thinkText}
-              isStreaming={isCurrentlyStreaming}
-              streamingContent={
-                isCurrentlyStreaming ? streamingTextContent : ''
-              }
-              streamHookStatus={streamHookStatus}
-            />,
-          );
+          // Skip rendering think tool content - thinking is disabled
+          // Don't add anything to contentParts to hide thinking
         } else {
           const IconComponent = getToolIcon(toolName);
 
@@ -450,26 +430,8 @@ export function renderMarkdownContent(
         </div>,
       );
     } else if (toolName === 'think') {
-      // Extract content from the think tag
-      const contentMatch = rawXml.match(/<think[^>]*>([\s\S]*?)<\/think>/i);
-      const thinkContent = contentMatch ? contentMatch[1] : '';
-
-      // Check if this think tag is currently streaming
-      const isCurrentlyStreaming =
-        streamingTextContent &&
-        streamingTextContent.includes('<think') &&
-        !streamingTextContent.includes('</think>');
-
-      // Render <think> tag content with thinking UI
-      contentParts.push(
-        <ThinkingAccordion
-          key={`think-${match.index}`}
-          content={thinkContent}
-          isStreaming={isCurrentlyStreaming}
-          streamingContent={isCurrentlyStreaming ? streamingTextContent : ''}
-          streamHookStatus={streamHookStatus}
-        />,
-      );
+      // Skip rendering think tag content - thinking is disabled
+      // Don't add anything to contentParts to hide thinking
     } else {
       const IconComponent = getToolIcon(toolName);
       const paramDisplay = extractPrimaryParam(toolName, rawXml);
@@ -734,8 +696,6 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     const threshold = 150; // Allow some buffer
     return scrollHeight - scrollBottom <= threshold;
   }, []);
-  
-  
 
   // Auto-scroll to bottom when new messages arrive or agent status changes
   React.useEffect(() => {
@@ -851,12 +811,15 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   React.useEffect(() => {
     // Scroll when agent status changes from 'running' to 'idle' (completed)
     // or when messages first load and user hasn't scrolled up
-    const shouldScroll = 
-      (agentStatus === 'idle' && messages.some(m => m.type === 'assistant')) || 
-      (messages.length > 0 && 
-       (!messagesContainerRef.current?.scrollTop || 
-        messagesContainerRef.current.scrollHeight - messagesContainerRef.current.clientHeight < 100));
-    
+    const shouldScroll =
+      (agentStatus === 'idle' &&
+        messages.some((m) => m.type === 'assistant')) ||
+      (messages.length > 0 &&
+        (!messagesContainerRef.current?.scrollTop ||
+          messagesContainerRef.current.scrollHeight -
+            messagesContainerRef.current.clientHeight <
+            100));
+
     if (shouldScroll) {
       scrollToBottom('smooth');
     }
@@ -1820,47 +1783,31 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                               className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                             />
                                           )}
-                                          {showCursor && <ThinkingAnimation />}
+                                          {/* Thinking animation disabled - showCursor && <ThinkingAnimation /> */}
 
                                           {detectedTag &&
-                                          detectedTag === 'think' ? (
-                                            <ThinkingAccordion
-                                              content=""
-                                              isStreaming={
-                                                streamHookStatus ===
-                                                  'streaming' &&
-                                                !textToRender.includes(
-                                                  '</think>',
-                                                )
-                                              } // Only streaming if actively streaming and no closing tag
-                                              streamingContent={textToRender.substring(
-                                                tagStartIndex,
+                                          detectedTag === 'think'
+                                            ? // Skip rendering thinking content - thinking is disabled
+                                              null
+                                            : detectedTag && (
+                                                <ShowToolStream
+                                                  content={textToRender.substring(
+                                                    tagStartIndex,
+                                                  )}
+                                                  messageId={
+                                                    visibleMessages &&
+                                                    visibleMessages.length > 0
+                                                      ? visibleMessages[
+                                                          visibleMessages.length -
+                                                            1
+                                                        ].message_id
+                                                      : 'playback-streaming'
+                                                  }
+                                                  onToolClick={handleToolClick}
+                                                  showExpanded={true}
+                                                  startTime={Date.now()}
+                                                />
                                               )}
-                                              streamHookStatus={
-                                                streamHookStatus
-                                              }
-                                            />
-                                          ) : (
-                                            detectedTag && (
-                                              <ShowToolStream
-                                                content={textToRender.substring(
-                                                  tagStartIndex,
-                                                )}
-                                                messageId={
-                                                  visibleMessages &&
-                                                  visibleMessages.length > 0
-                                                    ? visibleMessages[
-                                                        visibleMessages.length -
-                                                          1
-                                                      ].message_id
-                                                    : 'playback-streaming'
-                                                }
-                                                onToolClick={handleToolClick}
-                                                showExpanded={true}
-                                                startTime={Date.now()}
-                                              />
-                                            )
-                                          )}
 
                                           {/* Show content after think tag if it exists */}
                                           {textAfterThink && (
@@ -1967,39 +1914,25 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                   className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                                 />
                                               )}
-                                              {showCursor && (
-                                                <ThinkingAnimation />
-                                              )}
+                                              {/* Thinking animation disabled - showCursor && <ThinkingAnimation /> */}
 
                                               {detectedTag &&
-                                              detectedTag === 'think' ? (
-                                                <ThinkingAccordion
-                                                  content=""
-                                                  isStreaming={
-                                                    !textToRender.includes(
-                                                      '</think>',
-                                                    )
-                                                  } // Only streaming if no closing tag
-                                                  streamingContent={textToRender.substring(
-                                                    tagStartIndex,
+                                              detectedTag === 'think'
+                                                ? // Skip rendering thinking content - thinking is disabled
+                                                  null
+                                                : detectedTag && (
+                                                    <ShowToolStream
+                                                      content={textToRender.substring(
+                                                        tagStartIndex,
+                                                      )}
+                                                      messageId="streamingTextContent"
+                                                      onToolClick={
+                                                        handleToolClick
+                                                      }
+                                                      showExpanded={true}
+                                                      startTime={Date.now()} // Tool just started now
+                                                    />
                                                   )}
-                                                  streamHookStatus="streaming"
-                                                />
-                                              ) : (
-                                                detectedTag && (
-                                                  <ShowToolStream
-                                                    content={textToRender.substring(
-                                                      tagStartIndex,
-                                                    )}
-                                                    messageId="streamingTextContent"
-                                                    onToolClick={
-                                                      handleToolClick
-                                                    }
-                                                    showExpanded={true}
-                                                    startTime={Date.now()} // Tool just started now
-                                                  />
-                                                )
-                                              )}
 
                                               {/* Show content after think tag if it exists */}
                                               {textAfterThink && (
@@ -2075,7 +2008,6 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                           <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse" />
                           <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-150" />
                           <div className="h-1.5 w-3.5 rounded-full bg-primary/50 animate-pulse delay-300" />
-
                         </div>
                       </div>
                     </div>

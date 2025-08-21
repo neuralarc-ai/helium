@@ -368,17 +368,25 @@ def prepare_params(
             "order": ["together/fp8", "novita/fp8", "baseten/fp8", "moonshotai", "groq"]
         }
 
-    if is_anthropic and use_thinking:
-        effort_level = reasoning_effort if reasoning_effort else 'low'
-        params["reasoning_effort"] = effort_level
-        params["temperature"] = 1.0 # Required by Anthropic when reasoning_effort is used
-        logger.info(f"Anthropic thinking enabled with reasoning_effort='{effort_level}'")
+    if is_anthropic:
+        if use_thinking:
+            effort_level = reasoning_effort if reasoning_effort else 'low'
+            params["reasoning_effort"] = effort_level
+            params["temperature"] = 1.0 # Required by Anthropic when reasoning_effort is used
+            logger.info(f"Anthropic thinking enabled with reasoning_effort='{effort_level}'")
+        else:
+            # Explicitly disable reasoning for Anthropic models when thinking is disabled
+            logger.info(f"Anthropic thinking explicitly disabled for model: {model_name}")
 
     # Add reasoning_effort for xAI models if enabled
-    if is_xai and use_thinking:
-        effort_level = reasoning_effort if reasoning_effort else 'low'
-        params["reasoning_effort"] = effort_level
-        logger.info(f"xAI thinking enabled with reasoning_effort='{effort_level}'")
+    if is_xai:
+        if use_thinking:
+            effort_level = reasoning_effort if reasoning_effort else 'low'
+            params["reasoning_effort"] = effort_level
+            logger.info(f"xAI thinking enabled with reasoning_effort='{effort_level}'")
+        else:
+            # Explicitly disable reasoning for xAI models when thinking is disabled
+            logger.info(f"xAI thinking explicitly disabled for model: {model_name}")
 
     # Add xAI-specific parameters
     if model_name.startswith("xai/"):
@@ -386,14 +394,20 @@ def prepare_params(
         # xAI models support standard parameters, no special handling needed beyond reasoning_effort
 
     # Add Z.AI-specific reasoning support
-    is_zai_glm = "z-ai/glm" in model_name.lower() or "glm-4" in model_name.lower()
+    # is_zai_glm = "z-ai/glm" in model_name.lower() or "glm-4" in model_name.lower()
     
-    if is_zai_glm and enable_thinking:
-        # Z.AI models support reasoning through the reasoning parameter
-        effort_level = reasoning_effort if reasoning_effort else 'low'
-        params["reasoning"] = True  # Enable reasoning mode
-        params["include_reasoning"] = True  # Include reasoning in response
-        logger.info(f"Z.AI GLM reasoning enabled for model: {model_name}")
+    # if is_zai_glm:
+    #     if enable_thinking:
+    #         # Z.AI models support reasoning through the reasoning parameter
+    #         effort_level = reasoning_effort if reasoning_effort else 'low'
+    #         params["reasoning"] = True  # Enable reasoning mode
+    #         params["include_reasoning"] = True  # Include reasoning in response
+    #         logger.info(f"Z.AI GLM reasoning enabled for model: {model_name}")
+    #     else:
+    #         # Explicitly disable reasoning for Z.AI GLM models when thinking is disabled
+    #         params["reasoning"] = False
+    #         params["include_reasoning"] = False
+    #         logger.info(f"Z.AI GLM reasoning explicitly disabled for model: {model_name}")
 
     return params
 
@@ -458,6 +472,13 @@ async def make_llm_api_call(
         enable_thinking=enable_thinking,
         reasoning_effort=reasoning_effort
     )
+    
+    # Disable automatic merging of reasoning content when thinking is disabled
+    if not enable_thinking:
+        params["merge_reasoning_content_in_choices"] = False
+        logger.info(f"🚫 Thinking disabled: set merge_reasoning_content_in_choices=False for model {model_name}")
+    else:
+        logger.info(f"🧠 Thinking enabled for model {model_name}")
     last_error = None
     for attempt in range(MAX_RETRIES):
         try:

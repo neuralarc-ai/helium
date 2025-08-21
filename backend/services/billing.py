@@ -17,6 +17,23 @@ from utils.constants import MODEL_ACCESS_TIERS, MODEL_NAME_ALIASES, HARDCODED_MO
 from litellm.cost_calculator import cost_per_token
 import time
 
+# Cache for models that have already been logged as having no pricing
+_logged_missing_pricing_models = set()
+
+# Cache for monthly usage calculations (user_id -> (timestamp, usage))
+_monthly_usage_cache = {}
+USAGE_CACHE_TTL = 300  # 5 minutes in seconds
+
+def clear_usage_cache(user_id: str = None):
+    """Clear usage cache for a specific user or all users."""
+    global _monthly_usage_cache
+    if user_id:
+        _monthly_usage_cache.pop(user_id, None)
+        logger.debug(f"Cleared usage cache for user {user_id}")
+    else:
+        _monthly_usage_cache.clear()
+        logger.debug("Cleared all usage cache")
+
 # Initialize Stripe
 stripe.api_key = config.STRIPE_SECRET_KEY
 
@@ -268,6 +285,15 @@ async def get_user_subscription(user_id: str) -> Optional[Dict]:
 
 async def calculate_monthly_usage(client, user_id: str) -> float:
     """Calculate total agent run minutes for the current month for a user."""
+    current_time = time.time()
+    
+    # Check cache first
+    if user_id in _monthly_usage_cache:
+        cached_timestamp, cached_usage = _monthly_usage_cache[user_id]
+        if current_time - cached_timestamp < USAGE_CACHE_TTL:
+            logger.debug(f"Using cached monthly usage for user {user_id}: {cached_usage}")
+            return cached_usage
+    
     start_time = time.time()
     
     # Use get_usage_logs to fetch all usage data (it already handles the date filtering and batching)
@@ -295,6 +321,9 @@ async def calculate_monthly_usage(client, user_id: str) -> float:
     end_time = time.time()
     execution_time = end_time - start_time
     logger.info(f"Calculate monthly usage took {execution_time:.3f} seconds, total cost: {total_cost}")
+    
+    # Cache the result
+    _monthly_usage_cache[user_id] = (current_time, total_cost)
     
     return total_cost
 
@@ -470,11 +499,19 @@ def calculate_token_cost(prompt_tokens: int, completion_tokens: int, model: str)
                         continue
                 
                 if message_cost is None:
-                    logger.warning(f"Could not get pricing for model {model} (resolved: {resolved_model}), returning 0 cost")
+                    # Only log the warning once per model to avoid spam
+                    model_key = f"{model}:{resolved_model}"
+                    if model_key not in _logged_missing_pricing_models:
+                        logger.warning(f"Could not get pricing for model {model} (resolved: {resolved_model}), returning 0 cost")
+                        _logged_missing_pricing_models.add(model_key)
                     return 0.0
                     
             except Exception as e:
-                logger.warning(f"Could not get pricing for model {model} (resolved: {resolved_model}): {str(e)}, returning 0 cost")
+                # Only log the warning once per model to avoid spam
+                model_key = f"{model}:{resolved_model}"
+                if model_key not in _logged_missing_pricing_models:
+                    logger.warning(f"Could not get pricing for model {model} (resolved: {resolved_model}): {str(e)}, returning 0 cost")
+                    _logged_missing_pricing_models.add(model_key)
                 return 0.0
         
         # Apply the TOKEN_PRICE_MULTIPLIER
@@ -512,7 +549,7 @@ async def get_allowed_models_for_user(client, user_id: str):
 
 async def can_use_model(client, user_id: str, model_name: str):
     if config.ENV_MODE == EnvMode.LOCAL:
-        logger.info("Running in local development mode - billing checks are disabled")
+        logger.info(f"Running in local development mode - billing checks are disabled for model: {model_name}")
         return True, "Local development mode - billing disabled", {
             "price_id": "local_dev",
             "plan_name": "Local Development",

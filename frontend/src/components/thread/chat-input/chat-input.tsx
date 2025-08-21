@@ -424,9 +424,10 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
 
       let baseModelName = getActualModelId(selectedModel);
       let thinkingEnabled = false;
+      // Thinking is disabled for all models
       if (selectedModel.endsWith('-thinking')) {
         baseModelName = getActualModelId(selectedModel.replace(/-thinking$/, ''));
-        thinkingEnabled = true;
+        thinkingEnabled = false; // Force disable thinking
       }
 
       // Get the enabled tools for the selected agent
@@ -600,7 +601,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             </button>
           )}
           <Card
-            className={`-mb-2 p-0 mt-4 z-30 bg-white shadow-[0px_12px_32px_0px_rgba(0,0,0,0.05)] w-full max-w-4xl mx-auto border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl mb-6' : 'rounded-4xl'} relative`}
+            className={`-mb-2 p-0 mt-4 z-30 bg-white shadow-[0px_12px_24px_0px_rgba(0,0,0,0.05)] w-full max-w-4xl mx-auto border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl mb-6' : 'rounded-3xl'} relative`}
             onDragOver={handleDragOver}
             onDrop={(e) => {
               e.preventDefault();

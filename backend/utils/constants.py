@@ -68,14 +68,6 @@ MODELS = {
         "tier_availability": ["free"]
     },
     
-    # "openrouter/qwen/qwen3-235b-a22b": {
-    #     "aliases": ["qwen3"],
-    #     "pricing": {
-    #         "input_cost_per_million_tokens": 0.13,
-    #         "output_cost_per_million_tokens": 0.60
-    #     },
-    #     "tier_availability": ["free", "paid"]
-    # },
     "openrouter/agentica-org/deepcoder-14b-preview:free": {
         "aliases": ["agentica-org/deepcoder-14b-preview:free"],
         "pricing": {
@@ -141,61 +133,13 @@ MODELS = {
         "tier_availability": ["free", "paid"]
     },
     "openrouter/z-ai/glm-4.5-air:free": {
-        "aliases": ["glm-4.5-air:free"],
+        "aliases": ["glm-4.5-air:free", "z-ai/glm-4.5-air:free"],
         "pricing": {
             "input_cost_per_million_tokens": 0.0,
             "output_cost_per_million_tokens": 0.0
         },
         "tier_availability": ["free", "paid"]
     },
-    # "xai/grok-4": {
-    #     "aliases": ["grok-4", "x-ai/grok-4"],
-    #     "pricing": {
-    #         "input_cost_per_million_tokens": 5.00,
-    #         "output_cost_per_million_tokens": 15.00
-    #     },
-    #     "tier_availability": ["paid"]
-    # },
-    # "openai/gpt-4o": {
-    #     "aliases": ["gpt-4o"],
-    #     "pricing": {
-    #         "input_cost_per_million_tokens": 2.50,
-    #         "output_cost_per_million_tokens": 10.00
-    #     },
-    #     "tier_availability": ["paid"]
-    # },
-    # "openai/gpt-4.1": {
-    #     "aliases": ["gpt-4.1"],
-    #     "pricing": {
-    #         "input_cost_per_million_tokens": 15.00,
-    #         "output_cost_per_million_tokens": 60.00
-    #     },
-    #     "tier_availability": ["paid"]
-    # },
-    # "openai/gpt-4.1-mini": {
-    #     "aliases": ["gpt-4.1-mini"],
-    #     "pricing": {
-    #         "input_cost_per_million_tokens": 1.50,
-    #         "output_cost_per_million_tokens": 6.00
-    #     },
-    #     "tier_availability": ["paid"]
-    # },
-    # "anthropic/claude-3-7-sonnet-latest": {
-    #     "aliases": ["sonnet-3.7"],
-    #     "pricing": {
-    #         "input_cost_per_million_tokens": 3.00,
-    #         "output_cost_per_million_tokens": 15.00
-    #     },
-    #     "tier_availability": ["paid"]
-    # },
-    # "anthropic/claude-3-5-sonnet-latest": {
-    #     "aliases": ["sonnet-3.5"],
-    #     "pricing": {
-    #         "input_cost_per_million_tokens": 3.00,
-    #         "output_cost_per_million_tokens": 15.00
-    #     },
-    #     "tier_availability": ["paid"]
-    # },   
     
     # Z.AI GLM Models from OpenRouter
     "openrouter/z-ai/glm-4.5v": {
