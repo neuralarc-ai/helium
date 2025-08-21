@@ -418,7 +418,16 @@ async def verify_agent_access(client, agent_id: str, user_id: str) -> dict:
         HTTPException: If the user doesn't have access to the agent or agent doesn't exist
     """
     try:
-        agent_result = await client.table('agents').select('*').eq('agent_id', agent_id).eq('account_id', user_id).execute()
+        # Get account_id from user_id using basejump accounts table
+        account_result = await client.schema("basejump").table("accounts").select("id").eq("primary_owner_user_id", user_id).eq("personal_account", True).limit(1).execute()
+        
+        if not account_result.data:
+            raise HTTPException(status_code=404, detail="User account not found")
+        
+        account_id = account_result.data[0]["id"]
+        
+        # Now check if the agent belongs to this account
+        agent_result = await client.table('agents').select('*').eq('agent_id', agent_id).eq('account_id', account_id).execute()
         
         if not agent_result.data:
             raise HTTPException(status_code=404, detail="Agent not found or access denied")
