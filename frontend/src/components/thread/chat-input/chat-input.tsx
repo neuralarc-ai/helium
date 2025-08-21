@@ -600,9 +600,8 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             </button>
           )}
           <Card
-            className={`-mb-2 p-0 mt-4 bg-white shadow-[0px_12px_32px_0px_rgba(0,0,0,0.1)] w-full max-w-4xl mx-auto border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-4xl' : 'rounded-4xl'} relative`}
+            className={`-mb-2 p-0 mt-4 z-30 bg-white shadow-[0px_12px_32px_0px_rgba(0,0,0,0.05)] w-full max-w-4xl mx-auto border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl mb-6' : 'rounded-4xl'} relative`}
             onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
             onDrop={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -622,11 +621,23 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             }}
           >
             <div className="w-full text-sm flex flex-col justify-between items-start rounded-4xl">
-              <CardContent className={`w-full border border-black/10 rounded-4xl p-1 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-1'} rounded-3xl overflow-hidden relative`}>
-              <div className="absolute inset-0 overflow-hidden rounded-3xl bg-white">
-                <BorderBeam duration={6} borderWidth={1} size={200} className="from-transparent via-helium-teal to-transparent"/>
-                <BorderBeam duration={6} borderWidth={1} delay={3} size={200} className="from-transparent via-helium-pink to-transparent"/>
-              </div>                
+            <CardContent className={`w-full border border-black/10 rounded-3xl p-1 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-1'} overflow-hidden relative`}>
+                {/* Border Beam Effect */}
+                <div className="absolute inset-0 rounded-[inherit] overflow-hidden">
+                  <BorderBeam 
+                    duration={6}
+                    borderWidth={1}
+                    size={200}
+                    className="from-transparent via-helium-teal to-transparent"
+                  />
+                  <BorderBeam 
+                    duration={6}
+                    borderWidth={1}
+                    delay={3}
+                    size={200}
+                    className="from-transparent via-helium-pink to-transparent"
+                  />
+                </div>               
                 <AttachmentGroup
                   files={uploadedFiles || []}
                   sandboxId={sandboxId}
@@ -676,7 +687,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
 
           {enableAdvancedConfig && selectedAgentId && (
             <div className="w-full max-w-4xl mx-auto -mt-12 relative z-1">
-              <div className="bg-gradient-to-b from-transparent via-trasnparent to-helium-teal/20 pt-8 pb-2 px-4 rounded-b-3xl border border-t-0 border-border/50 transition-all duration-300 ease-out">
+              <div className="bg-gradient-to-b from-transparent via-trasnparent to-helium-teal/15 pt-8 pb-2 px-4 rounded-b-3xl border border-t-0 border-border/50 transition-all duration-300 ease-out">
                 <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-none relative">
                   <button
                     onClick={() => setRegistryDialogOpen(true)}
