@@ -141,20 +141,34 @@ export function ExposePortToolView({
                       {/* Removed heading text as requested */}
                       {url ? (
                         <>
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-md font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 mb-1 break-all max-w-full"
-                          >
-                            Click here to open link
-                            <ExternalLink className="flex-shrink-0 h-3.5 w-3.5" />
-                          </a>
-                          {extractPortFromDaytonaUrl(url) === 8080 && (
-                            <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">
-                              This Link is Permanent
+                          {/* Primary (Permanent) Link container */}
+                          <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-gradient-to-br from-white to-zinc-50 dark:from-zinc-900 dark:to-zinc-900/80 p-3 shadow-sm">
+                            <div className="flex items-center justify-between gap-3">
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-md font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 break-all max-w-full"
+                              >
+                                Click here to open link
+                                <ExternalLink className="flex-shrink-0 h-3.5 w-3.5" />
+                              </a>
+                              {extractPortFromDaytonaUrl(url) === 8080 ? (
+                                <Badge variant="secondary" className="text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40">
+                                  Permanent
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800/60">
+                                  Primary
+                                </Badge>
+                              )}
                             </div>
-                          )}
+                            {extractPortFromDaytonaUrl(url) === 8080 && (
+                              <div className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1">
+                                This Link is Permanent
+                              </div>
+                            )}
+                          </div>
                         </>
                       ) : (
                         <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
@@ -168,7 +182,7 @@ export function ExposePortToolView({
 
                   <div className="space-y-3">
                     {displayMessage && (
-                      <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                      <div className="text-sm text-zinc-700 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-md px-3 py-2">
                         {displayMessage}
                       </div>
                     )}
@@ -176,17 +190,24 @@ export function ExposePortToolView({
                     {url && tempUrl8000 && (
                       <div className="mt-2">
                         <div className="my-3 border-t border-zinc-200 dark:border-zinc-800" />
-                        <a
-                          href={tempUrl8000}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 break-all max-w-full"
-                        >
-                          Click here to open link
-                          <ExternalLink className="flex-shrink-0 h-3.5 w-3.5" />
-                        </a>
-                        <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                          Temporary link
+                        <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <a
+                              href={tempUrl8000.replace(/index\.html$/, '')}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 break-all max-w-full"
+                            >
+                              Click here to open link
+                              <ExternalLink className="flex-shrink-0 h-3.5 w-3.5" />
+                            </a>
+                            <Badge variant="secondary" className="text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/30">
+                              Temporary
+                            </Badge>
+                          </div>
+                          <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
+                            Temporary link
+                          </div>
                         </div>
                         <div className="my-3 border-t border-zinc-200 dark:border-zinc-800" />
                       </div>
