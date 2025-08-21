@@ -53,6 +53,7 @@ export function FileOperationToolView({
   isStreaming = false,
   name,
   project,
+  isFirstFileOperation,
 }: ToolViewProps) {
   const { resolvedTheme } = useTheme();
   const isDarkTheme = resolvedTheme === 'dark';
@@ -108,6 +109,10 @@ export function FileOperationToolView({
   const isMarkdown = isFileType.markdown(fileExtension);
   const isHtml = isFileType.html(fileExtension);
   const isCsv = isFileType.csv(fileExtension);
+  const isJs = fileExtension === 'js';
+  const isCss = fileExtension === 'css';
+
+  const showPreview = !isJs && !isCss && !(isHtml && isFirstFileOperation);
 
   const language = getLanguageFromFileName(fileName);
   const hasHighlighting = hasLanguageHighlighting(language);
@@ -274,7 +279,7 @@ export function FileOperationToolView({
 
   return (
     <Card className="flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
-      <Tabs defaultValue={'preview'} className="w-full h-full">
+      <Tabs defaultValue={showPreview ? 'preview' : 'code'} className="w-full h-full">
         <CardHeader className="h-9 flex flex-row items-center justify-between bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 rounded-t-lg">
           <div className="flex w-full justify-center items-center gap-1 mt-4">
             <Icon className="h-4 w-4 text-muted-foreground" />
@@ -314,12 +319,14 @@ export function FileOperationToolView({
               >
                 Source
               </TabsTrigger>
-              <TabsTrigger
-                value="preview"
-                className="cursor-pointer flex items-center px-3 sm:py-1 text-xs font-medium rounded-sm transition-all [&[data-state=active]]:bg-white [&[data-state=active]]:text-black [&[data-state=inactive]]:bg-transparent [&[data-state=inactive]]:text-muted-foreground hover:bg-white/20 text-muted-foreground shadow-none"
-              >
-                Preview
-              </TabsTrigger>
+              {showPreview && (
+                <TabsTrigger
+                  value="preview"
+                  className="cursor-pointer flex items-center px-3 sm:py-1 text-xs font-medium rounded-sm transition-all [&[data-state=active]]:bg-white [&[data-state=active]]:text-black [&[data-state=inactive]]:bg-transparent [&[data-state=inactive]]:text-muted-foreground hover:bg-white/20 text-muted-foreground shadow-none"
+                >
+                  Preview
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
 
