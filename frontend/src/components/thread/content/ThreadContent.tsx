@@ -302,7 +302,7 @@ export function renderMarkdownContent(
             <div key={`tool-${match.index}-${index}`} className="my-1">
               <button
                 onClick={() => handleToolClick(messageId, toolName)}
-                className="inline-flex items-center gap-1.5 py-1.5 px-2.5 pr-1.5 text-xs text-muted-foreground bg-muted/50 hover:bg-muted/80 rounded-full transition-colors cursor-pointer border border-neutral-200"
+                className="inline-flex items-center gap-1.5 py-1.5 px-2.5 text-xs text-muted-foreground bg-muted/50 hover:bg-muted/80 rounded-full transition-colors cursor-pointer border border-neutral-200"
               >
                 <div className="border-[1.5px] bg-muted flex items-center justify-center p-0.5 rounded-sm">
                   <IconComponent className="h-3 w-3 text-black/70 flex-shrink-0 stroke-[2.5px]" />
