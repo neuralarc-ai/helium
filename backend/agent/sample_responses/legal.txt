@@ -1,0 +1,501 @@
+# Creating and Converting Legal Documents - NDA Project
+
+I'll create a comprehensive Non-Disclosure Agreement (NDA) document and then convert it to multiple formats using Python tools available in the sandbox environment.
+
+## Planning Our Approach
+
+First, I'll create a structured plan using the task list tool to organize our work:
+
+<function_calls>
+<invoke name="create_tasks">
+<parameter name="sections">[
+    {
+        "title": "Document Creation", 
+        "tasks": ["Create NDA content in markdown format", "Format document with proper legal structure", "Add placeholders for customization"]
+    },
+    {
+        "title": "Format Conversion", 
+        "tasks": ["Convert markdown to HTML", "Convert HTML to PDF using Python tools", "Convert markdown to DOCX format", "Test all converted formats"]
+    },
+    {
+        "title": "Document Management", 
+        "tasks": ["Create document templates", "Set up file organization", "Generate sample filled NDA", "Create conversion scripts"]
+    }
+]</parameter>
+</invoke>
+</function_calls>
+
+Now I'll start implementing the NDA document creation and conversion project:
+
+### Creating the NDA Document
+
+<function_calls>
+<invoke name="create_file">
+<parameter name="file_path">nda_template.md</parameter>
+<parameter name="file_contents">
+# NON-DISCLOSURE AGREEMENT
+
+**This Non-Disclosure Agreement (the "Agreement") is entered into as of [DATE] (the "Effective Date") by and between:**
+
+**[COMPANY NAME],** a [STATE] corporation, with its principal place of business at [ADDRESS] (the "Disclosing Party")
+
+**and**
+
+**[RECIPIENT NAME],** a [STATE] [ENTITY TYPE], with its principal place of business at [ADDRESS] (the "Receiving Party")
+
+**WHEREAS,** the parties wish to explore a potential business relationship and in connection therewith, the Disclosing Party may disclose to the Receiving Party certain confidential and proprietary information;
+
+**NOW, THEREFORE,** in consideration of the mutual promises and covenants contained herein, the parties agree as follows:
+
+## 1. DEFINITION OF CONFIDENTIAL INFORMATION
+
+"Confidential Information" means any information disclosed by the Disclosing Party to the Receiving Party, either directly or indirectly, in writing, orally or by inspection of tangible objects, which is designated as "Confidential," "Proprietary" or some similar designation, or that should reasonably be understood to be confidential given the nature of the information and the circumstances of disclosure. Confidential Information includes, but is not limited to:
+
+- Trade secrets, inventions, ideas, processes, computer source and object code, formulae, data, programs, other works of authorship, know-how, improvements, discoveries, developments, designs, and techniques
+- Information regarding plans for research, development, new products, marketing and selling, business plans, budgets and unpublished financial statements, licenses, prices and costs, suppliers and customers
+- Information regarding the skills and compensation of employees and contractors of the Disclosing Party
+- Any other information that should reasonably be recognized as confidential information of the Disclosing Party
+
+## 2. NON-USE AND NON-DISCLOSURE
+
+The Receiving Party agrees not to use the Confidential Information for any purpose except to evaluate and engage in discussions concerning a potential business relationship between the parties. The Receiving Party agrees not to disclose any Confidential Information to third parties or to the Receiving Party's employees, except to those employees who are required to have the information in order to evaluate or engage in discussions concerning the potential business relationship and who have signed confidentiality agreements with the Receiving Party containing protections no less stringent than those herein.
+
+## 3. MAINTENANCE OF CONFIDENTIALITY
+
+The Receiving Party agrees that it shall take reasonable measures to protect the secrecy of and avoid disclosure and unauthorized use of the Confidential Information. Without limiting the foregoing, the Receiving Party shall take at least those measures that it takes to protect its own confidential information of a similar nature. The Receiving Party shall ensure that its employees who have access to Confidential Information have signed a non-disclosure agreement in content at least as protective as the provisions hereof, prior to any disclosure of Confidential Information to such employees.
+
+## 4. REQUIRED DISCLOSURE
+
+In the event that the Receiving Party is required by law, regulation, or court order to disclose any Confidential Information, the Receiving Party will promptly notify the Disclosing Party in writing prior to making any such disclosure in order to facilitate the Disclosing Party seeking a protective order or other appropriate remedy from the proper authority. The Receiving Party agrees to cooperate with the Disclosing Party in seeking such order or other remedy. The Receiving Party further agrees that if the Disclosing Party is not successful in precluding the requesting legal body from requiring the disclosure of the Confidential Information, it will furnish only that portion of the Confidential Information which is legally required and will exercise all reasonable efforts to obtain reliable assurances that confidential treatment will be accorded the Confidential Information.
+
+## 5. RETURN OF MATERIALS
+
+Upon the termination of this Agreement or upon the written request of the Disclosing Party, the Receiving Party will promptly return to the Disclosing Party all copies of Confidential Information in tangible form that it has in its possession or control, or will promptly destroy all such copies and certify in writing to the Disclosing Party that such Confidential Information has been destroyed.
+
+## 6. NO RIGHTS GRANTED
+
+Nothing in this Agreement shall be construed as granting any rights under any patent, copyright or other intellectual property right of the Disclosing Party, nor shall this Agreement grant the Receiving Party any rights in or to the Disclosing Party's Confidential Information other than the limited right to review such Confidential Information solely for the purpose of determining whether to enter into a business relationship with the Disclosing Party.
+
+## 7. TERM AND TERMINATION
+
+This Agreement shall remain in effect for a period of [NUMBER] years from the Effective Date. Notwithstanding the foregoing, the Receiving Party's obligations with respect to the Disclosing Party's Confidential Information shall survive the termination of this Agreement and shall remain in effect until the Confidential Information no longer qualifies as a trade secret or until the Disclosing Party sends the Receiving Party written notice releasing the Receiving Party from this Agreement, whichever occurs first.
+
+## 8. REMEDIES
+
+The Receiving Party acknowledges that the unauthorized use or disclosure of the Disclosing Party's Confidential Information may cause irreparable harm to the Disclosing Party for which monetary damages may be difficult to ascertain or an inadequate remedy. The Receiving Party therefore agrees that the Disclosing Party will have the right, in addition to its other rights and remedies, to seek injunctive relief for any violation of this Agreement without posting bond or proving damages.
+
+## 9. GENERAL PROVISIONS
+
+### 9.1 Governing Law
+This Agreement shall be governed by and construed in accordance with the laws of the State of [STATE], without regard to its conflict of laws principles.
+
+### 9.2 Jurisdiction
+Any legal action arising out of or relating to this Agreement shall be brought exclusively in the courts of the State of [STATE], and the parties hereby consent to the personal jurisdiction of such courts.
+
+### 9.3 Entire Agreement
+This Agreement constitutes the entire agreement between the parties with respect to the subject matter hereof and supersedes all prior or contemporaneous oral or written agreements concerning such subject matter.
+
+### 9.4 Amendment
+This Agreement may be amended only by a written agreement signed by both parties.
+
+### 9.5 Severability
+If any provision of this Agreement is found to be unenforceable or invalid, that provision will be limited or eliminated to the minimum extent necessary so that this Agreement will otherwise remain in full force and effect and enforceable.
+
+### 9.6 Waiver
+The waiver by either party of a breach of any provision of this Agreement by the other party will not operate or be construed as a waiver of any other or subsequent breach by such other party.
+
+### 9.7 Notices
+All notices required or permitted under this Agreement shall be in writing and shall be delivered by hand, certified mail, return receipt requested, or overnight courier to the addresses set forth above or to such other address as either party may specify in writing.
+
+### 9.8 Counterparts
+This Agreement may be executed in counterparts, each of which shall be deemed an original, but all of which together shall constitute one and the same instrument.
+
+## 10. SIGNATURES
+
+**DISCLOSING PARTY:**
+
+Company Name: [COMPANY NAME]
+
+By: _________________________
+Name: [AUTHORIZED REPRESENTATIVE NAME]
+Title: [TITLE]
+Date: _________________________
+
+**RECEIVING PARTY:**
+
+Company/Individual Name: [RECIPIENT NAME]
+
+By: _________________________
+Name: [AUTHORIZED REPRESENTATIVE NAME]
+Title: [TITLE]
+Date: _________________________
+
+---
+
+**Effective Date:** [DATE]
+**Agreement Term:** [NUMBER] years
+**Governing Law:** State of [STATE]
+</parameter>
+</invoke>
+</function_calls>
+
+Now let me create a Python script to convert the markdown to HTML:
+
+<function_calls>
+<invoke name="create_file">
+<parameter name="file_path">convert_documents.py</parameter>
+<parameter name="file_contents">
+#!/usr/bin/env python3
+"""
+Document Conversion Tool
+Converts markdown documents to HTML, PDF, and DOCX formats
+"""
+
+import markdown
+import pdfkit
+import docx
+from docx.shared import Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+import os
+import sys
+from pathlib import Path
+
+class DocumentConverter:
+    """Convert documents between different formats"""
+    
+    def __init__(self):
+        self.md = markdown.Markdown(extensions=['tables', 'fenced_code', 'codehilite'])
+        
+    def markdown_to_html(self, markdown_file: str, output_file: str = None) -> str:
+        """Convert markdown to HTML"""
+        try:
+            with open(markdown_file, 'r', encoding='utf-8') as f:
+                md_content = f.read()
+            
+            html_content = self.md.convert(md_content)
+            
+            # Wrap in proper HTML structure
+            full_html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NDA Document</title>
+    <style>
+        body {{
+            font-family: 'Times New Roman', serif;
+            line-height: 1.6;
+            margin: 40px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }}
+        h1 {{
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }}
+        h2 {{
+            color: #2c3e50;
+            border-bottom: 1px solid #bdc3c7;
+            padding-bottom: 5px;
+        }}
+        .signature-section {{
+            margin-top: 30px;
+            border-top: 1px solid #bdc3c7;
+            padding-top: 20px;
+        }}
+        .signature-line {{
+            border-top: 1px solid #000;
+            display: inline-block;
+            width: 200px;
+            margin-left: 10px;
+        }}
+        table {{
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }}
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }}
+        th {{
+            background-color: #f2f2f2;
+        }}
+    </style>
+</head>
+<body>
+{html_content}
+</body>
+</html>"""
+            
+            if output_file:
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    f.write(full_html)
+                print(f"HTML file created: {output_file}")
+            
+            return full_html
+            
+        except Exception as e:
+            print(f"Error converting markdown to HTML: {e}")
+            return None
+    
+    def html_to_pdf(self, html_file: str, output_file: str = None) -> bool:
+        """Convert HTML to PDF using wkhtmltopdf"""
+        try:
+            if not output_file:
+                output_file = html_file.replace('.html', '.pdf')
+            
+            # Use wkhtmltopdf if available
+            options = {
+                'page-size': 'Letter',
+                'margin-top': '0.75in',
+                'margin-right': '0.75in',
+                'margin-bottom': '0.75in',
+                'margin-left': '0.75in',
+                'encoding': "UTF-8",
+                'no-outline': None
+            }
+            
+            pdfkit.from_file(html_file, output_file, options=options)
+            print(f"PDF file created: {output_file}")
+            return True
+            
+        except Exception as e:
+            print(f"Error converting HTML to PDF: {e}")
+            print("Trying alternative method with weasyprint...")
+            return self._html_to_pdf_weasyprint(html_file, output_file)
+    
+    def _html_to_pdf_weasyprint(self, html_file: str, output_file: str = None) -> bool:
+        """Alternative PDF conversion using weasyprint"""
+        try:
+            from weasyprint import HTML
+            
+            if not output_file:
+                output_file = html_file.replace('.html', '.pdf')
+            
+            HTML(filename=html_file).write_pdf(output_file)
+            print(f"PDF file created (weasyprint): {output_file}")
+            return True
+            
+        except ImportError:
+            print("weasyprint not available. Trying with pandoc...")
+            return self._html_to_pdf_pandoc(html_file, output_file)
+        except Exception as e:
+            print(f"Error with weasyprint: {e}")
+            return False
+    
+    def _html_to_pdf_pandoc(self, html_file: str, output_file: str = None) -> bool:
+        """PDF conversion using pandoc"""
+        try:
+            import subprocess
+            
+            if not output_file:
+                output_file = html_file.replace('.html', '.pdf')
+            
+            cmd = ['pandoc', html_file, '-o', output_file, '--pdf-engine=wkhtmltopdf']
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                print(f"PDF file created (pandoc): {output_file}")
+                return True
+            else:
+                print(f"Pandoc error: {result.stderr}")
+                return False
+                
+        except Exception as e:
+            print(f"Error with pandoc: {e}")
+            return False
+    
+    def markdown_to_docx(self, markdown_file: str, output_file: str = None) -> bool:
+        """Convert markdown to DOCX format"""
+        try:
+            if not output_file:
+                output_file = markdown_file.replace('.md', '.docx')
+            
+            # Read markdown content
+            with open(markdown_file, 'r', encoding='utf-8') as f:
+                md_content = f.read()
+            
+            # Create a new document
+            doc = docx.Document()
+            
+            # Set document margins
+            sections = doc.sections
+            for section in sections:
+                section.top_margin = Inches(1)
+                section.bottom_margin = Inches(1)
+                section.left_margin = Inches(1)
+                section.right_margin = Inches(1)
+            
+            # Process markdown content line by line
+            lines = md_content.split('\n')
+            i = 0
+            
+            while i < len(lines):
+                line = lines[i].strip()
+                
+                if line.startswith('# '):
+                    # Main title
+                    heading = doc.add_heading(line[2:], 0)
+                    heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    
+                elif line.startswith('## '):
+                    # Section headings
+                    doc.add_heading(line[3:], 1)
+                    
+                elif line.startswith('### '):
+                    # Subsection headings
+                    doc.add_heading(line[4:], 2)
+                    
+                elif line.startswith('**') and line.endswith('**'):
+                    # Bold text
+                    p = doc.add_paragraph()
+                    p.add_run(line[2:-2]).bold = True
+                    
+                elif line.startswith('**WHEREAS,**'):
+                    # Special formatting for legal clauses
+                    p = doc.add_paragraph()
+                    p.add_run(line).italic = True
+                    
+                elif line.startswith('**NOW, THEREFORE,**'):
+                    # Special formatting for legal clauses
+                    p = doc.add_paragraph()
+                    p.add_run(line).italic = True
+                    
+                elif line.startswith('- '):
+                    # List items
+                    doc.add_paragraph(line[2:], style='List Bullet')
+                    
+                elif line.startswith('**DISCLOSING PARTY:**'):
+                    # Signature section
+                    doc.add_paragraph()
+                    p = doc.add_paragraph()
+                    p.add_run(line).bold = True
+                    
+                elif line.startswith('**RECEIVING PARTY:**'):
+                    # Signature section
+                    doc.add_paragraph()
+                    p = doc.add_paragraph()
+                    p.add_run(line).bold = True
+                    
+                elif line.startswith('Company Name:'):
+                    # Form fields
+                    p = doc.add_paragraph()
+                    p.add_run(line)
+                    
+                elif line.startswith('By: '):
+                    # Signature line
+                    p = doc.add_paragraph()
+                    p.add_run(line)
+                    p.add_run('_' * 30)
+                    
+                elif line.startswith('Name:'):
+                    # Form fields
+                    p = doc.add_paragraph()
+                    p.add_run(line)
+                    
+                elif line.startswith('Title:'):
+                    # Form fields
+                    p = doc.add_paragraph()
+                    p.add_run(line)
+                    
+                elif line.startswith('Date:'):
+                    # Form fields
+                    p = doc.add_paragraph()
+                    p.add_run(line)
+                    
+                elif line.startswith('**Effective Date:**'):
+                    # Footer information
+                    doc.add_paragraph()
+                    p = doc.add_paragraph()
+                    p.add_run(line).bold = True
+                    
+                elif line.startswith('**Agreement Term:**'):
+                    # Footer information
+                    p = doc.add_paragraph()
+                    p.add_run(line).bold = True
+                    
+                elif line.startswith('**Governing Law:**'):
+                    # Footer information
+                    p = doc.add_paragraph()
+                    p.add_run(line).bold = True
+                    
+                elif line == '---':
+                    # Horizontal rule
+                    doc.add_paragraph('_' * 50)
+                    
+                elif line and not line.startswith('```'):
+                    # Regular paragraph
+                    if line.strip():
+                        doc.add_paragraph(line)
+                
+                i += 1
+            
+            # Save the document
+            doc.save(output_file)
+            print(f"DOCX file created: {output_file}")
+            return True
+            
+        except Exception as e:
+            print(f"Error converting markdown to DOCX: {e}")
+            return False
+    
+    def convert_all_formats(self, markdown_file: str) -> dict:
+        """Convert markdown to all available formats"""
+        results = {}
+        
+        print(f"Converting {markdown_file} to multiple formats...")
+        
+        # Convert to HTML
+        html_file = markdown_file.replace('.md', '.html')
+        html_content = self.markdown_to_html(markdown_file, html_file)
+        results['html'] = html_file if html_content else None
+        
+        # Convert to PDF
+        if html_content:
+            pdf_file = markdown_file.replace('.md', '.pdf')
+            results['pdf'] = self.html_to_pdf(html_file, pdf_file)
+        else:
+            results['pdf'] = False
+        
+        # Convert to DOCX
+        docx_file = markdown_file.replace('.md', '.docx')
+        results['docx'] = self.markdown_to_docx(markdown_file, docx_file)
+        
+        return results
+
+def main():
+    """Main function to run document conversion"""
+    converter = DocumentConverter()
+    
+    # Check if markdown file exists
+    markdown_file = 'nda_template.md'
+    if not os.path.exists(markdown_file):
+        print(f"Error: {markdown_file} not found!")
+        return
+    
+    print("Starting document conversion process...")
+    print("=" * 50)
+    
+    # Convert to all formats
+    results = converter.convert_all_formats(markdown_file)
+    
+    print("\n" + "=" * 50)
+    print("Conversion Results:")
+    print(f"HTML: {'✓' if results['html'] else '✗'}")
+    print(f"PDF: {'✓' if results['pdf'] else '✗'}")
+    print(f"DOCX: {'✓' if results['docx'] else '✗'}")
+    
+    # List generated files
+    print("\nGenerated files:")
+    for ext in ['html', 'pdf', 'docx']:
+        filename = markdown_file.replace('.md', f'.{ext}')
+        if os.path.exists(filename):
+            size = os.path.getsize(filename)
+            print(f"  {filename} ({size} bytes)")
+
+if __name__ == "__main__":
+    main()

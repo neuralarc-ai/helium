@@ -25,16 +25,10 @@ export function HeliumLogo({ size = 24, animated = false }: HeliumLogoProps) {
 
   if (animated) {
     return (
-      <motion.div
-        animate={{
-          rotate: [0, 720, 1080, 1440],
-        }}
+      <motion.div        
         transition={{
           duration: 3,
-          ease: [0.25, 0.1, 0.25, 1],
-          times: [0, 0.4, 0.7, 1],
-          repeat: Infinity,
-          repeatType: "loop",
+          ease: [0.25, 0.1, 0.25, 1]          
         }}
       >
         <Image
@@ -42,7 +36,7 @@ export function HeliumLogo({ size = 24, animated = false }: HeliumLogoProps) {
           alt="Helium AI"
           width={size}
           height={size}
-          className={`${shouldInvert ? 'invert' : ''} flex-shrink-0`}
+          className={`flex-shrink-0`}
         />
       </motion.div>
     );
@@ -54,7 +48,7 @@ export function HeliumLogo({ size = 24, animated = false }: HeliumLogoProps) {
       alt="Helium AI"
       width={size}
       height={size}
-      className={`${shouldInvert ? 'invert' : ''} flex-shrink-0`}
+      className={`flex-shrink-0`}
     />
   );
 }

@@ -448,6 +448,16 @@ export function ToolCallSidePanel({
 
   const updateHeartbeat = React.useCallback(async (runId: string) => {
     try {
+      // Calculate runtime safely
+      let totalRuntime = 0;
+      if (agentStartTime && agentStartTime > 0) {
+        const runtime = Date.now() - agentStartTime;
+        // Ensure runtime is not negative and reasonable
+        totalRuntime = Math.max(0, Math.min(runtime, 24 * 60 * 60 * 1000)); // Max 24 hours
+      }
+
+      console.log('Sending heartbeat update:', { runId, totalRuntime, agentStartTime });
+
       const response = await fetch(`/api/runtime/agent-run/${runId}`, {
         method: 'PUT',
         headers: {
@@ -455,15 +465,34 @@ export function ToolCallSidePanel({
         },
         body: JSON.stringify({ 
           status: 'running',
-          total_runtime_ms: Date.now() - (agentStartTime || Date.now())
+          total_runtime_ms: totalRuntime
         }),
       });
       
       if (!response.ok) {
-        console.error('Failed to update heartbeat:', response.statusText);
+        const errorText = await response.text();
+        console.error('Failed to update heartbeat:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+          runId,
+          totalRuntime
+        });
+        
+        // If it's an authentication error, log it specifically
+        if (response.status === 401) {
+          console.error('Authentication failed for heartbeat update');
+        }
+      } else {
+        console.log('Heartbeat update successful for runId:', runId);
       }
     } catch (error) {
-      console.error('Error updating heartbeat:', error);
+      console.error('Error updating heartbeat:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        runId,
+        agentStartTime
+      });
     }
   }, [agentStartTime]);
 

@@ -1,16 +1,13 @@
 import React from 'react';
 import {
   Rocket,
-  CheckCircle,
   AlertTriangle,
   ExternalLink,
   Globe,
-  Folder,
   TerminalIcon,
 } from 'lucide-react';
 import { ToolViewProps } from './types';
 import { getToolTitle, normalizeContentToString } from './utils';
-import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,10 +21,7 @@ interface DeployResult {
   url?: string;
 }
 
-function extractDeployData(
-  assistantContent: any,
-  toolContent: any,
-): {
+function extractDeployData(assistantContent: any, toolContent: any): {
   name: string | null;
   directoryPath: string | null;
   deployResult: DeployResult | null;
@@ -41,70 +35,116 @@ function extractDeployData(
   // Try to extract from assistant content first
   const assistantStr = normalizeContentToString(assistantContent);
   if (assistantStr) {
-    try {
-      const parsed = JSON.parse(assistantStr);
-      if (parsed.parameters) {
-        name = parsed.parameters.name || null;
-        directoryPath = parsed.parameters.directory_path || null;
+      try {
+          const parsed = JSON.parse(assistantStr);
+          if (parsed.parameters) {
+              name = parsed.parameters.name || null;
+              directoryPath = parsed.parameters.directory_path || null;
+          }
+      } catch (e) {
+          // Try regex extraction
+          const nameMatch = assistantStr.match(/name["']\s*:\s*["']([^"']+)["']/);
+          const dirMatch = assistantStr.match(/directory_path["']\s*:\s*["']([^"']+)["']/);
+          if (nameMatch) name = nameMatch[1];
+          if (dirMatch) directoryPath = dirMatch[1];
       }
-    } catch (e) {
-      // Try regex extraction
-      const nameMatch = assistantStr.match(/name["']\s*:\s*["']([^"']+)["']/);
-      const dirMatch = assistantStr.match(
-        /directory_path["']\s*:\s*["']([^"']+)["']/,
-      );
-      if (nameMatch) name = nameMatch[1];
-      if (dirMatch) directoryPath = dirMatch[1];
-    }
   }
 
   // Extract deploy result from tool content
   const toolStr = normalizeContentToString(toolContent);
   if (toolStr) {
-    rawContent = toolStr;
-    try {
-      const parsed = JSON.parse(toolStr);
+      rawContent = toolStr;
+      try {
+          const parsed = JSON.parse(toolStr);
 
-      // Handle the nested tool_execution structure
-      let resultData = null;
-      if (parsed.tool_execution && parsed.tool_execution.result) {
-        resultData = parsed.tool_execution.result;
-        // Also extract arguments if not found in assistant content
-        if (!name && parsed.tool_execution.arguments) {
-          name = parsed.tool_execution.arguments.name || null;
-          directoryPath =
-            parsed.tool_execution.arguments.directory_path || null;
-        }
-      } else if (parsed.output) {
-        // Fallback to old format
-        resultData = parsed;
-      }
-
-      if (resultData) {
-        deployResult = {
-          message: resultData.output?.message || null,
-          output: resultData.output?.output || null,
-          success: resultData.success !== undefined ? resultData.success : true,
-        };
-
-        // Try to extract deployment URL from output
-        if (deployResult.output) {
-          const urlMatch = deployResult.output.match(
-            /https:\/\/[^\s]+\.pages\.dev[^\s]*/,
-          );
-          if (urlMatch) {
-            deployResult.url = urlMatch[0];
+          // Handle the nested tool_execution structure
+          let resultData = null;
+          if (parsed.tool_execution && parsed.tool_execution.result) {
+              resultData = parsed.tool_execution.result;
+              // Also extract arguments if not found in assistant content
+              if (!name && parsed.tool_execution.arguments) {
+                  name = parsed.tool_execution.arguments.name || null;
+                  directoryPath = parsed.tool_execution.arguments.directory_path || null;
+              }
+          } else if (parsed.output) {
+              // Fallback to old format
+              resultData = parsed;
           }
-        }
+
+          if (resultData) {
+              // The backend returns result.output as a string; try to parse as JSON first
+              let parsedOutput: any = null;
+              if (typeof resultData.output === 'string') {
+                  try {
+                      parsedOutput = JSON.parse(resultData.output);
+                  } catch (_) {
+                      parsedOutput = null;
+                  }
+              } else if (resultData.output && typeof resultData.output === 'object') {
+                  parsedOutput = resultData.output;
+              }
+
+              const explicitUrl = parsedOutput?.url || resultData.url;
+              const explicitMessage = parsedOutput?.message || resultData.message;
+              const explicitRaw = parsedOutput?.output ?? resultData.output;
+
+              deployResult = {
+                  message: explicitMessage || null,
+                  output: typeof explicitRaw === 'string' ? explicitRaw : (explicitRaw ? JSON.stringify(explicitRaw) : null),
+                  success: resultData.success !== undefined ? resultData.success : true,
+                  url: typeof explicitUrl === 'string' ? explicitUrl : undefined,
+              };
+
+              // Fallback to extracting from raw output if URL not explicitly provided
+              if (!deployResult.url && deployResult.output) {
+                  const matches = Array.from(
+                      deployResult.output.matchAll(/https:\/\/[^\s"']*\.pages\.dev[^\s"']*/g)
+                  ).map(m => m[0]);
+
+                  if (matches.length > 0) {
+                      // Prefer canonical production domain (project.pages.dev => hostname has 3 parts)
+                      let chosen: string | undefined = undefined;
+                      for (const u of matches) {
+                          try {
+                              const hostParts = new URL(u).hostname.split('.');
+                              if (hostParts.length === 3 && hostParts[1] === 'pages' && hostParts[2] === 'dev') {
+                                  chosen = u;
+                                  break;
+                              }
+                          } catch (_) {
+                              // ignore parse errors
+                          }
+                      }
+
+                      // If only a preview URL exists (hash.project.pages.dev), derive production by stripping the first label
+                      if (!chosen) {
+                          const first = matches[0];
+                          try {
+                              const urlObj = new URL(first);
+                              const hostParts = urlObj.hostname.split('.');
+                              if (hostParts.length > 3 && hostParts.slice(-2).join('.') === 'pages.dev') {
+                                  const prodHost = hostParts.slice(1).join('.'); // drop preview hash
+                                  chosen = `${urlObj.protocol}//${prodHost}${urlObj.pathname}`;
+                              } else {
+                                  chosen = first;
+                              }
+                          } catch (_) {
+                              chosen = first;
+                          }
+                      }
+
+                      deployResult.url = chosen;
+                  }
+              }
+          }
+      } catch (e) {
+          // If parsing fails, treat as raw content
+          deployResult = {
+              message: 'Deploy completed',
+              output: toolStr,
+              success: true,
+          };
       }
-    } catch (e) {
-      // If parsing fails, treat as raw content
-      deployResult = {
-        message: 'Deploy completed',
-        output: toolStr,
-        success: true,
-      };
-    }
   }
 
   return { name, directoryPath, deployResult, rawContent };

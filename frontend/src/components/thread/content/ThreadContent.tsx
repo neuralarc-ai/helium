@@ -30,7 +30,6 @@ import {
   getUserFriendlyToolName,
   safeJsonParse,
 } from '@/components/thread/utils';
-import { HeliumLogo } from '@/components/sidebar/helium-logo';
 import { AgentLoader } from './loader';
 import {
   parseXmlToolCalls,
@@ -39,6 +38,8 @@ import {
 import { ShowToolStream } from './ShowToolStream';
 import { PipedreamUrlDetector } from './pipedream-url-detector';
 import { ThinkingAccordion } from './ThinkingAccordion';
+import { ThinkingAnimation } from '@/components/ui/ThinkingAnimation';
+import { HeliumLogo } from '@/components/sidebar/helium-logo';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -224,7 +225,7 @@ export function renderMarkdownContent(
                   sandboxId={sandboxId}
                   project={project}
                   className="mt-3"
-                  rightAlignGrid={false}
+                  rightAlignGrid={true}
                 />
               )}
             </div>,
@@ -255,7 +256,7 @@ export function renderMarkdownContent(
                   sandboxId={sandboxId}
                   project={project}
                   className="mt-3"
-                  rightAlignGrid={false}
+                  rightAlignGrid={true}
                 />
               )}
             </div>,
@@ -411,7 +412,7 @@ export function renderMarkdownContent(
               sandboxId={sandboxId}
               project={project}
               className="mt-3"
-              rightAlignGrid={false}
+              rightAlignGrid={true}
             />
           )}
         </div>,
@@ -443,7 +444,7 @@ export function renderMarkdownContent(
               sandboxId={sandboxId}
               project={project}
               className="mt-3"
-              rightAlignGrid={false}
+              rightAlignGrid={true}
             />
           )}
         </div>,
@@ -467,7 +468,7 @@ export function renderMarkdownContent(
           isStreaming={isCurrentlyStreaming}
           streamingContent={isCurrentlyStreaming ? streamingTextContent : ''}
           streamHookStatus={streamHookStatus}
-        />
+        />,
       );
     } else {
       const IconComponent = getToolIcon(toolName);
@@ -584,7 +585,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [, setUserHasScrolled] = useState(false);
+  const [userHasScrolled, setUserHasScrolled] = useState(false);
   const { session } = useAuth();
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
@@ -602,6 +603,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   const [streamingFeedback, setStreamingFeedback] = useState<
     'up' | 'down' | null
   >(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // React Query file preloader
   const { preloadFiles } = useFilePreloader();
@@ -698,15 +700,21 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     const { scrollTop, scrollHeight, clientHeight } =
       messagesContainerRef.current;
     const isScrolledUp = scrollHeight - scrollTop - clientHeight > 100;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight <= 50;
+
     setShowScrollButton(isScrolledUp);
     setUserHasScrolled(isScrolledUp);
+
+    // Reset scroll state when user scrolls near bottom
+    if (isNearBottom && userHasScrolled) {
+      setUserHasScrolled(false);
+    }
   };
 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-  
     timeoutRef.current = setTimeout(() => {
       if (messagesContainerRef.current) {
         messagesContainerRef.current.scrollTo({
@@ -717,12 +725,24 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       }
     }, 100);
   }, []);
+
+  // Check if the last assistant message is in view
+  const isLastAssistantMessageInView = useCallback(() => {
+    if (!messagesContainerRef.current) return true;
+    const { scrollTop, scrollHeight, clientHeight } =
+      messagesContainerRef.current;
+    const scrollBottom = scrollTop + clientHeight;
+    const threshold = 150; // Allow some buffer
+    return scrollHeight - scrollBottom <= threshold;
+  }, []);
   
   
 
   // Auto-scroll to bottom when new messages arrive or agent status changes
   React.useEffect(() => {
     if (agentStatus === 'running' || agentStatus === 'connecting') {
+      // Reset scroll state when agent starts working to allow auto-scroll
+      setUserHasScrolled(false);
       scrollToBottom('smooth');
     }
   }, [agentStatus, scrollToBottom]);
@@ -732,30 +752,49 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.type === 'user') {
         scrollToBottom('smooth');
+        // Reset scroll state for new user messages
+        setUserHasScrolled(false);
       }
     }
   }, [messages, scrollToBottom]);
 
   // Auto-scroll behaviors for different streaming scenarios:
-  // - Use 'auto' for streaming content to ensure immediate visibility
-  // - Use 'smooth' for user interactions and status changes
-  // - This mimics ChatGPT/Claude behavior where content stays visible during generation
+  // - Only auto-scroll if user hasn't scrolled up or if last assistant message is in view
+  // - Use smooth ease-out animation for better user experience
+  // - Allow users to scroll up during streaming
   React.useEffect(() => {
     if (
       streamingTextContent &&
       (agentStatus === 'running' || agentStatus === 'connecting')
     ) {
-      // Use immediate scroll for streaming content to ensure smooth experience
-      scrollToBottom('auto');
+      // Only auto-scroll if user hasn't scrolled up or if last message is in view
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
     }
-  }, [streamingTextContent, agentStatus, scrollToBottom]);
+  }, [
+    streamingTextContent,
+    agentStatus,
+    scrollToBottom,
+    userHasScrolled,
+    isLastAssistantMessageInView,
+  ]);
 
   // Auto-scroll to bottom when streaming text changes in playback mode
   React.useEffect(() => {
     if (streamingText && isStreamingText && readOnly) {
-      scrollToBottom('auto');
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
     }
-  }, [streamingText, isStreamingText, readOnly, scrollToBottom]);
+  }, [
+    streamingText,
+    isStreamingText,
+    readOnly,
+    scrollToBottom,
+    userHasScrolled,
+    isLastAssistantMessageInView,
+  ]);
 
   // Auto-scroll to bottom when streaming tool calls change
   React.useEffect(() => {
@@ -763,9 +802,17 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       streamingToolCall &&
       (agentStatus === 'running' || agentStatus === 'connecting')
     ) {
-      scrollToBottom('auto');
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
     }
-  }, [streamingToolCall, agentStatus, scrollToBottom]);
+  }, [
+    streamingToolCall,
+    agentStatus,
+    scrollToBottom,
+    userHasScrolled,
+    isLastAssistantMessageInView,
+  ]);
 
   // Auto-scroll to bottom when new tool calls are added
   React.useEffect(() => {
@@ -773,16 +820,33 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       currentToolCall &&
       (agentStatus === 'running' || agentStatus === 'connecting')
     ) {
-      scrollToBottom('auto');
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
     }
-  }, [currentToolCall, agentStatus, scrollToBottom]);
+  }, [
+    currentToolCall,
+    agentStatus,
+    scrollToBottom,
+    userHasScrolled,
+    isLastAssistantMessageInView,
+  ]);
 
   // Auto-scroll to bottom when streaming starts
   React.useEffect(() => {
     if (streamHookStatus === 'streaming') {
-      scrollToBottom('auto');
+      // Reset scroll state when streaming starts to allow auto-scroll
+      setUserHasScrolled(false);
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
     }
-  }, [streamHookStatus, scrollToBottom]);
+  }, [
+    streamHookStatus,
+    scrollToBottom,
+    userHasScrolled,
+    isLastAssistantMessageInView,
+  ]);
 
   // Auto-scroll when response generation completes or when chat history loads
   React.useEffect(() => {
@@ -801,9 +865,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
   // Complete auto-scroll strategy:
   // 1. Smooth scroll for user interactions (new messages, status changes)
-  // 2. Immediate scroll for streaming content (text, tool calls, streaming start)
-  // 3. Always auto-scroll during streaming regardless of user scroll position
-  // 4. This ensures content stays visible during generation like ChatGPT/Claude
+  // 2. Conditional auto-scroll during streaming - only if user hasn't scrolled up
+  // 3. Allow users to scroll up during streaming for better UX
+  // 4. Use smooth ease-out animation for all auto-scrolls
 
   // Preload all message attachments when messages change or sandboxId is provided
   React.useEffect(() => {
@@ -869,7 +933,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
           <div
             className={
               isSidePanelOpen
-                ? 'mx-auto max-w-2xl md:px-8 min-w-0'
+                ? 'mx-auto max-w-3xl md:px-8 min-w-0'
                 : 'mx-auto max-w-3xl md:px-8 min-w-0'
             }
           >
@@ -1460,186 +1524,201 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 group.messages.some(
                                   (msg) => msg.type === 'assistant',
                                 ) && (
-                                  <div className="flex items-center justify-end pt-3 gap-1 border-t border-border/50 px-4 pb-0">
-                                    {/* Copy Button */}
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
-                                          onClick={() => {
-                                            const el =
-                                              groupContentRefs.current[
-                                                groupIndex
-                                              ];
-                                            if (el) {
-                                              const text = el.textContent || '';
-                                              navigator.clipboard.writeText(
-                                                text,
-                                              );
-                                              setCopied(true);
-                                              toast.success(
-                                                'Copied to clipboard',
-                                              );
-                                              setTimeout(
-                                                () => setCopied(false),
-                                                1500,
-                                              );
-                                            }
-                                          }}
-                                        >
-                                          {copied ? (
-                                            <Check className="h-4 w-4" />
-                                          ) : (
-                                            <Copy className="h-4 w-4" />
-                                          )}
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Copy</p>
-                                      </TooltipContent>
-                                    </Tooltip>
+                                  <div className="flex items-center justify-between pt-2 gap-1 border-t border-border/50 px-3 pb-0">
+                                    {/* Left side - Agent info */}
+                                    <div className="flex items-center gap-1.5">
+                                      <HeliumLogo size={20} />
+                                      <span className="text-base font-semibold text-foreground/80">
+                                        Helium
+                                      </span>
+                                    </div>
 
-                                    {/* Thumbs Up */}
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className={cn(
-                                            'h-8 w-8 p-0 cursor-pointer',
-                                            feedback === 'down' &&
-                                              'opacity-50 pointer-events-none',
-                                          )}
-                                          onClick={() => {
-                                            setFeedback(
-                                              feedback === 'up' ? null : 'up',
-                                            );
-                                            toast.success(
-                                              feedback === 'up'
-                                                ? 'Feedback removed'
-                                                : 'Good response',
-                                            );
-                                          }}
-                                        >
-                                          {feedback === 'up' ? (
-                                            <ThumbsUpFilled
-                                              fill="currentColor"
-                                              className="h-4 w-4"
-                                            />
-                                          ) : (
-                                            <ThumbsUp className="h-4 w-4" />
-                                          )}
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Good response</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-
-                                    {/* Thumbs Down */}
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className={cn(
-                                            'h-8 w-8 p-0 cursor-pointer',
-                                            feedback === 'up' &&
-                                              'opacity-50 pointer-events-none',
-                                          )}
-                                          onClick={() => {
-                                            setFeedback(
-                                              feedback === 'down'
-                                                ? null
-                                                : 'down',
-                                            );
-                                            toast.success(
-                                              feedback === 'down'
-                                                ? 'Feedback removed'
-                                                : 'Bad response',
-                                            );
-                                          }}
-                                        >
-                                          {feedback === 'down' ? (
-                                            <ThumbsDownFilled
-                                              fill="currentColor"
-                                              className="h-4 w-4"
-                                            />
-                                          ) : (
-                                            <ThumbsDown className="h-4 w-4" />
-                                          )}
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Bad response</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-
-                                    {/* Retry Button */}
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-8 px-2 hover:bg-accent cursor-pointer"
-                                          onClick={() => {
-                                            if (!onSubmit) return;
-                                            // Find the user group just before this assistant group
-                                            const userGroup =
-                                              finalGroupedMessages
-                                                .slice(0, groupIndex)
-                                                .reverse()
-                                                .find((g) => g.type === 'user');
-                                            if (!userGroup) return;
-                                            const userMessage =
-                                              userGroup.messages[0];
-                                            let prompt =
-                                              typeof userMessage.content ===
-                                              'string'
-                                                ? userMessage.content
-                                                : '';
-                                            try {
-                                              const parsed = JSON.parse(prompt);
-                                              if (
-                                                parsed &&
-                                                typeof parsed.content ===
-                                                  'string'
-                                              ) {
-                                                prompt = parsed.content;
+                                    {/* Right side - Action buttons */}
+                                    <div className="flex items-center gap-1">
+                                      {/* Copy Button */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                            onClick={() => {
+                                              const el =
+                                                groupContentRefs.current[
+                                                  groupIndex
+                                                ];
+                                              if (el) {
+                                                const text =
+                                                  el.textContent || '';
+                                                navigator.clipboard.writeText(
+                                                  text,
+                                                );
+                                                setCopied(true);
+                                                toast.success(
+                                                  'Copied to clipboard',
+                                                );
+                                                setTimeout(
+                                                  () => setCopied(false),
+                                                  1500,
+                                                );
                                               }
-                                            } catch (e) {}
-                                            // Remove attachment info from prompt
-                                            prompt = prompt
-                                              .replace(
-                                                /\[Uploaded File: .*?\]/g,
-                                                '',
+                                            }}
+                                          >
+                                            {copied ? (
+                                              <Check className="h-4 w-4" />
+                                            ) : (
+                                              <Copy className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Copy</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Thumbs Up */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className={cn(
+                                              'h-8 w-8 p-0 cursor-pointer',
+                                              feedback === 'down' &&
+                                                'opacity-50 pointer-events-none',
+                                            )}
+                                            onClick={() => {
+                                              setFeedback(
+                                                feedback === 'up' ? null : 'up',
+                                              );
+                                              toast.success(
+                                                feedback === 'up'
+                                                  ? 'Feedback removed'
+                                                  : 'Good response',
+                                              );
+                                            }}
+                                          >
+                                            {feedback === 'up' ? (
+                                              <ThumbsUpFilled
+                                                fill="currentColor"
+                                                className="h-4 w-4"
+                                              />
+                                            ) : (
+                                              <ThumbsUp className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Good response</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Thumbs Down */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className={cn(
+                                              'h-8 w-8 p-0 cursor-pointer',
+                                              feedback === 'up' &&
+                                                'opacity-50 pointer-events-none',
+                                            )}
+                                            onClick={() => {
+                                              setFeedback(
+                                                feedback === 'down'
+                                                  ? null
+                                                  : 'down',
+                                              );
+                                              toast.success(
+                                                feedback === 'down'
+                                                  ? 'Feedback removed'
+                                                  : 'Bad response',
+                                              );
+                                            }}
+                                          >
+                                            {feedback === 'down' ? (
+                                              <ThumbsDownFilled
+                                                fill="currentColor"
+                                                className="h-4 w-4"
+                                              />
+                                            ) : (
+                                              <ThumbsDown className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Bad response</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Retry Button */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 px-2 hover:bg-accent cursor-pointer"
+                                            onClick={() => {
+                                              if (!onSubmit) return;
+                                              // Find the user group just before this assistant group
+                                              const userGroup =
+                                                finalGroupedMessages
+                                                  .slice(0, groupIndex)
+                                                  .reverse()
+                                                  .find(
+                                                    (g) => g.type === 'user',
+                                                  );
+                                              if (!userGroup) return;
+                                              const userMessage =
+                                                userGroup.messages[0];
+                                              let prompt =
+                                                typeof userMessage.content ===
+                                                'string'
+                                                  ? userMessage.content
+                                                  : '';
+                                              try {
+                                                const parsed =
+                                                  JSON.parse(prompt);
+                                                if (
+                                                  parsed &&
+                                                  typeof parsed.content ===
+                                                    'string'
+                                                ) {
+                                                  prompt = parsed.content;
+                                                }
+                                              } catch (e) {}
+                                              // Remove attachment info from prompt
+                                              prompt = prompt
+                                                .replace(
+                                                  /\[Uploaded File: .*?\]/g,
+                                                  '',
+                                                )
+                                                .trim();
+                                              if (
+                                                typeof setInputValue ===
+                                                'function'
                                               )
-                                              .trim();
-                                            if (
-                                              typeof setInputValue ===
-                                              'function'
-                                            )
-                                              setInputValue(prompt);
-                                            toast.success(
-                                              'Retrying previous prompt...',
-                                            );
-                                            onSubmit(prompt);
-                                            // Auto-scroll to bottom after retry
-                                            setTimeout(
-                                              () => scrollToBottom('smooth'),
-                                              100,
-                                            );
-                                          }}
-                                        >
-                                          <RotateCcw className="h-4 w-4 mr-1" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Retry</p>
-                                      </TooltipContent>
-                                    </Tooltip>
+                                                setInputValue(prompt);
+                                              toast.success(
+                                                'Retrying previous prompt...',
+                                              );
+                                              onSubmit(prompt);
+                                              // Auto-scroll to bottom after retry
+                                              setTimeout(
+                                                () => scrollToBottom('smooth'),
+                                                100,
+                                              );
+                                            }}
+                                          >
+                                            <RotateCcw className="h-4 w-4 mr-1" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Retry</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
                                   </div>
                                 )}
 
@@ -1742,9 +1821,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                               className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                             />
                                           )}
-                                          {showCursor && (
-                                            <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
-                                          )}
+                                          {showCursor && <ThinkingAnimation />}
 
                                           {detectedTag &&
                                           detectedTag === 'think' ? (
@@ -1892,7 +1969,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                 />
                                               )}
                                               {showCursor && (
-                                                <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
+                                                <ThinkingAnimation />
                                               )}
 
                                               {detectedTag &&
@@ -1941,20 +2018,6 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 )}
                             </div>
                           </div>
-
-                          {/* Helium logo and text at the bottom - only for the last assistant group */}
-                          {groupIndex === finalGroupedMessages.length - 1 && (
-                            <div className="flex items-center gap-2 mt-2">
-                              <div className="h-fit w-fit rounded-xl flex items-center justify-center">
-                                {getAgentInfo().avatar}
-                              </div>
-                              <div className="flex flex-col">
-                                <p className="text-sm font-medium text-foreground/60">
-                                  {getAgentInfo().name}
-                                </p>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
@@ -1969,16 +2032,12 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                   messages[messages.length - 1].type === 'user') && (
                   <div ref={latestMessageRef} className="w-full h-fit">
                     <div className="flex flex-col gap-4">
-                      {/* Logo positioned above the loader */}
+                      {/* Helium Logo and text above the loader for initial loading */}
                       <div className="flex items-center gap-2">
-                        <div className="h-8 w-fit rounded-xl flex items-center justify-center">
-                          {getAgentInfo().avatar}
-                        </div>
-                        <div className="flex flex-col">
-                          <p className="text-lg font-semibold text-foreground/80">
-                            {getAgentInfo().name}
-                          </p>
-                        </div>
+                        <HeliumLogo size={20} />
+                        <span className="text-lg font-semibold text-black">
+                          Helium
+                        </span>
                       </div>
 
                       {/* Loader content */}
@@ -1988,10 +2047,11 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                     </div>
                   </div>
                 )}
+
+              {/* Tool call content (without thinking animation) */}
               {readOnly && currentToolCall && (
                 <div ref={latestMessageRef}>
                   <div className="flex flex-col gap-2">
-                    {/* Tool call content */}
                     <div className="space-y-2">
                       <div className="animate-shimmer inline-flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-primary bg-primary/10 rounded-md border border-primary/20">
                         <CircleDashed className="h-3.5 w-3.5 text-primary flex-shrink-0 animate-spin animation-duration-2000" />
@@ -2000,48 +2060,23 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                         </span>
                       </div>
                     </div>
-
-                    {/* Logo positioned below the tool call */}
-
-                    <div className="flex items-center gap-2">
-                      <div className="h-12 w-fit rounded-xl flex items-center justify-center">
-                        {getAgentInfo().avatar}
-                      </div>
-                      <div className="flex flex-col">
-                        <p className="text-sm font-semibold text-foreground/80">
-                          {getAgentInfo().name}
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
 
-              {/* For playback mode - Show streaming indicator if no messages yet */}
+              {/* For playback mode - Show streaming indicator if no messages yet (without thinking animation) */}
               {readOnly &&
                 visibleMessages &&
                 visibleMessages.length === 0 &&
                 isStreamingText && (
                   <div ref={latestMessageRef}>
                     <div className="flex flex-col gap-2">
-                      {/* Streaming indicator content */}
                       <div className="max-w-[90%] px-4 py-3 text-sm">
                         <div className="flex items-center gap-1.5 py-1">
                           <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse" />
                           <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-150" />
-                          <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-300" />
-                        </div>
-                      </div>
+                          <div className="h-1.5 w-3.5 rounded-full bg-primary/50 animate-pulse delay-300" />
 
-                      {/* Logo positioned below the streaming indicator */}
-                      <div className="flex items-center gap-2">
-                        <div className="h-12 w-fit rounded-xl flex items-center justify-center">
-                          {getAgentInfo().avatar}
-                        </div>
-                        <div className="flex flex-col">
-                          <p className="text-sm font-semibold text-foreground/80">
-                            {getAgentInfo().name}
-                          </p>
                         </div>
                       </div>
                     </div>

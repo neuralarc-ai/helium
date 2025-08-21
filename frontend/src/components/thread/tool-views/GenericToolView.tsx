@@ -30,14 +30,27 @@ export function GenericToolView({
 }: ToolViewProps) {
   const toolTitle = getToolTitle(name);
 
+  // Add debugging to see what content is being passed
+  React.useEffect(() => {
+    if (assistantContent && typeof assistantContent === 'object') {
+      console.log('GenericToolView: assistantContent is an object:', assistantContent);
+    }
+    if (toolContent && typeof toolContent === 'object') {
+      console.log('GenericToolView: toolContent is an object:', toolContent);
+    }
+  }, [assistantContent, toolContent]);
+
   const formatContent = (content: any) => {
     if (!content) return null;
+
+    // Add debugging
+    console.log('GenericToolView: formatContent called with:', content, 'type:', typeof content);
 
     // Use the new parser for backwards compatibility
     const { toolResult } = extractToolData(content);
 
     if (toolResult) {
-      return {
+      const result = {
         tool: toolResult.xmlTagName || toolResult.functionName,
         arguments: toolResult.arguments || {},
         output: toolResult.toolOutput || '',
@@ -45,50 +58,121 @@ export function GenericToolView({
         summary: toolResult.summary || '',
         timestamp: toolResult.timestamp,
       };
+      console.log('GenericToolView: formatContent returning toolResult:', result);
+      return result;
     }
 
     // Fallback to legacy format handling
     if (typeof content === 'object') {
       // Check for direct structured format (legacy)
       if ('tool_name' in content || 'xml_tag_name' in content) {
-        return {
+        const result = {
           tool: content.tool_name || content.xml_tag_name || 'unknown',
           arguments: content.parameters || {},
           output: content.result || '',
           success: content.success !== false,
+          summary: '',
+          timestamp: undefined,
         };
+        console.log('GenericToolView: formatContent returning legacy structured:', result);
+        return result;
       }
 
       // Check if it has a content field that might contain the structured data (legacy)
       if ('content' in content && typeof content.content === 'object') {
         const innerContent = content.content;
         if ('tool_name' in innerContent || 'xml_tag_name' in innerContent) {
-          return {
+          const result = {
             tool: innerContent.tool_name || innerContent.xml_tag_name || 'unknown',
             arguments: innerContent.parameters || {},
             output: innerContent.result || '',
             success: innerContent.success !== false,
+            summary: '',
+            timestamp: undefined,
           };
+          console.log('GenericToolView: formatContent returning nested legacy structured:', result);
+          return result;
         }
       }
 
       // Fall back to old format handling
       if (content.content && typeof content.content === 'string') {
-        return { output: content.content };
+        const result = { 
+          tool: 'unknown',
+          arguments: {},
+          output: content.content,
+          success: true,
+          summary: '',
+          timestamp: undefined,
+        };
+        console.log('GenericToolView: formatContent returning content string:', result);
+        return result;
       }
-      return { output: JSON.stringify(content, null, 2) };
+      
+      // Ensure we always return a string output for objects to prevent React rendering issues
+      const safeOutput = typeof content === 'object' ? JSON.stringify(content, null, 2) : String(content);
+      const result = { 
+        tool: 'unknown',
+        arguments: {},
+        output: safeOutput,
+        success: true,
+        summary: '',
+        timestamp: undefined,
+      };
+      console.log('GenericToolView: formatContent returning safe object output:', result);
+      return result;
     }
 
     if (typeof content === 'string') {
       try {
         const parsedJson = JSON.parse(content);
-        return { output: JSON.stringify(parsedJson, null, 2) };
+        if (typeof parsedJson === 'object') {
+          const result = { 
+            tool: 'unknown',
+            arguments: {},
+            output: JSON.stringify(parsedJson, null, 2),
+            success: true,
+            summary: '',
+            timestamp: undefined,
+          };
+          console.log('GenericToolView: formatContent returning parsed JSON string:', result);
+          return result;
+        }
+        const result = { 
+          tool: 'unknown',
+          arguments: {},
+          output: content,
+          success: true,
+          summary: '',
+          timestamp: undefined,
+        };
+        console.log('GenericToolView: formatContent returning original string:', result);
+        return result;
       } catch (e) {
-        return { output: content };
+        const result = { 
+          tool: 'unknown',
+          arguments: {},
+          output: content,
+          success: true,
+          summary: '',
+          timestamp: undefined,
+        };
+        console.log('GenericToolView: formatContent returning original string (parse failed):', result);
+        return result;
       }
     }
 
-    return { output: String(content) };
+    // Ensure we always return a string output to prevent React rendering issues
+    const result = { 
+      tool: 'unknown',
+      arguments: {},
+      output: String(content),
+      success: true,
+      summary: '',
+      timestamp: undefined,
+    };
+    console.log('GenericToolView: formatContent returning final fallback:', result);
+    return result;
   };
 
   const formattedAssistantContent = React.useMemo(
@@ -116,6 +200,7 @@ export function GenericToolView({
                 {key.replace(/_/g, ' ')}
               </div>
               <div className="bg-background rounded-lg border p-3">
+                {/* Ensure we never try to render objects directly */}
                 {renderValue(value)}
               </div>
             </div>
@@ -146,6 +231,7 @@ export function GenericToolView({
                   {key.replace(/_/g, ' ')}
                 </div>
                 <div className="bg-background rounded-lg border p-3">
+                  {/* Ensure we never try to render objects directly */}
                   {renderValue(value)}
                 </div>
               </div>
@@ -154,6 +240,7 @@ export function GenericToolView({
         ) : (
           <div className="bg-muted/50 rounded-xl border p-4">
               <div className="text-base text-black dark:text-white whitespace-pre-wrap break-words">
+                {/* Ensure we never try to render objects directly */}
                 {renderValue(parsedOutput)}
               </div>
           </div>
@@ -163,6 +250,7 @@ export function GenericToolView({
   };
 
   const renderValue = (value: any): React.ReactNode => {
+    // Ensure we never try to render objects directly
     if (value === null || value === undefined) {
       return <span className="text-zinc-400 dark:text-zinc-500 italic">null</span>;
     }
@@ -229,20 +317,29 @@ export function GenericToolView({
     }
     
     if (typeof value === 'object') {
+      // Ensure we always return a string representation for objects
+      // This prevents React from trying to render objects directly
+      const jsonString = JSON.stringify(value, null, 2);
       return (
         <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded p-2">
           <pre className="text-xs text-black dark:text-white overflow-x-auto">
-            {JSON.stringify(value, null, 2)}
+            {jsonString}
           </pre>
         </div>
       );
     }
     
-    return <span className="text-black dark:text-white">{String(value)}</span>;
+    // For any other type, convert to string safely
+    // This is the final fallback to prevent any rendering issues
+    const safeString = String(value);
+    return <span className="text-black dark:text-white">{safeString}</span>;
   };
 
   const renderSummary = (summary: string) => {
     if (!summary) return null;
+
+    // Ensure we never try to render objects directly
+    const safeSummary = typeof summary === 'string' ? summary : String(summary);
 
     return (
       <div className="space-y-4">
@@ -252,7 +349,7 @@ export function GenericToolView({
         </div>
         <div className="bg-muted/50 rounded-xl border p-4">
             <div className="text-base text-black dark:text-white">
-              {summary}
+              {safeSummary}
             </div>
         </div>
       </div>
@@ -262,25 +359,28 @@ export function GenericToolView({
   const renderErrorOutput = (output: string) => {
     if (!output) return null;
 
+    // Ensure we never try to render objects directly
+    const safeOutput = typeof output === 'string' ? output : String(output);
+
     // Try to parse the error output to extract meaningful information
     let errorInfo = {
       type: 'general',
-      message: output,
+      message: safeOutput,
       details: null,
       suggestions: []
     };
 
     try {
       // Check if it's a JSON error
-      if (output.includes('Error parsing arguments:') || output.includes('Error executing')) {
-        const errorMatch = output.match(/Error (?:parsing arguments|executing [^:]+):\s*(.*)/);
+      if (safeOutput.includes('Error parsing arguments:') || safeOutput.includes('Error executing')) {
+        const errorMatch = safeOutput.match(/Error (?:parsing arguments|executing [^:]+):\s*(.*)/);
         if (errorMatch) {
           errorInfo.type = 'execution';
           errorInfo.message = errorMatch[1];
           
           // Try to extract validation errors
           try {
-            const jsonMatch = output.match(/\[([\s\S]*)\]/);
+            const jsonMatch = safeOutput.match(/\[([\s\S]*)\]/);
             if (jsonMatch) {
               const validationErrors = JSON.parse(jsonMatch[1]);
               errorInfo.details = validationErrors;
@@ -294,10 +394,10 @@ export function GenericToolView({
             // If JSON parsing fails, keep the original message
           }
         }
-      } else if (output.includes('Error')) {
+      } else if (safeOutput.includes('Error')) {
         // Handle any other error format
         errorInfo.type = 'general';
-        errorInfo.message = output.replace(/^Error\s*:?\s*/i, '');
+        errorInfo.message = safeOutput.replace(/^Error\s*:?\s*/i, '');
         errorInfo.suggestions = [
           'Review the input parameters',
           'Check if all required fields are provided',
@@ -439,7 +539,13 @@ export function GenericToolView({
                   </div>
                   <div className="p-3 bg-zinc-50 dark:bg-zinc-900/50 rounded-lg border border-zinc-200 dark:border-zinc-800">
                     <div className="text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-wrap break-words">
-                      {typeof formattedToolContent === 'string' ? formattedToolContent : JSON.stringify(formattedToolContent, null, 2)}
+                      {/* Ensure we never try to render objects directly */}
+                      {typeof formattedToolContent === 'string' 
+                        ? formattedToolContent 
+                        : typeof formattedToolContent === 'object' 
+                          ? JSON.stringify(formattedToolContent, null, 2)
+                          : String(formattedToolContent)
+                      }
                     </div>
                   </div>
                 </div>
