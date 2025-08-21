@@ -324,10 +324,13 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
       }
       uploadingSetRef.current.add(uploadKey);
 
-      if (isPdf || isCsv || isDocx) {
-        // Add to preview list instead of immediate upload
+      // Check if file is supported for vector processing
+      const isVectorSupported = isPdf || isCsv || isDocx;
+
+      if (isVectorSupported) {
+        // Add to preview list for vector processing
         setPreviewFiles((prev) => prev.concat({ file, status: 'ready' }));
-        toast.success(`Added ${file.name} to upload queue`);
+        toast.success(`Added ${file.name} for vector processing`);
       } else {
         // Read content client-side and include in the form content
         const content = await readFileContent(file);
@@ -379,15 +382,33 @@ export const KnowledgeBaseManager = ({ threadId }: KnowledgeBaseManagerProps) =>
         setIsUploading(false);
         return;
       }
-      const response = await uploadMutation.mutateAsync({ threadId, file, customName });
-      if (response) {
-        toast.success(`Uploaded and processed ${file.name}`);
-        setPreviewFiles((prev) => prev.filter((pf) => pf.file !== file));
-        await refetch();
-        await refetchKbContext();
+      
+      // Use the vector knowledge base API for supported file types
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      formDataUpload.append('kb_type', 'thread');
+      formDataUpload.append('thread_id', threadId);
+      
+      try {
+        const response = await fetch('/api/vector-kb/upload-document', {
+          method: 'POST',
+          body: formDataUpload,
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          toast.success(`Successfully uploaded ${file.name} for vector processing`);
+          setPreviewFiles((prev) => prev.filter((pf) => pf.file !== file));
+          await refetch();
+          await refetchKbContext();
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Upload failed');
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        toast.error(`Failed to upload file: ${file.name}`);
       }
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to upload file');
     } finally {
       setIsUploading(false);
     }

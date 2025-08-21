@@ -337,7 +337,7 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
       const dupKey = `${file.name}|${file.size}`;
       const exists =
         previewFiles.some(f => f.file.name === file.name && f.file.size === file.size) ||
-        uploadedFiles.some(f => f.file.name === file.name && f.file.size === file.size);
+        uploadedFiles.some(f => f.file.name === file.name && f.file.size === file.file.size);
       // Also prevent duplicates against existing KB entries by filename or name
       const existsInEntries = globalEntries.some(e => {
         const entryName = (e.name || '').toLowerCase();
@@ -355,12 +355,20 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
       }
       setPreviewFiles(prev => [...prev, { file, status: 'processing' }]);
 
-      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') ||
-          file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
-        // For PDF and CSV files, just add to preview without uploading yet
+      // Check if file is supported for vector processing
+      const isVectorSupported = file.type === 'application/pdf' || 
+                               file.type === 'text/csv' || 
+                               file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                               file.name.toLowerCase().endsWith('.pdf') ||
+                               file.name.toLowerCase().endsWith('.csv') ||
+                               file.name.toLowerCase().endsWith('.docx');
+
+      if (isVectorSupported) {
+        // For vector-supported files, add to preview for backend processing
         setPreviewFiles(prev => prev.map(f => 
           f.file === file ? { ...f, status: 'ready' } : f
         ));
+        toast.success(`Added ${file.name} for vector processing`);
       } else {
         // For other files, read as text and add to both preview and uploaded files
         try {
@@ -492,29 +500,36 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
         return;
       }
       
-      // Use the backend file upload endpoint for PDFs and CSVs
-      const response = await uploadFileMutation.mutateAsync({ 
-        file, 
-        customName: customName 
-      });
+      // Use the vector knowledge base API for supported file types
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('kb_type', 'global');
       
-      if (response && response.success) {
-        // The backend upload creates a knowledge base entry directly
-        toast.success(`Successfully uploaded and extracted text from ${file.name}`);
-        // Remove from preview and refresh the knowledge base list
-        setPreviewFiles(prev => prev.filter(f => f.file !== file));
-        refetchGlobal();
-      } else {
-        throw new Error('Failed to upload file');
+      try {
+        const response = await fetch('/api/vector-kb/upload-document', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          toast.success(`Successfully uploaded ${file.name} for vector processing`);
+          // Remove from preview and refresh the knowledge base list
+          setPreviewFiles(prev => prev.filter(f => f.file !== file));
+          refetchGlobal();
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Upload failed');
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        toast.error(`Failed to upload file: ${file.name}`);
+        // Update preview file status to error
+        const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+        setPreviewFiles(prev => prev.map(f => 
+          f.file === file ? { ...f, status: 'error', error: errorMessage } : f
+        ));
       }
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      toast.error(`Failed to upload file: ${file.name}`);
-      // Update preview file status to error
-      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
-      setPreviewFiles(prev => prev.map(f => 
-        f.file === file ? { ...f, status: 'error', error: errorMessage } : f
-      ));
     } finally {
       setIsUploading(false);
     }
@@ -531,6 +546,10 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
     }
     if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
       return FileCode;
+    }
+    if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+        file.name.toLowerCase().endsWith('.docx')) {
+      return FileText;
     }
     if (file.type.startsWith('image/')) {
       return ImageIcon;
@@ -940,7 +959,8 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
                       const FileIcon = getFileIcon(fileData.file);
                       const isPdf = fileData.file.type.includes('pdf') || fileData.file.name.toLowerCase().endsWith('.pdf');
                       const isCsv = fileData.file.type.includes('csv') || fileData.file.name.toLowerCase().endsWith('.csv');
-                      const needsUpload = isPdf || isCsv;
+                      const isDocx = fileData.file.type.includes('docx') || fileData.file.name.toLowerCase().endsWith('.docx');
+                      const needsUpload = isPdf || isCsv || isDocx;
                       
                       return (
                         <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-md border">
@@ -960,6 +980,11 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
                                 {isCsv && (
                                   <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
                                     CSV
+                                  </Badge>
+                                )}
+                                {isDocx && (
+                                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                                    DOCX
                                   </Badge>
                                 )}
                               </div>

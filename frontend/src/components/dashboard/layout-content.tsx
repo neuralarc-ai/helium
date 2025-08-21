@@ -12,6 +12,7 @@ import { Loader2 } from 'lucide-react';
 import { useApiHealth } from '@/hooks/react-query';
 import { MaintenancePage } from '@/components/maintenance/maintenance-page';
 import { DeleteOperationProvider } from '@/contexts/DeleteOperationContext';
+import { VectorKBProvider } from '@/contexts/VectorKnowledgeBaseContext';
 import { StatusOverlay } from '@/components/ui/status-overlay';
 import type { IMaintenanceNotice } from '@/lib/edge-flags';
 import { MaintenanceNotice } from './maintenance-notice';
@@ -96,12 +97,13 @@ export default function DashboardLayoutContent({
 
   return (
     <DeleteOperationProvider>
-      <SidebarProvider>
-        <SidebarLeft />
-        <SidebarInset>
-          {mantenanceBanner}
-          <div className="bg-background">{children}</div>
-        </SidebarInset>
+      <VectorKBProvider>
+        <SidebarProvider>
+          <SidebarLeft />
+          <SidebarInset>
+            {mantenanceBanner}
+            <div className="bg-background">{children}</div>
+          </SidebarInset>
 
         {/* <PricingAlert 
         open={showPricingAlert} 
@@ -118,7 +120,8 @@ export default function DashboardLayoutContent({
 
         {/* Status overlay for deletion operations */}
         <StatusOverlay />
-      </SidebarProvider>
+        </SidebarProvider>
+      </VectorKBProvider>
     </DeleteOperationProvider>
   );
 }

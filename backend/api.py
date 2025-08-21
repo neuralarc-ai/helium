@@ -176,6 +176,9 @@ api_router.include_router(email_api.router)
 from knowledge_base import api as knowledge_base_api
 api_router.include_router(knowledge_base_api.router)
 
+from vector_knowledge_base import api as vector_kb_api
+api_router.include_router(vector_kb_api.router)
+
 api_router.include_router(triggers_api.router)
 
 from pipedream import api as pipedream_api

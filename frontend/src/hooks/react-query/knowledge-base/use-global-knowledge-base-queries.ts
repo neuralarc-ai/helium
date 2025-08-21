@@ -82,7 +82,7 @@ export function useGlobalKnowledgeBaseEntries(options: { includeInactive?: boole
         params.append('include_inactive', 'true');
       }
       
-      const response = await fetch(`${API_URL}/knowledge-base/global?${params.toString()}`, { headers });
+      const response = await fetch(`${API_URL}/vector-kb/global-entries?${params.toString()}`, { headers });
       
       if (!response.ok) {
         const error = await response.text();
@@ -102,7 +102,7 @@ export function useCreateGlobalKnowledgeBaseEntry() {
   return useMutation({
     mutationFn: async (entryData: CreateKnowledgeBaseEntryRequest): Promise<KnowledgeBaseEntry> => {
       const headers = await getHeaders();
-      const response = await fetch(`${API_URL}/knowledge-base/global`, {
+      const response = await fetch(`${API_URL}/vector-kb/global-entries`, {
         method: 'POST',
         headers: {
           ...headers,
@@ -136,7 +136,7 @@ export function useUpdateGlobalKnowledgeBaseEntry() {
   return useMutation({
     mutationFn: async ({ entryId, entryData }: { entryId: string; entryData: UpdateKnowledgeBaseEntryRequest }): Promise<KnowledgeBaseEntry> => {
       const headers = await getHeaders();
-      const response = await fetch(`${API_URL}/knowledge-base/global/${entryId}`, {
+      const response = await fetch(`${API_URL}/vector-kb/global-entries/${entryId}`, {
         method: 'PUT',
         headers: {
           ...headers,
@@ -170,7 +170,7 @@ export function useDeleteGlobalKnowledgeBaseEntry() {
   return useMutation({
     mutationFn: async (entryId: string): Promise<void> => {
       const headers = await getHeaders();
-      const response = await fetch(`${API_URL}/knowledge-base/global/${entryId}`, {
+      const response = await fetch(`${API_URL}/vector-kb/global-entries/${entryId}`, {
         method: 'DELETE',
         headers,
       });
@@ -198,7 +198,7 @@ export function useGlobalKnowledgeBaseEntry(entryId: string) {
     queryKey: globalKnowledgeBaseKeys.detail(entryId),
     queryFn: async (): Promise<KnowledgeBaseEntry> => {
       const headers = await getHeaders();
-      const response = await fetch(`${API_URL}/knowledge-base/global/${entryId}`, { headers });
+      const response = await fetch(`${API_URL}/vector-kb/global-entries/${entryId}`, { headers });
       
       if (!response.ok) {
         const error = await response.text();
@@ -219,7 +219,7 @@ export function useGlobalKnowledgeBaseContext(maxTokens: number = 4000) {
     queryKey: globalKnowledgeBaseKeys.context(),
     queryFn: async (): Promise<{ context: string | null; max_tokens: number; account_id: string }> => {
       const headers = await getHeaders();
-      const response = await fetch(`${API_URL}/knowledge-base/global/context?max_tokens=${maxTokens}`, { headers });
+      const response = await fetch(`${API_URL}/vector-kb/global-entries/context?max_tokens=${maxTokens}`, { headers });
       
       if (!response.ok) {
         const error = await response.text();
@@ -259,7 +259,7 @@ export function useUploadGlobalFile() {
         formData.append('custom_name', customName);
       }
       
-      const response = await fetch(`${API_URL}/knowledge-base/global/upload-file`, {
+      const response = await fetch(`${API_URL}/vector-kb/upload-document`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,

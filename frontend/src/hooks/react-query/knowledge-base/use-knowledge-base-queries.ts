@@ -128,7 +128,7 @@ export const knowledgeBaseKeys = {
 
 // API functions
 const createKnowledgeBaseEntry = async (threadId: string, data: CreateKnowledgeBaseEntryRequest): Promise<KnowledgeBaseEntry> => {
-  const response = await fetch(`${API_URL}/knowledge-base/threads/${threadId}`, {
+  const response = await fetch(`${API_URL}/vector-kb/thread-entries/${threadId}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -145,7 +145,7 @@ const createKnowledgeBaseEntry = async (threadId: string, data: CreateKnowledgeB
 };
 
 const updateKnowledgeBaseEntry = async (entryId: string, data: UpdateKnowledgeBaseEntryRequest): Promise<KnowledgeBaseEntry> => {
-  const response = await fetch(`${API_URL}/knowledge-base/${entryId}`, {
+  const response = await fetch(`${API_URL}/vector-kb/entry/${entryId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -162,7 +162,7 @@ const updateKnowledgeBaseEntry = async (entryId: string, data: UpdateKnowledgeBa
 };
 
 const deleteKnowledgeBaseEntry = async (entryId: string): Promise<void> => {
-  const response = await fetch(`${API_URL}/knowledge-base/${entryId}`, {
+  const response = await fetch(`${API_URL}/vector-kb/entry/${entryId}`, {
     method: 'DELETE',
   });
 
@@ -173,7 +173,7 @@ const deleteKnowledgeBaseEntry = async (entryId: string): Promise<void> => {
 };
 
 const extractThreadKnowledge = async (threadId: string, data: ExtractThreadKnowledgeRequest): Promise<KnowledgeBaseEntry> => {
-  const response = await fetch(`${API_URL}/knowledge-base/threads/${threadId}/extract-knowledge`, {
+  const response = await fetch(`${API_URL}/vector-kb/thread-entries/${threadId}/extract-knowledge`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -197,7 +197,7 @@ export function useKnowledgeBaseEntries(threadId: string, includeInactive = fals
     queryKey: knowledgeBaseKeys.list(threadId),
     queryFn: async () => {
       const headers = await getHeaders();
-      const url = new URL(`${API_URL}/knowledge-base/threads/${threadId}`);
+      const url = new URL(`${API_URL}/vector-kb/thread-entries/${threadId}`);
       url.searchParams.set('include_inactive', includeInactive.toString());
       
       const response = await fetch(url.toString(), { headers });
@@ -220,7 +220,7 @@ export function useCreateKnowledgeBaseEntry() {
   return useMutation({
     mutationFn: async ({ threadId, data }: { threadId: string; data: CreateKnowledgeBaseEntryRequest }) => {
       const headers = await getHeaders();
-      const response = await fetch(`${API_URL}/knowledge-base/threads/${threadId}`, {
+      const response = await fetch(`${API_URL}/vector-kb/thread-entries/${threadId}`, {
         method: 'POST',
         headers: {
           ...headers,
@@ -304,7 +304,7 @@ export function useExtractThreadKnowledge() {
   return useMutation({
     mutationFn: async ({ threadId, data }: { threadId: string; data: ExtractThreadKnowledgeRequest }) => {
       const headers = await getHeaders();
-      const response = await fetch(`${API_URL}/knowledge-base/threads/${threadId}/extract-knowledge`, {
+      const response = await fetch(`${API_URL}/vector-kb/thread-entries/${threadId}/extract-knowledge`, {
         method: 'POST',
         headers: {
           ...headers,
@@ -333,7 +333,7 @@ export function useKnowledgeBaseContext(threadId: string, maxTokens = 4000) {
     queryKey: knowledgeBaseKeys.context(threadId),
     queryFn: async () => {
       const headers = await getHeaders();
-      const url = new URL(`${API_URL}/knowledge-base/threads/${threadId}/context`);
+      const url = new URL(`${API_URL}/vector-kb/thread-entries/${threadId}/context`);
       url.searchParams.set('max_tokens', maxTokens.toString());
       
       const response = await fetch(url.toString(), { headers });
@@ -431,7 +431,7 @@ export function useCombinedKnowledgeBaseContext(threadId: string, agentId?: stri
     queryKey: knowledgeBaseKeys.combinedContext(threadId, agentId),
     queryFn: async () => {
       const headers = await getHeaders();
-      const url = new URL(`${API_URL}/knowledge-base/threads/${threadId}/combined-context`);
+      const url = new URL(`${API_URL}/vector-kb/thread-entries/${threadId}/combined-context`);
       url.searchParams.set('max_tokens', maxTokens.toString());
       if (agentId) {
         url.searchParams.set('agent_id', agentId);
@@ -500,7 +500,7 @@ export function useUploadThreadFiles() {
       // Remove Content-Type header for FormData uploads - browser will set it automatically
       const { 'Content-Type': _, ...uploadHeaders } = headers;
 
-      const response = await fetch(`${API_URL}/knowledge-base/threads/${threadId}/upload-file`, {
+      const response = await fetch(`${API_URL}/vector-kb/thread-entries/${threadId}/upload-file`, {
         method: 'POST',
         headers: uploadHeaders,
         body: formData,
@@ -579,7 +579,7 @@ export function useSaveThreadKnowledgeToGlobal() {
   return useMutation({
     mutationFn: async (threadId: string) => {
       const headers = await getHeaders();
-      const response = await fetch(`${API_URL}/knowledge-base/threads/${threadId}/save-to-global`, {
+      const response = await fetch(`${API_URL}/vector-kb/thread-entries/${threadId}/save-to-global`, {
         method: 'POST',
         headers: {
           ...headers,
