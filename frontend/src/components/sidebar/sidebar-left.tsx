@@ -247,7 +247,7 @@ export function SidebarLeft({
             </div>
           )}
 
-          {!flagsLoading && customAgentsEnabled && !isProductionMode() && (
+          {!flagsLoading && customAgentsEnabled && (
             <SidebarMenu>
               <Collapsible
                 defaultOpen={pathname?.includes('/agents')}

@@ -147,7 +147,6 @@ const HIDE_STREAMING_XML_TAGS = new Set([
   'execute-data-provider-endpoint',
 ]);
 
-// Render Markdown content while preserving XML tags that should be displayed as tool calls
 export function renderMarkdownContent(
   content: string,
   handleToolClick: (
@@ -366,7 +365,7 @@ export function renderMarkdownContent(
       <PipedreamUrlDetector
         content={content}
         className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
-        // components={customTableComponents}
+        components={customTableComponents}
       />
     );
   }
@@ -712,9 +711,10 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     }
   };
 
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
     timeoutRef.current = setTimeout(() => {
       if (messagesContainerRef.current) {
         messagesContainerRef.current.scrollTo({
@@ -735,6 +735,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     const threshold = 150; // Allow some buffer
     return scrollHeight - scrollBottom <= threshold;
   }, []);
+  
+  
 
   // Auto-scroll to bottom when new messages arrive or agent status changes
   React.useEffect(() => {
@@ -845,6 +847,21 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     userHasScrolled,
     isLastAssistantMessageInView,
   ]);
+
+  // Auto-scroll when response generation completes or when chat history loads
+  React.useEffect(() => {
+    // Scroll when agent status changes from 'running' to 'idle' (completed)
+    // or when messages first load and user hasn't scrolled up
+    const shouldScroll = 
+      (agentStatus === 'idle' && messages.some(m => m.type === 'assistant')) || 
+      (messages.length > 0 && 
+       (!messagesContainerRef.current?.scrollTop || 
+        messagesContainerRef.current.scrollHeight - messagesContainerRef.current.clientHeight < 100));
+    
+    if (shouldScroll) {
+      scrollToBottom('smooth');
+    }
+  }, [agentStatus, messages, scrollToBottom]);
 
   // Complete auto-scroll strategy:
   // 1. Smooth scroll for user interactions (new messages, status changes)
@@ -2059,6 +2076,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                           <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse" />
                           <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-150" />
                           <div className="h-1.5 w-3.5 rounded-full bg-primary/50 animate-pulse delay-300" />
+
                         </div>
                       </div>
                     </div>

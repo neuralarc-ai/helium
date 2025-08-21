@@ -386,17 +386,36 @@ export const pipedreamApi = {
   },
 
   async getAppIcon(appSlug: string): Promise<AppIconResponse> {
-    const result = await backendApi.get<AppIconResponse>(
-      `/pipedream/apps/${appSlug}/icon`,
-      {
-        errorContext: { operation: 'load app icon', resource: 'Pipedream app icon' },
-      }
-    );
-    if (!result.success) {
-      throw new Error(result.error?.message || 'Failed to get app icon');
-    }
+    try {
+      const result = await backendApi.get<AppIconResponse>(
+        `/pipedream/apps/${appSlug}/icon`,
+        {
+          errorContext: { 
+            operation: 'load app icon', 
+            resource: `Pipedream app icon for ${appSlug}`,
+            silent: true // Prevent error toasts for missing icons
+          },
+        }
+      );
 
-    return result.data!;
+      if (!result.success) {
+        console.warn(`Failed to load icon for ${appSlug}:`, result.error?.message);
+        return {
+          success: true,
+          app_slug: appSlug,
+          icon_url: '' // Return empty string instead of failing
+        };
+      }
+
+      return result.data!;
+    } catch (error) {
+      console.warn(`Error loading icon for ${appSlug}:`, error);
+      return {
+        success: true,
+        app_slug: appSlug,
+        icon_url: '' // Return empty string instead of failing
+      };
+    }
   },
 
   async getAppTools(appSlug: string): Promise<{ success: boolean; tools: PipedreamTool[] }> {
