@@ -6,7 +6,7 @@ import React from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiMessageType } from '@/components/thread/types';
-import { CircleDashed, X, Minimize2, SkipForward, SkipBack, Globe, Wrench } from 'lucide-react';
+import { CircleDashed, X, Minimize2, SkipForward, SkipBack, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useMediumScreen } from '@/hooks/react-query/se-medium-screen';
 import { useCustomBreakpoint } from '@/hooks/use-custom-breakpoint';
-import { extractExposePortData } from './tool-views/expose-port-tool/_utils';
-import { FancyTabs, TabConfig } from '@/components/ui/fancy-tabs';
+// Removed Helium's Summary tab and related dependencies
 
 export interface ToolCallInput {
   assistantCall: {
@@ -105,7 +104,7 @@ export function ToolCallSidePanel({
   const [databaseRuntime, setDatabaseRuntime] = React.useState<number>(0);
   const [isLoadingRuntime, setIsLoadingRuntime] = React.useState(false);
   const [generatedAgentRunId, setGeneratedAgentRunId] = React.useState<string | null>(null);
-  const [activeTab, setActiveTab] = React.useState<'tool' | 'summary'>('tool');
+  // Summary tab removed; only showing Tool view
 
   const isMobile = useIsMobile();
   const [isFullScreen, setIsFullScreen] = React.useState(false);
@@ -655,30 +654,9 @@ export function ToolCallSidePanel({
     return () => clearInterval(interval);
   }, [isStreaming]);
 
-  // Aggregate all exposed URLs from completed tool calls (deduped)
-  const aggregatedExposedLinks = React.useMemo(() => {
-    const items: { url: string; port: number | null; timestamp?: string }[] = [];
-    const seen = new Set<string>();
-    toolCallSnapshots.forEach((snapshot) => {
-      const { port, url, actualToolTimestamp, actualAssistantTimestamp } = extractExposePortData(
-        snapshot.toolCall.assistantCall?.content,
-        snapshot.toolCall.toolResult?.content,
-        true,
-        snapshot.toolCall.toolResult?.timestamp,
-        snapshot.toolCall.assistantCall?.timestamp,
-      );
-      if (url && !seen.has(url)) {
-        seen.add(url);
-        items.push({ url, port: port ?? null, timestamp: actualToolTimestamp || actualAssistantTimestamp });
-      }
-    });
-    return items;
-  }, [toolCallSnapshots]);
+  // Summary aggregation removed
 
-  const tabs: TabConfig[] = React.useMemo(() => ([
-    { value: 'tool', icon: Wrench, label: 'Current Tool', shortLabel: 'Tool' },
-    { value: 'summary', icon: Globe, label: "Helium's Summary", shortLabel: 'Summary' },
-  ]), []);
+  // Tabs removed; only Tool view will be rendered
 
   const toolView = displayToolCall ? (
     <ToolView
@@ -698,36 +676,7 @@ export function ToolCallSidePanel({
     />
   ) : null;
   
-  const summaryView = (
-    <div className="space-y-3">
-      {aggregatedExposedLinks.length === 0 ? (
-        <div className="text-sm text-zinc-500 dark:text-zinc-400 py-6 text-center">
-          No exposed URLs yet.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-3">
-          {aggregatedExposedLinks.map((item, idx) => (
-            <div key={`${item.url}-${idx}`} className="flex items-center justify-between gap-3 border rounded-lg px-3 py-2 bg-card/40">
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate" title={item.url}>
-                  {item.url}
-                </div>
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Port: {item.port ?? '—'}
-                </div>
-              </div>
-              <Button asChild size="sm">
-                <a href={item.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1">
-                  Open in Browser
-                  <CircleDashed className="h-3.5 w-3.5" />
-                </a>
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  // Summary view removed
 
   if (!isOpen) {
     return null;
@@ -1079,10 +1028,8 @@ export function ToolCallSidePanel({
         </motion.div>
 
         <div className="flex-1 p-4 pt-0 overflow-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent">
-          <div className="mb-3 flex items-center justify-center">
-            <FancyTabs tabs={tabs} activeTab={activeTab} onTabChange={(v) => setActiveTab(v as 'tool' | 'summary')} />
-          </div>
-          {activeTab === 'tool' ? toolView : summaryView}
+          {/* Summary tab removed; render only Tool view */}
+          {toolView}
         </div>
       </div>
     );

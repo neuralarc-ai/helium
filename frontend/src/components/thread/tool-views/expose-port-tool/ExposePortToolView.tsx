@@ -50,21 +50,14 @@ const extractPortFromDaytonaUrl = (input?: string | null): number | null => {
 };
 
 // Normalize any Daytona proxy URLs found in freeform text to use 8080 prefix.
-// Optionally adjust 'port 8000' to 'port 8080' when the primary link is 8080-canonical.
+// Also scrub any explicit port mentions (e.g., 'port 8000') so the UI doesn't show port numbers.
 const canonicalizeExposeMessage = (text?: string | null, primaryUrl?: string | null): string | null => {
   if (!text) return text ?? null;
   let out = text;
   // Replace any Daytona proxy host prefix to 8080-
   out = out.replace(/https:\/\/(\d+)-((?:[A-Za-z0-9-]+)\.proxy\.daytona\.works)/g, 'https://8080-$2');
-  // If our main url uses 8080- prefix, align textual 'port 8000' mentions
-  try {
-    if (primaryUrl) {
-      const u = new URL(primaryUrl);
-      if (/^8080-/.test(u.hostname)) {
-        out = out.replace(/port\s*8000/gi, 'port 8080');
-      }
-    }
-  } catch {}
+  // Remove any 'port <digits>' mentions entirely
+  out = out.replace(/port\s*\d+/gi, '').replace(/\(\s*\)/g, '').replace(/\s{2,}/g, ' ').trim();
   return out;
 };
 
@@ -92,7 +85,7 @@ export function ExposePortToolView({
   );
 
   const tempUrl8000 = toPort8000(url);
-  const displayMessage = canonicalizeExposeMessage(message, url);
+  const displayMessage = 'Successfully exposed to the public. Users can now access this service at the above link.';
   const displayPort = extractPortFromDaytonaUrl(url) ?? port ?? null;
 
   return (
@@ -135,7 +128,7 @@ export function ExposePortToolView({
             iconColor="text-emerald-500 dark:text-emerald-400"
             bgColor="bg-gradient-to-b from-emerald-100 to-emerald-50 shadow-inner dark:from-emerald-800/40 dark:to-emerald-900/60 dark:shadow-emerald-950/20"
             title="Exposing port"
-            filePath={port?.toString()}
+            filePath={undefined}
             showProgress={true}
           />
         ) : (
@@ -145,19 +138,24 @@ export function ExposePortToolView({
                 <div className="p-4">
                   <div className="flex items-start gap-3 mb-3">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2">
-                        Open in Browser
-                      </h3>
+                      {/* Removed heading text as requested */}
                       {url ? (
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-md font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 mb-3 break-all max-w-full"
-                        >
-                          {url}
-                          <ExternalLink className="flex-shrink-0 h-3.5 w-3.5" />
-                        </a>
+                        <>
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-md font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 mb-1 break-all max-w-full"
+                          >
+                            Click here to open link
+                            <ExternalLink className="flex-shrink-0 h-3.5 w-3.5" />
+                          </a>
+                          {extractPortFromDaytonaUrl(url) === 8080 && (
+                            <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                              This Link is Permanent
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
                           Waiting for public URL...
@@ -169,17 +167,6 @@ export function ExposePortToolView({
                   </div>
 
                   <div className="space-y-3">
-                    <div className="flex flex-col gap-1.5">
-                      <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                        Port Details
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        <Badge variant="outline" className="bg-zinc-50 dark:bg-zinc-800 font-mono">
-                          Port: {displayPort ?? '—'}
-                        </Badge>
-                      </div>
-                    </div>
-
                     {displayMessage && (
                       <div className="text-sm text-zinc-600 dark:text-zinc-400">
                         {displayMessage}
@@ -188,18 +175,20 @@ export function ExposePortToolView({
 
                     {url && tempUrl8000 && (
                       <div className="mt-2">
+                        <div className="my-3 border-t border-zinc-200 dark:border-zinc-800" />
                         <a
                           href={tempUrl8000}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2 break-all max-w-full"
                         >
-                          {tempUrl8000}
+                          Click here to open link
                           <ExternalLink className="flex-shrink-0 h-3.5 w-3.5" />
                         </a>
                         <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                          Temporary link (port 8000)
+                          Temporary link
                         </div>
+                        <div className="my-3 border-t border-zinc-200 dark:border-zinc-800" />
                       </div>
                     )}
                   </div>
@@ -211,25 +200,13 @@ export function ExposePortToolView({
       </CardContent>
 
       <div className="px-4 py-2 h-10 bg-gradient-to-r from-zinc-50/90 to-zinc-100/90 dark:from-zinc-900/90 dark:to-zinc-800/90 backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4">
-        <div className="h-full flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-          {!isStreaming && displayPort && (
-            <Badge variant="outline">
-              <Computer className="h-3 w-3 mr-1" />
-              Port {displayPort}
-            </Badge>
-          )}
-        </div>
+        <div className="h-full flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400" />
 
         <div className="flex items-center gap-3">
           <div className="hidden sm:block text-xs text-zinc-500 dark:text-zinc-400">
             {actualToolTimestamp && formatTimestamp(actualToolTimestamp)}
           </div>
-          <Button asChild size="sm" variant={url ? 'default' : 'secondary'} disabled={!url}>
-            <a href={url || '#'} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1">
-              Open in Browser
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </Button>
+          {/* Removed footer action button with 'Open in Browser' label as requested */}
         </div>
       </div>
     </Card>

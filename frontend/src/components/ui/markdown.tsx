@@ -13,6 +13,25 @@ export type MarkdownProps = {
   components?: Partial<Components>;
 };
 
+// Normalize Daytona proxy links so that they use the 8080-prefixed subdomain.
+// Example: https://8000-abc.proxy.daytona.works/foo -> https://8080-abc.proxy.daytona.works/foo
+function canonicalizeDaytonaProxyUrl(input?: string): string | undefined {
+  if (!input) return input;
+  try {
+    const u = new URL(input);
+    const m = u.hostname.match(/^(\d+)-(.*\.proxy\.daytona\.works)$/);
+    if (m) {
+      u.hostname = `8080-${m[2]}`;
+      u.protocol = 'https:';
+      u.port = '';
+      return u.toString();
+    }
+    return input;
+  } catch {
+    return input;
+  }
+}
+
 function parseMarkdownIntoBlocks(markdown: string): string[] {
   const tokens = marked.lexer(markdown);
   return tokens.map((token: any) => token.raw);
@@ -143,15 +162,26 @@ const INITIAL_COMPONENTS: Partial<Components> = {
     );
   },
   a: function Anchor({ children, href, ...props }: any) {
+    const canonicalHref = canonicalizeDaytonaProxyUrl(href) ?? href;
+    const isDaytona = (() => {
+      try {
+        const u = new URL(canonicalHref ?? '');
+        return /^(\d+)-.*\.proxy\.daytona\.works$/.test(u.hostname);
+      } catch {
+        return false;
+      }
+    })();
+    // Hide raw Daytona URL and show friendly label
+    const displayChildren = isDaytona ? 'Click here to open Link' : children;
     return (
       <a
-        href={href}
+        href={canonicalHref}
         className="text-primary hover:underline dark:text-blue-400"
         target="_blank"
         rel="noopener noreferrer"
         {...props}
       >
-        {children}
+        {displayChildren}
       </a>
     );
   },
