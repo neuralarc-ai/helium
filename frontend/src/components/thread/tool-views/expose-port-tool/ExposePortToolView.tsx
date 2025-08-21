@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ExternalLink,
   CheckCircle,
@@ -87,6 +87,35 @@ export function ExposePortToolView({
   const tempUrl8000 = toPort8000(url);
   const displayMessage = 'Successfully exposed to the public. Users can now access this service at the above link.';
   const displayPort = extractPortFromDaytonaUrl(url) ?? port ?? null;
+
+  // Auto-hide logic for temporary (8000) link
+  // Backend sets sandbox auto_stop_interval=30 in `backend/sandbox/sandbox.py` (minutes)
+  const TEMP_LINK_TTL_MINUTES = 30;
+  const TEMP_LINK_TTL_MS = TEMP_LINK_TTL_MINUTES * 60 * 1000;
+
+  const createdAtMs = useMemo(() => {
+    // Prefer tool execution timestamp which corresponds to when the link was created
+    if (!actualToolTimestamp) return null;
+    const t = Date.parse(actualToolTimestamp);
+    return Number.isNaN(t) ? null : t;
+  }, [actualToolTimestamp]);
+
+  const [showTempLink, setShowTempLink] = useState(true);
+
+  useEffect(() => {
+    if (!tempUrl8000 || !createdAtMs) {
+      setShowTempLink(!!tempUrl8000);
+      return;
+    }
+    const update = () => {
+      const now = Date.now();
+      const age = now - createdAtMs;
+      setShowTempLink(age < TEMP_LINK_TTL_MS);
+    };
+    update();
+    const id = window.setInterval(update, 15_000); // check every 15s
+    return () => window.clearInterval(id);
+  }, [tempUrl8000, createdAtMs]);
 
   return (
     <Card className="gap-0 flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
@@ -187,7 +216,7 @@ export function ExposePortToolView({
                       </div>
                     )}
 
-                    {url && tempUrl8000 && (
+                    {url && tempUrl8000 && showTempLink && (
                       <div className="mt-2">
                         <div className="my-3 border-t border-zinc-200 dark:border-zinc-800" />
                         <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-3">
