@@ -49,6 +49,11 @@ class TaskPromptResponse(BaseModel):
     task: str
     prompt: str
 
+class TaskPromptsResponse(BaseModel):
+    role: str
+    task: str
+    prompts: list[str] = Field(default_factory=list, description="Multiple prompt variants")
+
 
 class RolePromptsResponse(BaseModel):
     role: str
@@ -859,6 +864,220 @@ async def get_prompts(
     return result
 
 
+@router.get("/get_prompts_multi/", response_model=TaskPromptsResponse)
+async def get_prompts_multi(
+    role: str = Query(..., description="HR role, e.g., Recruiter, HR Manager"),
+    task: str = Query(..., description="Task key or description"),
+    n: int = Query(default=3, ge=2, le=10, description="Number of prompt variants to generate"),
+):
+    """Return multiple prompt variants for a role+task.
+
+    Tries Tavily first with an instruction to produce N distinct, high-quality, concise prompts.
+    If Tavily fails, falls back to locally generated variations.
+    """
+    role_clean = role.strip()
+    task_clean = task.strip()
+    if not role_clean or not task_clean:
+        raise HTTPException(status_code=400, detail="Role and task must not be empty")
+
+    # Try Tavily to generate multiple prompts in a structured way
+    try:
+        query = (
+            f"Create {n} distinct, high-quality prompts for a {role_clean} to perform the task: {task_clean}. "
+            "Each prompt MUST be clearly different, from different perspectives such as: security, developer experience, performance/scalability, testing/quality, observability/operations, or integrations. "
+            "Format EACH prompt as 4-5 lines: the first line sets the objective; the next lines are numbered steps (1., 2., 3., 4., 5.). "
+            "Do NOT repeat the same generic steps across prompts; steps must be specific to the perspective. "
+            "Return ONLY a JSON array of strings (each string is one multi-line prompt)."
+        )
+        answer = await _call_tavily(query)
+        prompts: list[str] = []
+        try:
+            parsed = json.loads(answer)
+            if isinstance(parsed, list):
+                prompts = [str(p).strip() for p in parsed if str(p).strip()]
+            elif isinstance(parsed, dict) and "prompts" in parsed and isinstance(parsed["prompts"], list):
+                prompts = [str(p).strip() for p in parsed["prompts"] if str(p).strip()]
+        except Exception:
+            # Heuristic split if JSON parsing failed
+            parts = [p.strip(" -\n\t") for p in re.split(r"\n+|\|\|", answer) if p.strip()]
+            prompts = [p for p in parts if len(p) > 10]
+
+        # Guardrails + enforce 4-5 lines each
+        prompts = prompts[:n] if prompts else []
+        prompts = [_ensure_prompt_lines(p, role_clean, task_clean, index=i) for i, p in enumerate(prompts)]
+
+        # Deduplicate; if duplicates remain, top up with local variants
+        seen: set[str] = set()
+        unique_prompts: list[str] = []
+        for p in prompts:
+            key = p.strip().lower()
+            if key not in seen:
+                seen.add(key)
+                unique_prompts.append(p)
+        prompts = unique_prompts
+        if len(prompts) < n:
+            # Top up with local variants
+            needed = n - len(prompts)
+            prompts.extend(_generate_local_prompt_variants(role_clean, task_clean, needed))
+
+        return TaskPromptsResponse(role=role_clean, task=task_clean, prompts=prompts[:n])
+
+    except Exception as e:
+        logger.warning(f"Multi-prompt Tavily generation failed: {e}")
+        # Local fallback with variants
+        prompts = _generate_local_prompt_variants(role_clean, task_clean, n)
+        return TaskPromptsResponse(role=role_clean, task=task_clean, prompts=prompts)
+
+
+def _generate_local_prompt_variants(role: str, task: str, n: int) -> list[str]:
+    """Produce n locally generated prompt variations with meaningfully different emphases.
+
+    Each prompt is 4–5 lines and tailored to a specific perspective so that
+    the resulting steps differ materially from each other.
+    """
+    themes = [
+        {
+            "title": "Security-first implementation",
+            "bullets": [
+                "Define authentication flows and threat model (OWASP, token lifetimes, rotation).",
+                "Design data model and secrets handling (hashing, salting, KMS/env separation).",
+                "Implement endpoints with strict validation, RBAC/ABAC, and rate limiting.",
+                "Add auditing, structured logs, and security tests (negative paths, fuzzing).",
+                "Document security controls, incident steps, and playbooks.",
+            ],
+        },
+        {
+            "title": "DX and maintainability",
+            "bullets": [
+                "Capture API requirements and produce an OpenAPI spec with examples.",
+                "Establish layered architecture, dependency boundaries, and naming conventions.",
+                "Generate scaffolding, linters, and pre-commit hooks; adopt typed interfaces.",
+                "Write integration/contract tests with mocked providers and seed data.",
+                "Create developer docs, runbooks, and local recipes for fast onboarding.",
+            ],
+        },
+        {
+            "title": "Performance and scalability",
+            "bullets": [
+                "Define SLAs and load targets; model throughput and latency budgets.",
+                "Select cache strategy (session/refresh), indexes, and connection pooling.",
+                "Implement idempotent endpoints, pagination, and bulk operations.",
+                "Add metrics, tracing, and stress tests with realistic concurrency.",
+                "Plan horizontal scaling and rollout with health checks and canaries.",
+            ],
+        },
+        {
+            "title": "Testing and quality",
+            "bullets": [
+                "Break down acceptance criteria and edge cases for the task.",
+                "Create unit, integration, and e2e tests covering success and failure paths.",
+                "Set up test data factories and deterministic seeds for repeatability.",
+                "Enable CI with coverage gates and flaky-test quarantine.",
+                "Add regression checks and API contract verification.",
+            ],
+        },
+        {
+            "title": "Observability and operations",
+            "bullets": [
+                "Instrument endpoints with structured logs and trace spans (request ids).",
+                "Expose health/metrics; add dashboards for auth rates, errors, latency.",
+                "Implement alert thresholds and runbooks for common failures.",
+                "Create rollout plan, migration steps, and reversible changes.",
+                "Document SLOs and on-call procedures for the service.",
+            ],
+        },
+        {
+            "title": "Extensibility and integrations",
+            "bullets": [
+                "Map future auth providers (OAuth2, SAML, OTP) and abstraction points.",
+                "Design provider-agnostic interfaces and configuration strategy.",
+                "Implement feature flags and migration-friendly storage for identities.",
+                "Validate flows with sandbox credentials and contract tests.",
+                "Outline roadmap and risks for adding providers safely.",
+            ],
+        },
+    ]
+
+    variants: list[str] = []
+    for t in themes:
+        header = f"As a {role}, you need to {task}. {t['title']} approach:" \
+            if not t["title"].lower().startswith("as a") else t["title"]
+        lines = [
+            header,
+            f"1. {t['bullets'][0]}",
+            f"2. {t['bullets'][1]}",
+            f"3. {t['bullets'][2]}",
+            f"4. {t['bullets'][3]}",
+        ]
+        # Optionally add fifth line if available
+        if len(t["bullets"]) > 4:
+            lines.append(f"5. {t['bullets'][4]}")
+        variants.append("\n".join(lines))
+        if len(variants) >= n:
+            break
+
+    # Ensure 4–5 lines and deduplicate
+    variants = [_ensure_prompt_lines(v, role, task) for v in variants]
+    seen: set[str] = set()
+    unique: list[str] = []
+    for v in variants:
+        key = v.strip().lower()
+        if key not in seen:
+            seen.add(key)
+            unique.append(v.strip())
+        if len(unique) >= n:
+            break
+
+    return unique
+
+
+def _ensure_prompt_lines(text: str, role: str, task: str, index: int | None = None) -> str:
+    """Ensure prompt is formatted as 4-5 lines. If too short, expand using local template."""
+    # Normalize newlines
+    cleaned = text.strip().strip('`')
+    lines = [l.strip() for l in cleaned.splitlines() if l.strip()]
+    if len(lines) >= 4:
+        # Ensure numbering 1., 2., 3., 4. are on their own lines
+        normalized: list[str] = []
+        for l in lines[:5]:
+            m = re.match(r"^(?:\d+[\.)]\s+)?(.*)$", l)
+            body = (m.group(1) if m else l).strip()
+            normalized.append(body)
+        numbered = [
+            f"1. {normalized[0]}",
+            f"2. {normalized[1] if len(normalized) > 1 else normalized[0]}",
+            f"3. {normalized[2] if len(normalized) > 2 else normalized[0]}",
+            f"4. {normalized[3] if len(normalized) > 3 else normalized[0]}",
+        ]
+        if len(normalized) > 4:
+            numbered.append(f"5. {normalized[4]}")
+        return "\n".join(numbered)
+
+    # If the text is one-liner, embed into a structured multi-line workflow
+    base = _generate_local_prompt(role, task)
+    base_lines = [l.strip() for l in base.splitlines() if l.strip()]
+    # Replace first line with a synthesized objective using original text
+    first = lines[0] if lines else f"As a {role}, your task is to {task}."
+    # Apply a slight variation based on index to make steps differ
+    variations = [
+        "Focus on scope, constraints, and acceptance criteria.",
+        "Identify data models, interfaces, and error semantics.",
+        "Choose frameworks, libraries, and dependency boundaries.",
+        "Plan observability, metrics, and deployment strategy.",
+        "Mitigate risks and outline rollback procedures.",
+    ]
+    v = variations[(index or 0) % len(variations)]
+    synthesized = [first]
+    # Convert base steps to numbered points and inject variation in step 1
+    numbered = []
+    for i, step in enumerate(base_lines[1:6], start=1):
+        body = re.sub(r"^\d+[\.)]\s+", "", step).strip()
+        if i == 1:
+            body = f"{body} {v}"
+        numbered.append(f"{i}. {body}")
+    return "\n".join(numbered[:5])
+
+
 @router.get("/test_company_profile/")
 async def test_company_profile():
     """Test endpoint to verify company profile extraction is working"""
@@ -1115,12 +1334,12 @@ async def get_company_profile(
             
             # Ultimate fallback: minimal response
             logger.warning("All extraction methods failed, returning minimal response")
-            return CompanyProfileResponse(
-                company_name=name,
-                website_url=url_clean,
-                company_description="Description currently unavailable.",
+        return CompanyProfileResponse(
+            company_name=name,
+            website_url=url_clean,
+            company_description="Description currently unavailable.",
                 services=[],
                 products=[],
-            )
+        )
 
 

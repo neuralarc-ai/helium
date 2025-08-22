@@ -102,6 +102,8 @@ export function NavUserWithTeams({
   const [copied, setCopied] = React.useState(false);
   // simple client cache to reduce backend calls in-session
   const singlePromptCacheRef = React.useRef<Map<string, string>>(new Map());
+  // store multiple prompts for UI rendering
+  const [selectedPrompts, setSelectedPrompts] = React.useState<string[]>([]);
 
   // Prepare personal account and team accounts
   const personalAccount = React.useMemo(
@@ -185,9 +187,13 @@ export function NavUserWithTeams({
   };
 
   const handleCopy = async () => {
-    if (!selectedPrompt) return;
+    // copy all prompts if available, else single prompt
+    const textToCopy = selectedPrompts.length > 0
+      ? selectedPrompts.map((p, i) => `${i + 1}. ${p}`).join('\n\n')
+      : selectedPrompt;
+    if (!textToCopy) return;
     try {
-      await navigator.clipboard.writeText(selectedPrompt);
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
@@ -197,7 +203,8 @@ export function NavUserWithTeams({
 
   const fetchTaskPrompt = async (role: string, taskKey: string) => {
     const roleKey = role.trim();
-    const cacheKey = `${roleKey}:${taskKey}`;
+    const n = 5;
+    const cacheKey = `${roleKey}:${taskKey}:n=${n}`;
     setErrorMsg(null);
     setIsLoadingTask(true);
 
@@ -205,20 +212,41 @@ export function NavUserWithTeams({
     const cachedSingle = singlePromptCacheRef.current.get(cacheKey);
     if (cachedSingle) {
       setSelectedPrompt(cachedSingle);
+      // hydrate prompts list from cached text by splitting on double newlines if present
+      const parts = cachedSingle.split(/\n\n+/).map((s) => s.replace(/^\d+\.\s*/, '').trim()).filter(Boolean);
+      if (parts.length > 1) setSelectedPrompts(parts);
       setIsLoadingTask(false);
       return;
     }
 
     try {
-      const { data, success } = await backendApi.get<{ role: string; task: string; prompt: string }>(
-        `/get_prompts/?role=${encodeURIComponent(roleKey)}&task=${encodeURIComponent(taskKey)}`,
+      // Try multi-prompt endpoint first
+      const multi = await backendApi.get<{ role: string; task: string; prompts: string[] }>(
+        `/get_prompts_multi/?role=${encodeURIComponent(roleKey)}&task=${encodeURIComponent(taskKey)}&n=${n}`,
       );
-      if (!success || !data) throw new Error('Request failed');
-      const prompt: string = data.prompt ?? '';
-      setSelectedPrompt(prompt);
-      singlePromptCacheRef.current.set(cacheKey, prompt);
+
+      let promptOut = '';
+      if (multi.success && multi.data && Array.isArray(multi.data.prompts) && multi.data.prompts.length > 0) {
+        // Join prompts with spacing and numbering
+        promptOut = multi.data.prompts
+          .map((p, i) => `${i + 1}. ${p}`)
+          .join('\n\n');
+        setSelectedPrompts(multi.data.prompts);
+      } else {
+        // Fallback to single prompt endpoint
+        const single = await backendApi.get<{ role: string; task: string; prompt: string }>(
+          `/get_prompts/?role=${encodeURIComponent(roleKey)}&task=${encodeURIComponent(taskKey)}`,
+        );
+        if (!single.success || !single.data) throw new Error('Request failed');
+        promptOut = single.data.prompt ?? '';
+        setSelectedPrompts([]);
+      }
+
+      setSelectedPrompt(promptOut);
+      singlePromptCacheRef.current.set(cacheKey, promptOut);
     } catch (err: any) {
       setSelectedPrompt('');
+      setSelectedPrompts([]);
       setErrorMsg('Failed to generate the prompt. Please try again.');
     } finally {
       setIsLoadingTask(false);
@@ -660,18 +688,31 @@ export function NavUserWithTeams({
                       type="button"
                       variant="secondary"
                       onClick={handleCopy}
-                      disabled={!selectedPrompt}
+                      disabled={!selectedPrompt && selectedPrompts.length === 0}
                       className="h-8 px-3"
                     >
                       {copied ? 'Copied' : 'Copy'}
                     </Button>
                   </div>
-                  <Textarea
-                    readOnly
-                    value={isLoadingTask ? 'Generating…' : selectedPrompt}
-                    placeholder={'Type a role and task, then click Generate'}
-                    className="min-h-[360px]"
-                  />
+                  {selectedPrompts.length > 0 ? (
+                    <div className="max-h-[360px] overflow-y-auto pr-2">
+                      <div className="grid gap-3">
+                        {selectedPrompts.map((p, idx) => (
+                          <div key={`prompt-${idx}`} className="rounded-md border p-3 whitespace-pre-wrap text-sm leading-6 bg-background">
+                            <div className="font-medium mb-1">Prompt {idx + 1}</div>
+                            {formatPromptToLines(p)}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <Textarea
+                      readOnly
+                      value={isLoadingTask ? 'Generating…' : selectedPrompt}
+                      placeholder={'Type a role and task, then click Generate'}
+                      className="min-h-[360px]"
+                    />
+                  )}
                 </div>
               </TabsContent>
 
@@ -799,6 +840,41 @@ function CompanyProfileTab() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// Helper to format a prompt into ~4-5 lines for readability
+function formatPromptToLines(prompt: string) {
+  // Prefer explicit line breaks from backend. First line is objective, following are numbered steps
+  const rawLines = prompt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (rawLines.length > 0 && /^(?:\d+[\.)])/.test(rawLines[0])) {
+    // If first line is also numbered, treat all as steps
+    const steps = rawLines.map(l => {
+      const m = l.match(/^(\d+)[\.)]\s*(.*)$/);
+      return m ? `${m[1]}. ${m[2]}` : l;
+    });
+    return (
+      <div className="space-y-1">
+        {steps.map((s, i) => (
+          <div key={i}>{s}</div>
+        ))}
+      </div>
+    );
+  }
+
+  const objective = rawLines[0] ?? '';
+  const steps = rawLines.slice(1).map(l => {
+    const m = l.match(/^(\d+)[\.)]\s*(.*)$/);
+    return m ? `${m[1]}. ${m[2]}` : l;
+  });
+
+  return (
+    <div className="space-y-1">
+      {objective && <div>{objective}</div>}
+      {steps.map((s, i) => (
+        <div key={i}>{s}</div>
+      ))}
     </div>
   );
 }
