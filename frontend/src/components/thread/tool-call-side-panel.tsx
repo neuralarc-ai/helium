@@ -505,8 +505,8 @@ export function ToolCallSidePanel({
       if (agentStatus === 'running') {
         return (
           <div className={`${baseClasses} bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800`}>
-            <div className={`${dotClasses} bg-helium-teal animate-pulse`} />
-            <span className={`${textClasses} text-helium-teal`}>Live Updates</span>
+            <div className={`${dotClasses} bg-helium-green animate-pulse`} />
+            <span className={`${textClasses} text-helium-green`}>Live Updates</span>
           </div>
         );
       } else {
@@ -524,8 +524,8 @@ export function ToolCallSidePanel({
             className={`${baseClasses} bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors cursor-pointer`}
             onClick={jumpToLive}
           >
-            <div className={`${dotClasses} bg-helium-teal animate-pulse`} />
-            <span className={`${textClasses} text-helium-teal`}>Jump to Live</span>
+            <div className={`${dotClasses} bg-helium-green animate-pulse`} />
+            <span className={`${textClasses} text-helium-green`}>Jump to Live</span>
           </div>
         );
       } else {

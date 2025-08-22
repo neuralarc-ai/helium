@@ -222,7 +222,7 @@ export const PipedreamRegistry: React.FC<PipedreamRegistryProps> = ({
       <div className="sticky flex items-center justify-between top-0 z-10 flex-shrink-0 border-b bg-background px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-helium-teal flex items-center justify-center">
+            <div className="h-10 w-10 rounded-lg bg-helium-green flex items-center justify-center">
               <Boxes className="h-6 w-6 stroke-[1.5] text-white" />
             </div>
             <div>

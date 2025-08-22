@@ -404,45 +404,41 @@ export function NavUserWithTeams({
                 {/* Token Usage Section */}
                 <DropdownMenuSeparator />
 
-                {/* <DropdownMenuSeparator /> */}
-
-                {/* User Settings Section */}
-                {/* <DropdownMenuGroup>
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings/billing">
-                      <CreditCard className="h-4 w-4" />
-                      Billing
-                    </Link>
-                  </DropdownMenuItem>
-                  {!flagLoading && customAgentsEnabled && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings/api-keys">
-                        <Key className="h-4 w-4" />
-                        API Keys
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  {isLocalMode() && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/settings/env-manager">
-                        <KeyRound className="h-4 w-4" />
-                        Local .Env Manager
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem
-                    onClick={() =>
-                      setTheme(theme === 'light' ? 'dark' : 'light')
-                    }
-                  >
-                    <div className="flex items-center gap-2">
-                      <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                      <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                      <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
+                {/* Theme Toggle */}
+                <DropdownMenuItem
+                  onClick={() =>
+                    setTheme(theme === 'light' ? 'dark' : 'light')
+                  }
+                  className="gap-2 p-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-4 h-4">
+                      <svg
+                        className="w-4 h-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 absolute inset-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <circle cx="12" cy="12" r="5" />
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                      </svg>
+                      <svg
+                        className="w-4 h-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 absolute inset-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                      </svg>
                     </div>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup> */}
-                {/* <DropdownMenuSeparator /> */}
+                    <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive focus:bg-destructive/10"
                   onClick={handleLogout}

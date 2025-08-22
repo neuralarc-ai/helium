@@ -118,11 +118,11 @@ export const ThinkingAccordion: React.FC<ThinkingAccordionProps> = ({
         onClick={toggleAccordion}
         className="flex items-center gap-1 w-full text-left cursor-pointer"
       >
-        <span className="font-medium text-base text-helium-teal chat-markdown">Thinking</span>
+        <span className="font-medium text-base text-helium-blue chat-markdown">Thinking</span>
         {isOpen ? (
-          <ChevronUp className="h-4 w-4 text-helium-teal" />
+          <ChevronUp className="h-4 w-4 text-helium-blue" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-helium-teal" />
+          <ChevronDown className="h-4 w-4 text-helium-blue" />
         )}
       </button>
 
@@ -138,16 +138,16 @@ export const ThinkingAccordion: React.FC<ThinkingAccordionProps> = ({
           {/* Content with left padding for the line */}
           <div
             ref={contentRef}
-            className="ml-1 pl-6 pr-4 mb-2 rounded-r-lg border-l-2 border-l-helium-teal/80 relative"
+            className="ml-1 pl-6 pr-4 mb-2 rounded-r-lg border-l-2 border-l-helium-blue/80 relative"
           >
             {/* Top diamond at the start of the border */}
             <div className="absolute left-0 top-0 transform -translate-x-[5px] -translate-y-1/2">
-              <div className="w-2 h-2 rounded-full bg-helium-teal rotate-45"></div>
+              <div className="w-2 h-2 rounded-full bg-helium-blue rotate-45"></div>
             </div>
             
             {/* Bottom diamond at the end of the border */}
             <div className="absolute left-0 bottom-0 transform -translate-x-[5px] translate-y-1/2">
-              <div className="w-2 h-2 rounded-full bg-helium-teal rotate-45"></div>
+              <div className="w-2 h-2 rounded-full bg-helium-blue rotate-45"></div>
             </div>
             
             {shouldShowStreaming ? (
@@ -166,9 +166,9 @@ export const ThinkingAccordion: React.FC<ThinkingAccordionProps> = ({
                 {/* Streaming indicator */}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <div className="flex space-x-1">
-                    <div className="w-1 h-1 bg-helium-teal rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-1 h-1 bg-helium-teal rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-1 h-1 bg-helium-teal rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <div className="w-1 h-1 bg-helium-blue rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-1 h-1 bg-helium-blue rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-1 h-1 bg-helium-blue rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>

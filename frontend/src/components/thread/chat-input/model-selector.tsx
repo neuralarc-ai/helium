@@ -484,7 +484,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
               >
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center">
-                    <span className={cn("font-semibold", selectedModel === opt.id && "text-helium-pink")}>
+                    <span className={cn("font-semibold", selectedModel === opt.id && "text-helium-blue")}>
                       {opt.label}
                     </span>
                   </div>
@@ -525,7 +525,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                       </>
                     )}
                     {selectedModel === opt.id && (
-                      <Check className="h-4 w-4 text-helium-pink" />
+                      <Check className="h-4 w-4 text-helium-blue" />
                     )}
                   </div>
                 </div>
@@ -580,7 +580,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                   ref={triggerButtonRef}
                   variant="ghost"
                   size="sm"
-                  className="h-fit p-2.5 bg-transparent border-0 rounded-full aspect-square text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-2 cursor-pointer"
+                  className="h-fit p-2.5 bg-transparent border-0 rounded-full aspect-square text-muted-foreground hover:text-foreground hover:bg-accent dark:text-white dark:hover:bg-sidebar/50 flex items-center gap-2 cursor-pointer"
                 >
                   <div className="relative flex items-center justify-center">
                     <Cpu className="h-5 w-5" />

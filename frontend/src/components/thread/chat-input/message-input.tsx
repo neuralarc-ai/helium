@@ -287,11 +287,11 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                 onClick={isAgentRunning && onStopAgent ? onStopAgent : onSubmit}
                 size="icon"
                 className={cn(
-                  'w-9 h-9 flex-shrink-0 rounded-full bg-helium-teal hover:bg-helium-teal/80 cursor-pointer',
+                  'w-9 h-9 flex-shrink-0 rounded-full bg-helium-blue dark:bg-helium-yellow hover:bg-helium-blue/80 dark:hover:bg-helium-yellow/80 cursor-pointer',
                   (!value.trim() && uploadedFiles.length === 0 && !isAgentRunning) ||
                     loading ||
                     (disabled && !isAgentRunning)
-                    ? 'opacity-50'
+                    ? 'opacity-80'
                     : '',
                 )}
                 disabled={

@@ -7,8 +7,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-  --color-helium-pink: var(--helium-pink);
-  --color-helium-teal: var(--helium-teal);
+  --color-helium-green: var(--helium-green);
+  --color-helium-yellow: var(--helium-yellow);
   --color-helium-blue: var(--helium-blue);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -254,10 +254,18 @@
     transform: rotate(3deg) scale(1.05);}
   100% {
     background-position: 0% 50%;
-    transform: rotate(-5deg) scale(0.9);}}}
+    transform: rotate(-5deg) scale(0.9);}}
+  --animate-shine: shine var(--duration) infinite linear;
+  @keyframes shine {
+  0% {
+    background-position: 0% 0%;}
+  50% {
+    background-position: 100% 100%;}
+  to {
+    background-position: 0% 0%;}}}
 
 :root {
-  --background: oklch(0.9789 0.0013 106.42);
+  --background: oklch(0.9581 0 0);
   --foreground: oklch(0.2277 0.0034 67.65);
   --card: oklch(98.46% 0.002 247.84);
   --card-foreground: oklch(0.145 0 0);
@@ -290,13 +298,13 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --helium-pink: oklch(0.744 0.1819 347.04);
-  --helium-teal: oklch(0.7197 0.1217 174.92);
-  --helium-blue: oklch(0.6562 0.1183 246.5);
+  --helium-yellow: oklch(0.9699 0.1925 109.51);
+  --helium-blue: oklch(0.5608 0.2416 270.34);
+  --helium-green: oklch(0.9024 0.2346 134.77);
 }
 
 .dark {
-  --background: oklch(0.185 0.005 285.823);
+  --background: oklch(0.2686 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.2 0.005 285.823);
   --card-foreground: oklch(0.985 0 0);
@@ -320,7 +328,7 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.185 0.005 285.823);
+  --sidebar: oklch(0.235 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -328,9 +336,9 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
-  --helium-pink: oklch(0.744 0.1819 347.04);
-  --helium-teal: oklch(0.7197 0.1217 174.92);
-  --helium-blue: oklch(0.6562 0.1183 246.5);
+  --helium-yellow: oklch(0.9699 0.1925 109.51);
+  --helium-blue: oklch(0.5608 0.2416 270.34);
+  --helium-green: oklch(0.9024 0.2346 134.77);
 }
 
 @layer base {
@@ -405,14 +413,14 @@
 /* Custom styles for Markdown chat content */
 .prose.chat-markdown {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  
+
   /* Override h1 to use Libre Baskerville */
   & h1 {
     font-family: "Libre Baskerville", serif !important;
     font-weight: 700 !important;
     font-size: 1.875rem !important;
   }
-  
+
   /* Ensure reasonable spacing */
   & > * + * {
     margin-top: 1em;
@@ -621,7 +629,7 @@
 /* Tool call sidepanel markdown styling */
 .prose.chat-markdown .markdown {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  
+
   /* Override h1 to use Libre Baskerville */
   & h1 {
     font-family: "Libre Baskerville", serif !important;
@@ -1021,7 +1029,6 @@
       0 6px 10px 0 #FE6FAF inset;
   }
 }
-
 
 @media (max-width: 915px) and (min-width: 768px) {
   .feature-title {

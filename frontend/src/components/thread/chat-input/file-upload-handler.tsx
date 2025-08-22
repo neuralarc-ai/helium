@@ -280,7 +280,7 @@ export const FileUploadHandler = forwardRef<
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <svg
-                      className="h-5 w-5 text-black/80"
+                      className="h-5 w-5 text-black/80 dark:text-white hover:bg-accent dark:hover:bg-sidebar/50"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"

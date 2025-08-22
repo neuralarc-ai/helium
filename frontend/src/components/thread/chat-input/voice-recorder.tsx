@@ -142,7 +142,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     const getButtonClass = () => {
         switch (state) {
             case 'recording':
-                return 'text-helium-pink/80 hover:bg-accent hover:text-helium-pink';
+                return 'text-helium-blue/80 hover:bg-accent hover:text-helium-blue';
             case 'processing':
                 return '';
             default:
@@ -172,7 +172,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                         onClick={handleClick}
                         onContextMenu={handleRightClick}
                         disabled={disabled || state === 'processing'}
-                        className={`h-fit p-1 bg-transparent border-0 rounded-full aspect-square text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-2 transition-colors cursor-pointer ${getButtonClass()}`}
+                        className={`h-fit p-1 bg-transparent border-0 rounded-full aspect-square text-muted-foreground hover:text-foreground hover:bg-accent dark:text-white dark:hover:bg-sidebar/50 flex items-center gap-2 transition-colors cursor-pointer ${getButtonClass()}`}
                     >
                         {getIcon()}
                     </Button>

@@ -1,0 +1,390 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+# Helium AI - AGENTS.md
+
+## Project Overview
+
+Helium AI is a God Mode agent platform with a full-stack architecture for enterprise automation. The project consists of:
+
+- **Backend**: Python 3.11+ FastAPI service with agent execution, LLM integration, and database management
+- **Frontend**: Next.js 15+ React application with TypeScript and Tailwind CSS
+- **Agent System**: Isolated Docker environments with comprehensive tool execution capabilities
+- **Database**: Supabase for persistence, authentication, and real-time features
+
+## Development Environment Setup
+
+### Prerequisites
+- Python 3.11.10+ (managed via `mise`)
+- Node.js 20+ (managed via `mise`)
+- Docker and Docker Compose
+- UV package manager for Python
+
+### Quick Start
+```bash
+# Install dependencies
+mise install
+
+# Start development environment
+python start.py
+
+# Or use Docker Compose directly
+docker-compose up -d
+```
+
+### Backend Setup
+```bash
+cd backend
+
+# Install Python dependencies
+uv sync
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your configuration
+
+# Run development server
+uv run uvicorn api:app --reload --host 0.0.0.0 --port 8000
+
+# Run tests
+uv run pytest
+
+# Run linting
+uv run black .
+uv run isort .
+```
+
+### Frontend Setup
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.local.example .env.local
+# Edit .env.local with your configuration
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Run tests and linting
+npm run lint
+npm run format:check
+```
+
+## Code Style & Standards
+
+### Python (Backend)
+- **Python Version**: 3.11+
+- **Framework**: FastAPI with async/await patterns
+- **Code Style**: Black formatting, isort for imports
+- **Type Hints**: Comprehensive type hints required
+- **Dependencies**: Use UV for package management
+- **File Structure**: Follow existing module organization in `backend/`
+
+```python
+# Example FastAPI route pattern
+@router.post("/agents", response_model=AgentResponse)
+async def create_agent(
+    agent_data: AgentCreateRequest,
+    db: DBConnection = Depends(get_db),
+    user: UserClaims = Depends(get_current_user)
+) -> AgentResponse:
+    try:
+        agent = await agent_service.create_agent(agent_data, user.id)
+        return AgentResponse.from_orm(agent)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+```
+
+### TypeScript (Frontend)
+- **TypeScript**: Strict mode enabled
+- **Framework**: Next.js 15+ with App Router
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **State Management**: React Query for server state, Zustand for local state
+- **File Structure**: Feature-based organization in `src/`
+
+```typescript
+// Example component pattern
+interface AgentCardProps {
+  agent: Agent;
+  onRun?: (agentId: string) => void;
+}
+
+export function AgentCard({ agent, onRun }: AgentCardProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{agent.name}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>{agent.description}</p>
+        <Button onClick={() => onRun?.(agent.id)}>
+          Run Agent
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+## Testing Guidelines
+
+### Backend Testing
+```bash
+cd backend
+
+# Run all tests
+uv run pytest
+
+# Run specific test file
+uv run pytest tests/test_agent.py
+
+# Run with coverage
+uv run pytest --cov=agent --cov-report=html
+
+# Run async tests
+uv run pytest -m "asyncio"
+```
+
+### Frontend Testing
+```bash
+cd frontend
+
+# Run linting
+npm run lint
+
+# Check formatting
+npm run format:check
+
+# Fix formatting
+npm run format
+
+# Type checking
+npx tsc --noEmit
+```
+
+## Database & Migrations
+
+### Supabase Setup
+- Database migrations are in `backend/supabase/migrations/`
+- Use proper SQL with UUID primary keys and RLS policies
+- Follow existing schema patterns for consistency
+
+### Migration Best Practices
+```sql
+-- Example migration pattern
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS example_table (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE example_table ENABLE ROW LEVEL SECURITY;
+
+-- Create RLS policies
+CREATE POLICY "Users can manage their own records" ON example_table
+    FOR ALL USING (auth.uid() = user_id);
+
+COMMIT;
+```
+
+## Agent System Architecture
+
+### Tool Development
+- Extend `AgentBuilderBaseTool` for agent builder tools
+- Use proper OpenAPI schema decorators
+- Follow established error handling patterns
+- Implement proper logging with structured logging
+
+```python
+class ExampleTool(AgentBuilderBaseTool):
+    @openapi_schema({
+        "type": "function",
+        "function": {
+            "name": "example_action",
+            "description": "Perform an example action",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "param1": {"type": "string", "description": "First parameter"}
+                },
+                "required": ["param1"]
+            }
+        }
+    })
+    async def example_action(self, param1: str) -> ToolResult:
+        try:
+            result = await self.perform_action(param1)
+            return self.success_response(result=result)
+        except Exception as e:
+            return self.fail_response(f"Failed: {str(e)}")
+```
+
+### Docker Integration
+- Agent execution uses isolated Docker containers
+- Follow security best practices for sandboxing
+- Implement proper resource limits and timeouts
+
+## API Development
+
+### FastAPI Patterns
+- Use dependency injection for database connections
+- Implement proper request/response models with Pydantic
+- Follow RESTful API design principles
+- Use proper HTTP status codes and error responses
+
+### Authentication
+- JWT validation for Supabase tokens
+- Implement proper role-based access control
+- Use dependencies for authentication middleware
+
+## Frontend Development
+
+### Component Guidelines
+- Use shadcn/ui components as the default choice
+- Implement proper loading and error states
+- Use React Query for data fetching
+- Follow accessibility best practices
+
+### State Management
+- Server state: React Query with proper caching
+- Local state: React hooks or Zustand
+- Forms: React Hook Form with Zod validation
+
+## Docker & Deployment
+
+### Development
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f backend
+
+# Stop services
+docker-compose down
+```
+
+### Production
+- Use proper environment variables
+- Implement health checks
+- Use multi-stage Docker builds
+- Configure proper logging and monitoring
+
+## Environment Configuration
+
+### Backend Environment Variables
+```bash
+# Required for backend/.env
+DATABASE_URL=postgresql://...
+SUPABASE_URL=https://...
+SUPABASE_SERVICE_KEY=...
+REDIS_URL=redis://...
+OPENAI_API_KEY=...
+ANTHROPIC_API_KEY=...
+```
+
+### Frontend Environment Variables
+```bash
+# Required for frontend/.env.local
+NEXT_PUBLIC_SUPABASE_URL=https://...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+## Commit Guidelines
+
+### Commit Message Format
+```
+[<module>] <action>: <description>
+
+[backend] feat: add new agent tool for web scraping
+[frontend] fix: resolve authentication state persistence issue
+[docs] update: add API endpoint documentation
+```
+
+### Pre-commit Checklist
+- [ ] All tests pass
+- [ ] Code is properly formatted
+- [ ] Type checking passes
+- [ ] Linting passes
+- [ ] Database migrations are tested
+- [ ] Environment variables are documented
+
+## Performance & Monitoring
+
+### Backend Monitoring
+- Use structured logging with `structlog`
+- Implement proper error tracking with Sentry
+- Use Langfuse for LLM call tracing
+- Monitor Redis and database performance
+
+### Frontend Performance
+- Use Next.js App Router features
+- Implement proper code splitting
+- Use React Query for efficient data fetching
+- Monitor bundle size and Core Web Vitals
+
+## Security Considerations
+
+### Backend Security
+- Validate all inputs using Pydantic models
+- Implement proper CORS policies
+- Use row-level security (RLS) in database
+- Encrypt sensitive credentials using Fernet
+
+### Frontend Security
+- Validate user inputs on both client and server
+- Implement proper authentication flows
+- Use HTTPS in production
+- Follow OWASP security guidelines
+
+## Troubleshooting
+
+### Common Issues
+1. **Redis Connection**: Check Redis service is running and accessible
+2. **Database Migrations**: Ensure Supabase is properly configured
+3. **Agent Execution**: Check Docker daemon and container logs
+4. **Frontend Build**: Clear Next.js cache and node_modules
+
+### Debug Commands
+```bash
+# Check service status
+docker-compose ps
+
+# View service logs
+docker-compose logs -f <service_name>
+
+# Access container shell
+docker-compose exec <service_name> /bin/bash
+
+# Check database connection
+docker-compose exec backend python -c "from services.supabase import DBConnection; print('DB OK')"
+```
+
+## Additional Resources
+
+- **Backend Documentation**: Check `backend/README.md` for detailed setup
+- **Frontend Documentation**: Check `frontend/README.md` for UI guidelines
+- **Self-Hosting Guide**: See `docs/SELF-HOSTING.md` for deployment
+- **API Documentation**: Available at `/docs` when backend is running
+
+## Getting Help
+
+- Check existing issues in the repository
+- Review the codebase for similar implementations
+- Follow established patterns and conventions
+- Use structured logging for debugging
+- Test changes thoroughly before committing

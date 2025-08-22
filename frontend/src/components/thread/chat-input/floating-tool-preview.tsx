@@ -184,7 +184,7 @@ export const FloatingToolPreview: React.FC<FloatingToolPreviewProps> = ({
         return {
           text: 'Task Completed',
           icon: <Check className="h-3 w-3 text-white" />,
-          bgColor: 'bg-helium-teal',
+          bgColor: 'bg-helium-green',
         };
       case 'running':
         if (hasTaskList && taskProgress.currentTask) {

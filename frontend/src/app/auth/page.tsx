@@ -35,6 +35,7 @@ import Image from 'next/image';
 import { ReleaseBadge } from '@/components/auth/release-badge';
 import LoginFooter from './login-footer/login-footer';
 import { motion } from 'framer-motion';
+import { ThemeToggle } from '@/components/home/theme-toggle';
 
 // Helper function to check if we're in production mode
 const isProductionMode = (): boolean => {
@@ -279,7 +280,12 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#EDEDED] relative">
+    <div className="min-h-screen bg-background relative">
+      {/* Theme Toggle Button - Top Right */}
+      <div className="absolute top-6 right-6 z-50">
+        <ThemeToggle />
+      </div>
+      
       <div className="flex min-h-screen items-center justify-center gap-8 px-4 sm:px-6 lg:px-0">
         <motion.div
           initial={{ opacity: 0 }}
@@ -289,19 +295,19 @@ function LoginContent() {
             ease: [0.4, 0, 0.2, 1],
             delay: 1.0,
           }}
-          className="hidden lg:flex items-center justify-center relative overflow-hidden h-[600px] w-[600px]"
+          className="hidden lg:flex items-center relative overflow-hidden h-[740px] w-[540px]"
         >
           <div className="absolute inset-0 flex items-center justify-center">
             <Image
               src="/auth/login.png"
               alt="Login illustration"
-              width={500}
-              height={600}
+              width={560}
+              height={740}
               className="object-contain max-w-full h-full"
               priority
             />
           </div>
-          <div className="absolute top-6 left-1/2 transform -translate-x-1/2 flex flex-col items-center z-10">
+          <div className="absolute top-12 left-16 transform -translate-x-1/2 flex flex-col items-center z-10">
             <motion.div
               initial={{ opacity: 0, rotate: -10 }}
               animate={{ opacity: 1, rotate: 0 }}
@@ -312,14 +318,14 @@ function LoginContent() {
               }}
             >
               <Image
-                src="/helium-agent.png"
+                src="/auth/helium-white.svg"
                 alt="Helium Logo"
-                width={40}
-                height={40}
+                width={60}
+                height={60}
                 className="mb-2"
               />
             </motion.div>
-            <motion.p
+            {/* <motion.p
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{
@@ -342,7 +348,7 @@ function LoginContent() {
               className="text-[12px] text-white/90"
             >
               Autonomous Intelligence
-            </motion.p>
+            </motion.p> */}
           </div>
         </motion.div>
         <div className="flex flex-col items-center justify-center h-[600px] w-full max-w-[500px]">
@@ -357,7 +363,7 @@ function LoginContent() {
                   height={40}
                   className="mb-0"
                 />
-                {/* <p className="text-xl text-black">Helium</p> */}
+                {/* <p className="text-xl text-foreground">Helium</p> */}
               </div>
             </div>
           </Link>
@@ -375,7 +381,7 @@ function LoginContent() {
           >
             <Link
               href="/"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-black transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
               Back to home
@@ -390,13 +396,13 @@ function LoginContent() {
               delay: 0.8,
             }}
             layout
-            className="w-full bg-white/77 rounded-[24px] p-6 sm:p-8"
+            className="w-full bg-card/77 backdrop-blur-sm rounded-[24px] p-6 sm:p-8 border border-border/50"
           >
             <form className="space-y-3 mb-4">
               <div className="space-y-2">
                 <label
                   htmlFor="email"
-                  className="text-sm font-medium text-black"
+                  className="text-sm font-medium text-foreground"
                 >
                   Email
                 </label>
@@ -405,7 +411,7 @@ function LoginContent() {
                   name="email"
                   type="email"
                   placeholder="Email address"
-                  className="h-14 py-3 rounded-lg dark:bg-transparent dark:border-black/20 text-black placeholder:text-black/70"
+                  className="h-14 py-3 rounded-lg bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
                   required
                 />
               </div>
@@ -413,7 +419,7 @@ function LoginContent() {
                 <div className="flex justify-between items-center">
                   <label
                     htmlFor="password"
-                    className="text-sm font-medium text-black"
+                    className="text-sm font-medium text-foreground"
                   >
                     Password
                   </label>
@@ -432,7 +438,7 @@ function LoginContent() {
                   name="password"
                   type="password"
                   placeholder="Password"
-                  className="h-14 py-3 rounded-lg dark:bg-transparent dark:border-black/20 text-black placeholder:text-black/70"
+                  className="h-14 py-3 rounded-lg bg-background/50 border-border text-foreground placeholder:text-muted-foreground"
                   required
                 />
               </div>
@@ -440,7 +446,7 @@ function LoginContent() {
                 <div className="space-y-2">
                   <label
                     htmlFor="confirmPassword"
-                    className="text-sm font-medium text-black"
+                    className="text-sm font-medium text-foreground"
                   >
                     Confirm Password
                   </label>
@@ -449,7 +455,7 @@ function LoginContent() {
                     name="confirmPassword"
                     type="password"
                     placeholder="Confirm password"
-                    className="h-12 sm:h-14 py-3 rounded-lg dark:bg-transparent text-black placeholder:text-black/70 text-sm sm:text-base"
+                    className="h-12 sm:h-14 py-3 rounded-lg bg-background/50 border-border text-foreground placeholder:text-muted-foreground text-sm sm:text-base"
                     required
                   />
                 </div>
@@ -458,7 +464,7 @@ function LoginContent() {
                 <div className="relative">
                   <SubmitButton
                     formAction={isSignUp ? handleSignUp : handleSignIn}
-                    className="w-full h-11 sm:h-12 bg-gradient-to-r from-helium-pink to-helium-teal text-white hover:opacity-90 transition-opacity rounded-lg text-sm sm:text-base"
+                    className="w-full h-11 sm:h-12 bg-gradient-to-r from-helium-blue to-helium-green text-white hover:opacity-90 transition-opacity rounded-lg text-sm sm:text-base"
                     pendingText={
                       isSignUp ? 'Creating account...' : 'Initiating...'
                     }

@@ -33,6 +33,7 @@ import { BillingModal } from '@/components/billing/billing-modal';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { BorderBeam } from '@/components/magicui/border-beam';
+import { ShineBorder } from '@/components/magicui/shine-border';
 // import posthog from 'posthog-js';
 
 export interface ChatInputHandles {
@@ -601,7 +602,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             </button>
           )}
           <Card
-            className={`-mb-2 p-0 mt-4 z-30 bg-white shadow-[0px_12px_24px_0px_rgba(0,0,0,0.05)] w-full max-w-4xl mx-auto border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl mb-6' : 'rounded-3xl'} relative`}
+            className={`-mb-2 p-0 mt-4 z-30 bg-white dark:bg-sidebar shadow-[0px_12px_24px_0px_rgba(0,0,0,0.05)] w-full max-w-4xl mx-auto border-none overflow-visible ${enableAdvancedConfig && selectedAgentId ? 'rounded-3xl mb-6' : 'rounded-3xl'} relative`}
             onDragOver={handleDragOver}
             onDrop={(e) => {
               e.preventDefault();
@@ -622,22 +623,28 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
             }}
           >
             <div className="w-full text-sm flex flex-col justify-between items-start rounded-4xl">
-            <CardContent className={`w-full border border-black/10 rounded-3xl p-1 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-1'} overflow-hidden relative`}>
+            <CardContent className={`w-full border border-black/10 dark:border-none rounded-3xl p-1 ${enableAdvancedConfig && selectedAgentId ? 'pb-1' : 'pb-1'} overflow-hidden relative`}>
                 {/* Border Beam Effect */}
                 <div className="absolute inset-0 rounded-[inherit] overflow-hidden">
-                  <BorderBeam 
-                    duration={6}
+                  {/* <BorderBeam 
+                    duration={4}
                     borderWidth={1}
-                    size={200}
-                    className="from-transparent via-helium-teal to-transparent"
+                    size={220}
+                    className="from-transparent via-helium-blue to-transparent"
                   />
                   <BorderBeam 
+                    duration={4}
+                    borderWidth={1}
+                    delay={2}
+                    size={220}
+                    className="from-transparent via-helium-green to-transparent"
+                  /> */}
+                  <ShineBorder
                     duration={6}
                     borderWidth={1}
-                    delay={3}
-                    size={200}
-                    className="from-transparent via-helium-pink to-transparent"
+                    shineColor={["oklch(0.5608 0.2416 270.34)", "oklch(0.9699 0.1925 109.51)", "oklch(0.9024 0.2346 134.77)"]}
                   />
+                  
                 </div>               
                 <AttachmentGroup
                   files={uploadedFiles || []}
@@ -688,7 +695,7 @@ export const ChatInput = forwardRef<ChatInputHandles, ChatInputProps>(
 
           {enableAdvancedConfig && selectedAgentId && (
             <div className="w-full max-w-4xl mx-auto -mt-12 relative z-1">
-              <div className="bg-gradient-to-b from-transparent via-trasnparent to-helium-teal/15 pt-8 pb-2 px-4 rounded-b-3xl border border-t-0 border-border/50 transition-all duration-300 ease-out">
+              <div className="bg-gradient-to-b from-transparent via-trasnparent to-helium-green/15 pt-8 pb-2 px-4 rounded-b-3xl border border-t-0 border-border/50 transition-all duration-300 ease-out">
                 <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-none relative">
                   <button
                     onClick={() => setRegistryDialogOpen(true)}

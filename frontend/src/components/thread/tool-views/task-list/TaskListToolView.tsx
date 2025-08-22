@@ -27,11 +27,11 @@ const TaskItem: React.FC<{ task: Task; index: number }> = ({ task, index }) => {
       {/* Status Icon */}
       <div className="flex-shrink-0">
         {isCompleted && (
-          <div className="h-4 w-4 rounded-full bg-helium-teal flex items-center justify-center">
+          <div className="h-4 w-4 rounded-full bg-helium-green flex items-center justify-center">
             <Check className="h-2.5 w-2.5 text-white" />
           </div>
         )}
-        {isCancelled && <X className="h-4 w-4 text-helium-pink" />}
+        {isCancelled && <X className="h-4 w-4 text-helium-blue" />}
         {isPending && (
           <div className="h-4 w-4 rounded-full border-[1.5px] border-dashed border-zinc-400 dark:border-zinc-600" />
         )}
@@ -149,7 +149,7 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
         {isStreaming && !hasData ? (
           <div className="flex flex-col items-center justify-center h-full py-12 px-6 bg-gradient-to-b from-white to-zinc-50 dark:from-zinc-950 dark:to-zinc-900">
             <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6 bg-gradient-to-b from-green-100 to-green-50 shadow-inner dark:from-green-800/40 dark:to-green-900/60">
-              <Clock className="h-10 w-10 text-helium-teal animate-spin" />
+              <Clock className="h-10 w-10 text-helium-green animate-spin" />
             </div>
             <h3 className="text-xl font-semibold mb-2 text-zinc-900 dark:text-zinc-100">
               Loading Tasks
@@ -194,7 +194,7 @@ export const TaskListToolView: React.FC<ToolViewProps> = ({
               {completedTasks === totalTasks && totalTasks > 0 && (
                 <Badge
                   variant="outline"
-                  className="h-6 py-0.5 bg-green-50 dark:bg-green-900/20 text-helium-teal border-helium-teal/80"
+                  className="h-6 py-0.5 bg-green-50 dark:bg-green-900/20 text-helium-green border-helium-green/80"
                 >
                   <Check className="h-3 w-3" />
                   All complete
