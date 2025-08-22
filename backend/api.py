@@ -182,7 +182,9 @@ from pipedream import api as pipedream_api
 api_router.include_router(pipedream_api.router)
 
 from waitlist import api as waitlist_api
+from agent import prompts as prompts_api
 api_router.include_router(waitlist_api.router)
+api_router.include_router(prompts_api.router)
 
 # MFA functionality moved to frontend
 

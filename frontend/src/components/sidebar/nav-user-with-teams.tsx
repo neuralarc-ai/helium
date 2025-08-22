@@ -20,6 +20,7 @@ import {
   Moon,
   KeyRound,
   Pencil,
+  Sparkles,
 } from 'lucide-react';
 import { useAccounts } from '@/hooks/use-accounts';
 import NewTeamForm from '@/components/basejump/new-team-form';
@@ -57,6 +58,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/components/AuthProvider';
 import { useSubscriptionUsage } from '@/hooks/useSubscriptionUsage';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { backendApi } from '@/lib/api-client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function NavUserWithTeams({
   user,
@@ -86,6 +91,17 @@ export function NavUserWithTeams({
   const { refreshUser } = useAuth();
   const { usedCredits, totalCredits, usagePercent, isLoading, error } =
     useSubscriptionUsage();
+  const [showPersonalizationDialog, setShowPersonalizationDialog] = React.useState(false);
+  // Personalization states
+  const [roleInput, setRoleInput] = React.useState('');
+  const [taskInput, setTaskInput] = React.useState(''); // manual task entry
+  const [selectedTaskKey, setSelectedTaskKey] = React.useState<string | null>(null);
+  const [selectedPrompt, setSelectedPrompt] = React.useState('');
+  const [isLoadingTask, setIsLoadingTask] = React.useState(false);
+  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+  const [copied, setCopied] = React.useState(false);
+  // simple client cache to reduce backend calls in-session
+  const singlePromptCacheRef = React.useRef<Map<string, string>>(new Map());
 
   // Prepare personal account and team accounts
   const personalAccount = React.useMemo(
@@ -166,6 +182,47 @@ export function NavUserWithTeams({
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/auth');
+  };
+
+  const handleCopy = async () => {
+    if (!selectedPrompt) return;
+    try {
+      await navigator.clipboard.writeText(selectedPrompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) {
+      // no-op
+    }
+  };
+
+  const fetchTaskPrompt = async (role: string, taskKey: string) => {
+    const roleKey = role.trim();
+    const cacheKey = `${roleKey}:${taskKey}`;
+    setErrorMsg(null);
+    setIsLoadingTask(true);
+
+    // prefer single-prompt cache
+    const cachedSingle = singlePromptCacheRef.current.get(cacheKey);
+    if (cachedSingle) {
+      setSelectedPrompt(cachedSingle);
+      setIsLoadingTask(false);
+      return;
+    }
+
+    try {
+      const { data, success } = await backendApi.get<{ role: string; task: string; prompt: string }>(
+        `/get_prompts/?role=${encodeURIComponent(roleKey)}&task=${encodeURIComponent(taskKey)}`,
+      );
+      if (!success || !data) throw new Error('Request failed');
+      const prompt: string = data.prompt ?? '';
+      setSelectedPrompt(prompt);
+      singlePromptCacheRef.current.set(cacheKey, prompt);
+    } catch (err: any) {
+      setSelectedPrompt('');
+      setErrorMsg('Failed to generate the prompt. Please try again.');
+    } finally {
+      setIsLoadingTask(false);
+    }
   };
 
   const getInitials = (name: string) => {
@@ -348,10 +405,7 @@ export function NavUserWithTeams({
                       className="gap-2 p-2"
                     >
                       <div className="flex size-6 items-center justify-center">
-                        <img
-                          src="/neuralarc/User_scan_light.png"
-                          className="size-6 shrink-0"
-                        />
+                        <User className="size-6 shrink-0" />
                       </div>
                       {personalAccount?.name
                         ? personalAccount.name.replace(/\b\w/g, (char) =>
@@ -364,6 +418,16 @@ export function NavUserWithTeams({
                           className="size-4 shrink-0"
                         />
                       </DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                    {/* Personalization button */}
+                    <DropdownMenuItem
+                      onClick={() => setShowPersonalizationDialog(true)}
+                      className="gap-2 p-2"
+                    >
+                      <div className="flex size-6 items-center justify-center">
+                        <Sparkles className="size-4" />
+                      </div>
+                      Personalization
                     </DropdownMenuItem>
                   </>
                 )}
@@ -463,10 +527,7 @@ export function NavUserWithTeams({
                   className="text-destructive focus:text-destructive focus:bg-destructive/10"
                   onClick={handleLogout}
                 >
-                  <img
-                    src="/neuralarc/logout.png"
-                    className="h-4 w-4 text-destructive"
-                  />
+                  <LogOut className="h-4 w-4 text-destructive" />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -520,6 +581,224 @@ export function NavUserWithTeams({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Personalization Dialog */}
+      <Dialog
+        open={showPersonalizationDialog}
+        onOpenChange={(open) => {
+          setShowPersonalizationDialog(open);
+          if (!open) {
+            setRoleInput('');
+            setTaskInput('');
+            setSelectedTaskKey(null);
+            setSelectedPrompt('');
+            setErrorMsg(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[900px]">
+          <DialogHeader>
+            <DialogTitle>Personalization</DialogTitle>
+            <DialogDescription>
+              Type a role and a task, then click Generate to create a prompt you can copy.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Tabs defaultValue="prompt" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="prompt">Prompt Library</TabsTrigger>
+                <TabsTrigger value="company">Company Profile</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="prompt" className="space-y-4">
+                {/* Role input */}
+                <div>
+                  <Label htmlFor="personalization-role">Role</Label>
+                  <Input
+                    id="personalization-role"
+                    placeholder="e.g., Recruiter, HR Manager, Payroll Specialist"
+                    value={roleInput}
+                    onChange={(e) => setRoleInput(e.target.value)}
+                  />
+                </div>
+                {/* Task input placed below role */}
+                <div>
+                  <Label htmlFor="task-input">Task</Label>
+                  <Textarea
+                    id="task-input"
+                    placeholder="e.g., draft_offer_letter"
+                    value={taskInput}
+                    onChange={(e) => setTaskInput(e.target.value)}
+                    className="min-h-24 resize-none"
+                    rows={3}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (!roleInput.trim() || !taskInput.trim()) return;
+                      setSelectedTaskKey(taskInput.trim());
+                      fetchTaskPrompt(roleInput, taskInput.trim());
+                    }}
+                    disabled={!roleInput.trim() || !taskInput.trim() || isLoadingTask}
+                  >
+                    {isLoadingTask ? 'Generating…' : 'Generate'}
+                  </Button>
+                </div>
+
+                {/* Error state */}
+                {errorMsg && (
+                  <div className="text-sm text-destructive">{errorMsg}</div>
+                )}
+
+                {/* Prompt output */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Prompt</Label>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={handleCopy}
+                      disabled={!selectedPrompt}
+                      className="h-8 px-3"
+                    >
+                      {copied ? 'Copied' : 'Copy'}
+                    </Button>
+                  </div>
+                  <Textarea
+                    readOnly
+                    value={isLoadingTask ? 'Generating…' : selectedPrompt}
+                    placeholder={'Type a role and task, then click Generate'}
+                    className="min-h-[360px]"
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="company" className="space-y-4">
+                <CompanyProfileTab />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
+  );
+}
+
+function CompanyProfileTab() {
+  const [companyName, setCompanyName] = React.useState('');
+  const [websiteUrl, setWebsiteUrl] = React.useState('');
+  const [companyDescription, setCompanyDescription] = React.useState('');
+  const [services, setServices] = React.useState<string[]>([]);
+  const [products, setProducts] = React.useState<string[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const fetchProfile = async () => {
+    if (!websiteUrl.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ url: websiteUrl.trim() });
+      if (companyName.trim()) params.set('name', companyName.trim());
+      const { data, success } = await backendApi.get<{
+        company_name?: string;
+        website_url: string;
+        company_description: string;
+        services: string[];
+        products: string[];
+      }>(`/company_profile/?${params.toString()}`);
+      if (!success || !data) {
+        // Fallback attempt for environments where API_URL misses "/api" prefix
+        const res = await fetch(`/api/company_profile/?${params.toString()}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const alt = await res.json();
+        setCompanyDescription(alt?.company_description || '');
+        setServices(Array.isArray(alt?.services) ? alt.services : []);
+        setProducts(Array.isArray(alt?.products) ? alt.products : []);
+        if (!companyName && alt?.company_name) setCompanyName(alt.company_name);
+        return;
+      }
+      if (!companyName && data.company_name) setCompanyName(data.company_name);
+      setCompanyDescription(data.company_description || '');
+      setServices(Array.isArray(data.services) ? data.services : []);
+      setProducts(Array.isArray(data.products) ? data.products : []);
+    } catch (e) {
+      setError('Failed to fetch company profile.');
+      setCompanyDescription('');
+      setServices([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="company-name">Company Name</Label>
+        <Input
+          id="company-name"
+          placeholder="e.g., Neural Arc Inc"
+          value={companyName}
+          onChange={(e) => setCompanyName(e.target.value)}
+        />
+      </div>
+      <div>
+        <Label htmlFor="company-url">Website URL</Label>
+        <div className="flex gap-2">
+          <Input
+            id="company-url"
+            placeholder="https://example.com"
+            value={websiteUrl}
+            onChange={(e) => setWebsiteUrl(e.target.value)}
+          />
+          <Button type="button" onClick={fetchProfile} disabled={!websiteUrl.trim() || loading}>
+            {loading ? 'Fetching…' : 'Fetch'}
+          </Button>
+        </div>
+      </div>
+      {error && <div className="text-sm text-destructive">{error}</div>}
+      <div>
+        <Label>Company Description</Label>
+        <Textarea readOnly value={companyDescription} placeholder="Description will appear here" className="min-h-28" />
+      </div>
+      <div>
+        <Label>Services & Products</Label>
+        {services.length === 0 ? (
+          <div className="text-sm text-foreground/70">No services or products found yet.</div>
+        ) : (
+          <div className="space-y-3">
+            {services.length > 0 && (
+              <div>
+                <div className="text-sm font-medium text-foreground/80 mb-2">Services:</div>
+                <ul className="list-disc pl-5 text-sm space-y-1">
+                  {services.map((s, i) => (
+                    <li key={`service-${s}-${i}`}>{s}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {products.length > 0 && (
+              <div>
+                <div className="text-sm font-medium text-foreground/80 mb-2">Products:</div>
+                <ul className="list-disc pl-5 text-sm space-y-1">
+                  {products.map((p, i) => (
+                    <li key={`product-${p}-${i}`}>{p}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {(services.length === 0 && products.length === 0) && (
+              <ul className="list-disc pl-5 text-sm space-y-1">
+                {services.map((s, i) => (
+                  <li key={`${s}-${i}`}>{s}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
