@@ -203,6 +203,12 @@ const getEnvironmentMode = (): EnvMode => {
   // Get the environment mode from the environment variable, if set
   const envMode = process.env.NEXT_PUBLIC_ENV_MODE?.toLowerCase();
 
+  console.log('Environment detection:', {
+    NEXT_PUBLIC_ENV_MODE: process.env.NEXT_PUBLIC_ENV_MODE,
+    NODE_ENV: process.env.NODE_ENV,
+    envMode
+  });
+
   // First check if the environment variable is explicitly set
   if (envMode) {
     if (envMode === EnvMode.LOCAL) {
@@ -230,12 +236,25 @@ const getEnvironmentMode = (): EnvMode => {
 // Get the environment mode once to ensure consistency
 const currentEnvMode = getEnvironmentMode();
 
+// To force a specific environment mode for testing, uncomment and modify one of these lines:
+// const forceLocalMode = true;  // Force local mode
+// const forceProductionMode = true;  // Force production mode
+// const forceStagingMode = true;  // Force staging mode
+
+// Use the detected environment mode (or override if specified above)
+const finalEnvMode = currentEnvMode;
+
+console.log('Final environment mode:', {
+  currentEnvMode,
+  finalEnvMode
+});
+
 // Create the config object
 export const config: Config = {
-  ENV_MODE: currentEnvMode,
-  IS_LOCAL: currentEnvMode === EnvMode.LOCAL,
+  ENV_MODE: finalEnvMode,
+  IS_LOCAL: finalEnvMode === EnvMode.LOCAL,
   SUBSCRIPTION_TIERS:
-    currentEnvMode === EnvMode.STAGING ? STAGING_TIERS : PROD_TIERS,
+    finalEnvMode === EnvMode.STAGING ? STAGING_TIERS : PROD_TIERS,
 };
 
 // Helper function to check if we're in local mode (for component conditionals)
