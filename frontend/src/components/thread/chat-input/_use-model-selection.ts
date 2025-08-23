@@ -9,7 +9,7 @@ export const STORAGE_KEY_MODEL = 'suna-preferred-model-v3';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
 export const DEFAULT_PREMIUM_MODEL_ID = 'helio-o1';
 // export const DEFAULT_FREE_MODEL_ID = 'moonshotai/kimi-k2';
-export const DEFAULT_FREE_MODEL_ID = 'openrouter/z-ai/glm-4.5-air:free';
+export const DEFAULT_FREE_MODEL_ID = 'gemini/gemini-2.5-pro';
 
 export type SubscriptionStatus = 'no_subscription' | 'active';
 
@@ -114,6 +114,15 @@ export const MODELS = {
     lowQuality: false
   },
   
+  // Google Gemini Models
+  'gemini/gemini-2.5-pro': { 
+    tier: 'free', 
+    priority: 89,
+    recommended: false,
+    lowQuality: false,
+    features: ['reasoning', 'code-generation', 'multimodal', '128k-context']
+  },
+  
   // 'grok-4': { 
   //   tier: 'premium', 
   //   priority: 98,
@@ -216,7 +225,7 @@ export const MODEL_DESCRIPTIONS = {
 // Production-only models for Helio branding
 export const PRODUCTION_MODELS = {
   'helio-o1': {
-    id: 'openrouter/z-ai/glm-4.5',
+    id: 'gemini/gemini-2.5-pro',
     label: 'Helio o1',
     description: 'Our most powerful model for complex tasks',
     tier: 'free',
@@ -342,6 +351,13 @@ export const useModelSelection = () => {
   const MODEL_OPTIONS = useMemo(() => {
     let models = [];
     
+    console.log('useModelSelection: Generating MODEL_OPTIONS', {
+      isLocalMode: isLocalMode(),
+      modelsData: modelsData?.models?.length || 0,
+      isLoadingModels,
+      customModels: customModels.length
+    });
+    
     // In production, only show the two Helio models
     if (!isLocalMode()) {
       models = Object.values(PRODUCTION_MODELS).map(model => ({
@@ -370,25 +386,32 @@ export const useModelSelection = () => {
           ];
         } else {
           // In local mode, show only free models
+          const freeModels = Object.entries(MODELS)
+            .filter(([id, model]) => model.tier === 'free')
+            .map(([id, model]) => ({
+              id,
+              label: formatModelName(id),
+              requiresSubscription: false,
+              priority: model.priority || 50,
+              lowQuality: model.lowQuality || false,
+              recommended: model.recommended || false
+            }));
+          
           models = [
             { 
               id: DEFAULT_FREE_MODEL_ID, 
-              label: 'GLM 4.5', 
+              label: formatModelName(DEFAULT_FREE_MODEL_ID), 
               requiresSubscription: false,
               priority: MODELS[DEFAULT_FREE_MODEL_ID]?.priority || 50
             },
-            // Only include models with :free in their ID
-            ...Object.entries(MODELS)
-              .filter(([id, model]) => id.includes(':free'))
-              .map(([id, model]) => ({
-                id,
-                label: formatModelName(id),
-                requiresSubscription: false,
-                priority: model.priority || 50,
-                lowQuality: model.lowQuality || false,
-                recommended: model.recommended || false
-              }))
+            ...freeModels
           ];
+          
+          console.log('useModelSelection: Fallback models (API not available)', {
+            defaultModel: DEFAULT_FREE_MODEL_ID,
+            freeModelsCount: freeModels.length,
+            allModels: models
+          });
         }
       } else {
         // Process API-provided models
@@ -416,12 +439,16 @@ export const useModelSelection = () => {
               if (processedModelIds.has(shortName)) {
                 return false;
               }
-              // Only include models with :free in their ID
-              if (!shortName.includes(':free')) {
-                return false;
+              // Include models that are either marked as free in the API or in our MODELS constant
+              const isFreeInAPI = !model.requires_subscription;
+              const isFreeInConstants = MODELS[shortName]?.tier === 'free';
+              const shouldInclude = isFreeInAPI || isFreeInConstants;
+              
+              if (shouldInclude) {
+                processedModelIds.add(shortName);
+                return true;
               }
-              processedModelIds.add(shortName);
-              return true;
+              return false;
             })
             .map(model => {
               const shortName = model.short_name || model.id;
@@ -453,6 +480,12 @@ export const useModelSelection = () => {
                 recommended: modelData.recommended || false
               };
             });
+          
+          console.log('useModelSelection: API models processed', {
+            totalModels: modelsData.models.length,
+            processedModels: models.length,
+            processedModelIds: Array.from(processedModelIds)
+          });
         }
       }
       
@@ -491,6 +524,12 @@ export const useModelSelection = () => {
       // Finally by name
       return a.label.localeCompare(b.label);
     });
+    
+    console.log('useModelSelection: Final MODEL_OPTIONS', {
+      totalModels: sortedModels.length,
+      models: sortedModels.map(m => ({ id: m.id, label: m.label, priority: m.priority }))
+    });
+    
     return sortedModels;
   }, [modelsData, isLoadingModels, customModels]);
 

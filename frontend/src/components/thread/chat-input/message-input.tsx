@@ -157,7 +157,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
 
     const renderDropdown = () => {
       if (isLoggedIn) {
-        // In production mode, show Helio o1 branding, agent selector, and model selector
+        // PRODUCTION MODE: Only show agent selector, hide model selector
         if (!isLocalMode()) {
           const showAdvancedFeatures = enableAdvancedConfig || (customAgentsEnabled && !flagsLoading);
           
@@ -171,11 +171,12 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                   isSunaAgent={true}
                 />
               )}
+              {/* ModelSelector is intentionally hidden in production mode */}
             </div>
           );
         }
 
-        // In local mode, show full functionality
+        // LOCAL MODE: Show full functionality including model selector with all models
         const showAdvancedFeatures = enableAdvancedConfig || (customAgentsEnabled && !flagsLoading);
 
         return (
@@ -241,13 +242,13 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
             )}
 
             {/* Helio o1 branding - PRODUCTION ONLY, positioned on the left */}
-            {!isLocalMode() && (
+            {/* {!isLocalMode() && (
               <>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="relative flex items-center rounded-full shadow-xs border border-black/10 gap-1.5 p-2 px-4 cursor-pointer">
-                        {/* Inner Helio o1 section with dark background */}
+                       
                           <HeliumLogo size={16} />
                           <span className="text-sm font-medium text-foreground">Helio o1</span>
                       </div>
@@ -259,7 +260,7 @@ export const MessageInput = forwardRef<HTMLTextAreaElement, MessageInputProps>(
                 </TooltipProvider>
                 <span className='h-6 w-[1px] bg-muted-foreground/20'></span>
               </>
-            )}
+            )} */}
 
             {/* Spacer to push the rest of the buttons to the right */}
             <div className='flex-1' />

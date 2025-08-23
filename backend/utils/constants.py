@@ -68,6 +68,17 @@ MODELS = {
         "tier_availability": ["free"]
     },
     
+    # Google Gemini Models
+    "gemini/gemini-2.5-pro": {
+        "aliases": ["gemini-2.5-pro", "google/gemini-2.5-pro"],
+        "pricing": {
+            "input_cost_per_million_tokens": 3.50,
+            "output_cost_per_million_tokens": 10.50
+        },
+        "tier_availability": ["free", "paid"],
+        "features": ["reasoning", "code-generation", "multimodal", "128k-context"]
+    },
+    
     # "openrouter/qwen/qwen3-235b-a22b": {
     #     "aliases": ["qwen3"],
     #     "pricing": {
