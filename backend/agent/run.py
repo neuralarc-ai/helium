@@ -206,6 +206,8 @@ class PromptManager:
         
         if "gemini-2.5-flash" in model_name.lower() and "gemini-2.5-pro" not in model_name.lower():
             default_system_content = get_gemini_system_prompt()
+        elif "gemini" in model_name.lower():
+            default_system_content = get_gemini_system_prompt()
         else:
             default_system_content = get_system_prompt()
         
