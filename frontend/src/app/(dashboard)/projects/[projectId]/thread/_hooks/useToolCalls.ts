@@ -406,5 +406,3 @@ export function useToolCalls(
     userClosedPanelRef,
   };
 }
-
-

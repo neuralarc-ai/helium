@@ -137,10 +137,27 @@ def initialize(database: DBConnection):
 async def verify_agent_access(agent_id: str, user_id: str):
     """Verify user has access to the agent"""
     client = await db.client
-    result = await client.table('agents').select('agent_id').eq('agent_id', agent_id).eq('account_id', user_id).execute()
     
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Agent not found or access denied")
+    # Get account_id from user_id using basejump accounts table
+    try:
+        account_result = await client.schema("basejump").table("accounts").select("id").eq("primary_owner_user_id", user_id).eq("personal_account", True).limit(1).execute()
+        
+        if not account_result.data:
+            raise HTTPException(status_code=404, detail="User account not found")
+        
+        account_id = account_result.data[0]["id"]
+        
+        # Now check if the agent belongs to this account
+        result = await client.table('agents').select('agent_id').eq('agent_id', agent_id).eq('account_id', account_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Agent not found or access denied")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error verifying agent access: {e}")
+        raise HTTPException(status_code=500, detail="Failed to verify agent access")
 
 
 # ===== PROVIDER ENDPOINTS =====
@@ -148,7 +165,7 @@ async def verify_agent_access(agent_id: str, user_id: str):
 @router.get("/providers")
 async def get_providers():
     """Get available trigger providers"""
-    if not await is_enabled("agent_triggers"):
+    if not await is_enabled("triggers_api"):
         raise HTTPException(status_code=403, detail="Agent triggers are not enabled")
     
     try:
@@ -166,7 +183,7 @@ async def get_agent_triggers(
     agent_id: str,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
-    if not await is_enabled("agent_triggers"):
+    if not await is_enabled("triggers_api"):
         raise HTTPException(status_code=403, detail="Agent triggers are not enabled")
     
     await verify_agent_access(agent_id, user_id)
@@ -209,7 +226,7 @@ async def get_agent_upcoming_runs(
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Get upcoming scheduled runs for agent triggers"""
-    if not await is_enabled("agent_triggers"):
+    if not await is_enabled("triggers_api"):
         raise HTTPException(status_code=403, detail="Agent triggers are not enabled")
     
     await verify_agent_access(agent_id, user_id)
@@ -283,7 +300,7 @@ async def create_agent_trigger(
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Create a new trigger for an agent"""
-    if not await is_enabled("agent_triggers"):
+    if not await is_enabled("triggers_api"):
         raise HTTPException(status_code=403, detail="Agent triggers are not enabled")
         
     await verify_agent_access(agent_id, user_id)
@@ -329,7 +346,7 @@ async def get_trigger(
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Get a trigger by ID"""
-    if not await is_enabled("agent_triggers"):
+    if not await is_enabled("triggers_api"):
         raise HTTPException(status_code=403, detail="Agent triggers are not enabled")
     
     try:
@@ -370,7 +387,7 @@ async def update_trigger(
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Update a trigger"""
-    if not await is_enabled("agent_triggers"):
+    if not await is_enabled("triggers_api"):
         raise HTTPException(status_code=403, detail="Agent triggers are not enabled")
     
     try:
@@ -420,7 +437,7 @@ async def delete_trigger(
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
     """Delete a trigger"""
-    if not await is_enabled("agent_triggers"):
+    if not await is_enabled("triggers_api"):
         raise HTTPException(status_code=403, detail="Agent triggers are not enabled")
     
     try:
@@ -448,7 +465,7 @@ async def trigger_webhook(
     request: Request
 ):
     """Handle incoming webhook for a trigger"""
-    if not await is_enabled("agent_triggers"):
+    if not await is_enabled("triggers_api"):
         raise HTTPException(status_code=403, detail="Agent triggers are not enabled")
     
     try:

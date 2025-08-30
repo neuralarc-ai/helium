@@ -651,6 +651,7 @@ export default function ThreadPage({
             <WorkflowInfo workflowId={workflowId} />
           </div>
         )} */}
+        <div className="absolute bottom-0 left-0 right-0 h-[5%] md:h-[10%] lg:h-[20%] bg-gradient-to-t from-background to-transparent pointer-events-none z-20" />
 
         <ThreadContent
           messages={messages}
@@ -667,13 +668,15 @@ export default function ThreadPage({
           agentName={agent && agent.name}
           agentAvatar={agent && agent.avatar}
           isSidePanelOpen={isSidePanelOpen}
+          leftSidebarState={leftSidebarState}
+          isLeftSidebarExpanded={isLeftSidebarExpanded}
           isFloatingToolPreviewVisible={!isSidePanelOpen && toolCalls.length > 0}
           onSubmit={handleSubmitMessage}
         />
 
         <div
           className={cn(
-            "fixed bottom-0 z-10 bg-gradient-to-t from-background via-background/90 to-transparent pt-16 pb-6",
+            "fixed bottom-0 z-20 bg-gradient-to-t from-background via-background/90 to-transparent pt-16 pb-6",
             "transition-[left,right] duration-200 ease-in-out will-change-[left,right]",
             leftSidebarState === 'expanded' ? 'left-[72px] md:left-[256px]' : (isSidePanelOpen ? 'left-[56px]' : 'left-[50px]'),
             isSidePanelOpen ? (isLeftSidebarExpanded ? 'right-[45.5vw]' : 'right-[51vw]') : 'right-0',
@@ -681,11 +684,11 @@ export default function ThreadPage({
           )}>
           <div className={cn(
             "flex justify-center px-0",
-            !isMobile && "px-8"
+            isMobile ? "px-3" : "px-8",
           )}>
             <div className={cn(
               "w-full",
-              isSidePanelOpen ? "max-w-2xl" : "max-w-3xl"
+              isSidePanelOpen ? "max-w-3xl" : "max-w-3xl"
             )}>
           
             <ChatInput
@@ -711,7 +714,8 @@ export default function ThreadPage({
                 setIsSidePanelOpen(true);
                 userClosedPanelRef.current = false;
               }}
-              defaultShowSnackbar="tokens"
+              // defaultShowSnackbar="tokens"
+              enableAdvancedConfig={true}
             />
             </div>
           </div>

@@ -24,7 +24,40 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
           ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
-          li: ({ children }) => <li className="text-sm">{children}</li>,
+          li: ({ node, ...props }) => {
+              // Check if this is a task list item (contains [x] or [ ])
+              const content = props.children as string;
+              const isTaskList = typeof content === 'string' && /^\[[ x]\]\s/.test(content);
+              
+              if (isTaskList) {
+                const isCompleted = content.startsWith('[x]');
+                const taskText = content.replace(/^\[[ x]\]\s/, '');
+                
+                return (
+                  <li className="flex items-start gap-3 my-2" {...props}>
+                    <div className="flex-shrink-0 mt-0.5">
+                      {isCompleted ? (
+                        <div className="w-4 h-4 rounded border-2 border-green-500 bg-green-500 flex items-center justify-center">
+                          <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      ) : (
+                        <div className="w-4 h-4 rounded border-2 border-zinc-400 dark:border-zinc-600 bg-transparent" />
+                      )}
+                    </div>
+                    <span className={cn(
+                      "flex-1",
+                      isCompleted && "text-green-700 dark:text-green-300 line-through"
+                    )}>
+                      {taskText}
+                    </span>
+                  </li>
+                );
+              }
+              
+              return <li className="my-1" {...props} />;
+            },
           code: ({ children, className }) => {
             const isInline = !className?.includes('language-');
             return isInline ? (

@@ -11,15 +11,15 @@ class SunaConfig:
 
     DEFAULT_TOOLS = {
         "sb_shell_tool": True,
-        "sb_files_tool": True,
-        "sb_browser_tool": True,
+        "browser_tool": True,
         "sb_deploy_tool": True,
         "sb_expose_tool": True,
         "web_search_tool": True,
         "sb_vision_tool": True,
         "sb_image_edit_tool": True,
         "data_providers_tool": True,
-        "sb_sheets_tool": True
+        "sb_sheets_tool": True,
+        "sb_files_tool": True,
     }
     
     DEFAULT_MCPS = []
@@ -35,11 +35,7 @@ class SunaConfig:
     
     @classmethod
     def get_system_prompt(cls) -> str:
-        return cls.SYSTEM_PROMPT.format(
-            current_date=datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d'),
-            current_time=datetime.datetime.now(datetime.timezone.utc).strftime('%H:%M:%S'),
-            current_year=datetime.datetime.now(datetime.timezone.utc).strftime('%Y')
-        )
+        return cls.SYSTEM_PROMPT
     
     @classmethod
     def get_full_config(cls) -> Dict[str, Any]:
@@ -47,6 +43,7 @@ class SunaConfig:
             "name": cls.NAME,
             "description": cls.DESCRIPTION,
             "system_prompt": cls.get_system_prompt(),
+            "model": cls.DEFAULT_MODEL,
             "configured_mcps": cls.DEFAULT_MCPS,
             "custom_mcps": cls.DEFAULT_CUSTOM_MCPS,
             "agentpress_tools": cls.DEFAULT_TOOLS,

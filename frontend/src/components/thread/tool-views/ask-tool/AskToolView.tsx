@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
+  CheckIcon,
   MessageCircleQuestion,
-  CheckCircle,
-  AlertTriangle,
-  Loader2,
-  Clock,
   MessageSquare,
   Paperclip,
 } from 'lucide-react';
@@ -70,19 +67,20 @@ export function AskToolView({
   };
 
   return (
-    <Card className="gap-0 flex border shadow-none border-t border-b-0 border-x-0 p-0 rounded-none flex-col h-full overflow-hidden bg-card">
-      <CardHeader className="h-10 bg-[linear-gradient(90deg,_#FF6FD8_0%,_#38E8FF_100%)] backdrop-blur-sm border-b p-2 px-4 space-y-2 rounded-[12px] mx-2 mt-2">
+    <Card className="gap-0 flex border shadow-none p-0 rounded-lg flex-col h-full overflow-hidden bg-card">
+      <CardHeader className="h-9 bg-gradient-to-t from-zinc-50/80 to-zinc-200/70 dark:from-zinc-900/90 dark:to-zinc-800/90 text-center backdrop-blur-lg border-b p-2 px-4 space-y-2 rounded-t-lg">
         <div className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageCircleQuestion className="w-5 h-5 text-white" />
+          <div className="flex items-center w-full justify-center gap-1">
+            <CheckIcon className="w-4 h-4 text-muted-foreground" />
+            
             <div>
-              <CardTitle className="text-base font-medium text-white">
-                Waiting for your response...
+              <CardTitle className="text-sm font-semibold text-muted-foreground">
+                Helium has completed your request
               </CardTitle>
             </div>
           </div>
 
-          {!isStreaming && (
+          {/* {!isStreaming && (
             <Badge
               variant="secondary"
               className={
@@ -105,7 +103,7 @@ export function AskToolView({
               <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
               Asking user
             </Badge>
-          )}
+          )} */}
         </div>
       </CardHeader>
 
@@ -207,7 +205,7 @@ export function AskToolView({
         </ScrollArea>
       </CardContent>
 
-      <div className="px-4 py-2 h-10 bg-gradient-to-r from-zinc-50/90 to-zinc-100/90 dark:from-zinc-900/90 dark:to-zinc-800/90 backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4">
+      <div className="px-4 py-2 h-fit bg-white backdrop-blur-sm border-t border-zinc-200 dark:border-zinc-800 flex justify-between items-center gap-4 rounded-b-lg">
         <div className="h-full flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
           <Badge className="h-6 py-0.5" variant="outline">
             <MessageCircleQuestion className="h-3 w-3" />

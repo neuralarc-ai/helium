@@ -7,9 +7,9 @@ import { useAvailableModels } from '@/hooks/react-query/subscriptions/use-model'
 
 export const STORAGE_KEY_MODEL = 'suna-preferred-model-v3';
 export const STORAGE_KEY_CUSTOM_MODELS = 'customModels';
-export const DEFAULT_PREMIUM_MODEL_ID = 'openrouter/deepseek/deepseek-chat-v3-0324:free';
+export const DEFAULT_PREMIUM_MODEL_ID = 'helio-o1';
 // export const DEFAULT_FREE_MODEL_ID = 'moonshotai/kimi-k2';
-export const DEFAULT_FREE_MODEL_ID = 'openrouter/deepseek/deepseek-chat-v3-0324:free';
+export const DEFAULT_FREE_MODEL_ID = 'gemini/gemini-2.5-pro';
 
 export type SubscriptionStatus = 'no_subscription' | 'active';
 
@@ -51,12 +51,12 @@ export const MODELS = {
   // },
 
   // Premium/Paid tier models (require subscription) - except specific free models
-  'moonshot/moonshot-v1-8k': { 
-    tier: 'free', 
-    priority: 99,
-    recommended: false,
-    lowQuality: false
-  },
+  // 'moonshot/moonshot-v1-8k': { 
+  //   tier: 'free', 
+  //   priority: 99,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
   'moonshot/kimi-k2-0711-preview': { 
     tier: 'free', 
     priority: 98,
@@ -71,47 +71,56 @@ export const MODELS = {
   },
   'openrouter/z-ai/glm-4.5-air:free': { 
     tier: 'free', 
-    priority: 97,
+    priority: 96,
     recommended: false,
     lowQuality: false
   },
-  'openrouter/agentica-org/deepcoder-14b-preview:free': { 
+  'openrouter/qwen/qwen3-235b-a22b:free': { 
     tier: 'free', 
-    priority: 96,
+    priority: 95,
     recommended: false,
     lowQuality: false
   },
   
-  // AWS Bedrock Models
-  'bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0': { 
-    tier: 'free', 
-    priority: 95,
-    recommended: true,
-    lowQuality: false
-  },
-  'bedrock/anthropic.claude-sonnet-4-20250514-v1:0': { 
-    tier: 'free', 
-    priority: 96,
-    recommended: true,
-    lowQuality: false
-  },
-  'bedrock/meta.llama4-scout-17b-instruct-v1:0': { 
-    tier: 'free', 
-    priority: 90,
-    recommended: false,
-    lowQuality: false
-  },
-  'bedrock/meta.llama4-maverick-17b-instruct-v1:0': { 
-    tier: 'free', 
-    priority: 92,
-    recommended: false,
-    lowQuality: false
-  },
+  // // AWS Bedrock Models
+  // 'bedrock/anthropic.claude-3-7-sonnet-20250219-v1:0': { 
+  //   tier: 'free', 
+  //   priority: 95,
+  //   recommended: true,
+  //   lowQuality: false
+  // },
+  // 'bedrock/anthropic.claude-sonnet-4-20250514-v1:0': { 
+  //   tier: 'free', 
+  //   priority: 96,
+  //   recommended: true,
+  //   lowQuality: false
+  // },
+  // 'bedrock/meta.llama4-scout-17b-instruct-v1:0': { 
+  //   tier: 'free', 
+  //   priority: 90,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
+  // 'bedrock/meta.llama4-maverick-17b-instruct-v1:0': { 
+  //   tier: 'free', 
+  //   priority: 92,
+  //   recommended: false,
+  //   lowQuality: false
+  // },
   'bedrock/deepseek.r1-v1:0': { 
     tier: 'free', 
     priority: 88,
     recommended: false,
     lowQuality: false
+  },
+  
+  // Google Gemini Models
+  'gemini/gemini-2.5-pro': { 
+    tier: 'free', 
+    priority: 89,
+    recommended: false,
+    lowQuality: false,
+    features: ['reasoning', 'code-generation', 'multimodal', '128k-context']
   },
   
   // 'grok-4': { 
@@ -158,41 +167,99 @@ export const MODELS = {
   // },
   'openrouter/deepseek/deepseek-chat-v3-0324:free': { 
     tier: 'free', 
-    priority: 75,
+    priority: 96,
     recommended: false,
     lowQuality: false
   },
+  
+  // Z.AI GLM Models from OpenRouter
+  'openrouter/z-ai/glm-4.5v': { 
+    tier: 'free', 
+    priority: 95,
+    recommended: false,
+    lowQuality: false,
+    features: ['vision', 'multimodal', 'reasoning']
+  },
+  'openrouter/z-ai/glm-4.5': { 
+    tier: 'free', 
+    priority: 96,
+    recommended: false,
+    lowQuality: false,
+    features: ['reasoning', 'code-generation', '128k-context']
+  },
+  'openrouter/z-ai/glm-4.5-air': { 
+    tier: 'free', 
+    priority: 94,
+    recommended: false,
+    lowQuality: false,
+    features: ['lightweight', 'real-time', 'cost-effective']
+  },
+  'openrouter/z-ai/glm-4-32b': { 
+    tier: 'free', 
+    priority: 92,
+    recommended: false,
+    lowQuality: false,
+    features: ['cost-effective', 'tool-use']
+  },
+  
+  // Mistral Models from OpenRouter
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': { 
+    tier: 'free', 
+    priority: 93,
+    recommended: false,
+    lowQuality: false,
+    features: ['instruction-following', 'function-calling', 'coding', 'stem', 'vision', 'structured-output', '131k-context']
+  }
+};
+
+// Add model descriptions for better user experience
+export const MODEL_DESCRIPTIONS = {
+  'openrouter/z-ai/glm-4.5v': 'Vision-language model with multimodal capabilities, perfect for image analysis and complex reasoning tasks',
+  'openrouter/z-ai/glm-4.5': 'Flagship model optimized for agent applications with 128K context and advanced reasoning',
+  'openrouter/z-ai/glm-4.5-air': 'Lightweight variant offering fast responses and cost-effective reasoning capabilities',
+  'openrouter/z-ai/glm-4-32b': 'Cost-effective model with strong tool use and code generation abilities',
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': 'High-performance 24B model with strong coding, STEM, and vision capabilities, optimized for instruction following and function calling',
+  // ... other models ...
 };
 
 // Production-only models for Helio branding
 export const PRODUCTION_MODELS = {
   'helio-o1': {
-    id: 'bedrock/anthropic.claude-sonnet-4-20250514-v1:0',
+    id: 'gemini/gemini-2.5-pro',
     label: 'Helio o1',
     description: 'Our most powerful model for complex tasks',
     tier: 'free',
     priority: 100,
-    recommended: false,
-    lowQuality: false
-  },
-  'helio-o1-lite': {
-    id: 'bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0',
-    label: 'Helio o1 Lite',
-    description: 'Fast and efficient for everyday tasks',
-    tier: 'free',
-    priority: 90,
-    recommended: false,
-    lowQuality: false
-  },
-  'helio-g1': {
-    id: 'moonshot/kimi-k2-turbo-preview',
-    label: 'Helio g1',
-    description: 'Great for coding and analysis',
-    tier: 'free',
-    priority: 80,
-    recommended: false,
-    lowQuality: false
+    recommended: true,
+    lowQuality: false,
+    fallbacks: [
+      'openrouter/z-ai/glm-4.5-air',
+      'moonshot/kimi-k2-turbo-preview',
+      'openrouter/anthropic/claude-sonnet-4',
+      'bedrock/anthropic.claude-sonnet-4-20250514-v1:0',
+    ]
   }
+};
+
+// Fallback model chain for production
+export const PRODUCTION_FALLBACK_CHAIN = {
+  'helio-o1': [
+    'openrouter/z-ai/glm-4.5',                    // Primary: GLM-4.5 from OpenRouter
+    'openrouter/z-ai/glm-4.5-air',                // Fallback 1: GLM-4.5-air from OpenRouter
+    'moonshot/kimi-k2-turbo-preview',             // Fallback 2: Kimi K2 Turbo
+    'openrouter/anthropic/claude-3-5-sonnet-20241022', // Fallback 3: Claude 3.5 Sonnet from OpenRouter
+    'bedrock/anthropic.claude-sonnet-4-20250514-v1:0', // Fallback 4: Claude Sonnet 4 from Bedrock
+  ]
+};
+
+// Model tags for categorization and search
+export const MODEL_TAGS = {
+  'openrouter/z-ai/glm-4.5v': ['vision', 'multimodal', 'reasoning', 'agent-focused', 'z-ai'],
+  'openrouter/z-ai/glm-4.5': ['reasoning', 'code-generation', 'agent-alignment', '128k-context', 'z-ai'],
+  'openrouter/z-ai/glm-4.5-air': ['lightweight', 'reasoning', 'real-time', 'cost-effective', 'z-ai'],
+  'openrouter/z-ai/glm-4-32b': ['cost-effective', 'tool-use', 'online-search', 'code-tasks', 'z-ai'],
+  'openrouter/mistralai/mistral-small-3.2-24b-instruct': ['instruction-following', 'function-calling', 'coding', 'stem', 'vision', 'structured-output', '131k-context', 'mistral'],
+  // ... other models ...
 };
 
 // Helper to check if a user can access a model based on subscription status
@@ -284,6 +351,13 @@ export const useModelSelection = () => {
   const MODEL_OPTIONS = useMemo(() => {
     let models = [];
     
+    console.log('useModelSelection: Generating MODEL_OPTIONS', {
+      isLocalMode: isLocalMode(),
+      modelsData: modelsData?.models?.length || 0,
+      isLoadingModels,
+      customModels: customModels.length
+    });
+    
     // In production, only show the two Helio models
     if (!isLocalMode()) {
       models = Object.values(PRODUCTION_MODELS).map(model => ({
@@ -299,67 +373,124 @@ export const useModelSelection = () => {
     } else {
       // Default models if API data not available
       if (!modelsData?.models || isLoadingModels) {
-        models = [
-          { 
-            id: DEFAULT_FREE_MODEL_ID, 
-            label: 'DeepSeek', 
-            requiresSubscription: false,
-            priority: MODELS[DEFAULT_FREE_MODEL_ID]?.priority || 50
-          },
-          { 
-            id: DEFAULT_PREMIUM_MODEL_ID, 
-            label: 'Sonnet 4', 
-            requiresSubscription: true, 
-            priority: MODELS[DEFAULT_PREMIUM_MODEL_ID]?.priority || 100
-          },
-        ];
+        // In production, show only Helio o1
+        if (!isLocalMode()) {
+          models = [
+            { 
+              id: 'helio-o1', 
+              label: 'Helio o1', 
+              requiresSubscription: false,
+              priority: 100,
+              description: 'Our most powerful model for complex tasks'
+            }
+          ];
+        } else {
+          // In local mode, show only free models
+          const freeModels = Object.entries(MODELS)
+            .filter(([id, model]) => model.tier === 'free')
+            .map(([id, model]) => ({
+              id,
+              label: formatModelName(id),
+              requiresSubscription: false,
+              priority: model.priority || 50,
+              lowQuality: model.lowQuality || false,
+              recommended: model.recommended || false
+            }));
+          
+          models = [
+            { 
+              id: DEFAULT_FREE_MODEL_ID, 
+              label: formatModelName(DEFAULT_FREE_MODEL_ID), 
+              requiresSubscription: false,
+              priority: MODELS[DEFAULT_FREE_MODEL_ID]?.priority || 50
+            },
+            ...freeModels
+          ];
+          
+          console.log('useModelSelection: Fallback models (API not available)', {
+            defaultModel: DEFAULT_FREE_MODEL_ID,
+            freeModelsCount: freeModels.length,
+            allModels: models
+          });
+        }
       } else {
         // Process API-provided models
-        const processedModelIds = new Set(); // Track processed models to avoid duplicates
-        models = modelsData.models
-          .filter(model => {
-            const shortName = model.short_name || model.id;
-            // Skip if we've already processed this model ID
-            if (processedModelIds.has(shortName)) {
+        if (!isLocalMode()) {
+          // In production, show only Helio o1
+          models = [
+            { 
+              id: 'helio-o1', 
+              label: 'Helio o1', 
+              requiresSubscription: false,
+              priority: 100,
+              description: 'Our most powerful model for complex tasks',
+              top: true,
+              recommended: true,
+              lowQuality: false
+            }
+          ];
+        } else {
+          // In local mode, process only free API models (those with :free in their ID)
+          const processedModelIds = new Set(); // Track processed models to avoid duplicates
+          models = modelsData.models
+            .filter(model => {
+              const shortName = model.short_name || model.id;
+              // Skip if we've already processed this model ID
+              if (processedModelIds.has(shortName)) {
+                return false;
+              }
+              // Include models that are either marked as free in the API or in our MODELS constant
+              const isFreeInAPI = !model.requires_subscription;
+              const isFreeInConstants = MODELS[shortName]?.tier === 'free';
+              const shouldInclude = isFreeInAPI || isFreeInConstants;
+              
+              if (shouldInclude) {
+                processedModelIds.add(shortName);
+                return true;
+              }
               return false;
-            }
-            processedModelIds.add(shortName);
-            return true;
-          })
-          .map(model => {
-            const shortName = model.short_name || model.id;
-            const displayName = model.display_name || shortName;
-            
-            // Format the display label
-            let cleanLabel = displayName;
-            if (cleanLabel.includes('/')) {
-              cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
-            }
-            
-            cleanLabel = cleanLabel
-              .replace(/-/g, ' ')
-              .split(' ')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(' ');
-            
-            // Get model data from our central MODELS constant
-            const modelData = MODELS[shortName] || {};
-            const isPremium = model?.requires_subscription || modelData.tier === 'premium' || false;
-            
-            return {
-              id: shortName,
-              label: cleanLabel,
-              requiresSubscription: isPremium,
-              top: modelData.priority >= 90, // Mark high-priority models as "top"
-              priority: modelData.priority || 0,
-              lowQuality: modelData.lowQuality || false,
-              recommended: modelData.recommended || false
-            };
+            })
+            .map(model => {
+              const shortName = model.short_name || model.id;
+              const displayName = model.display_name || shortName;
+              
+              // Format the display label
+              let cleanLabel = displayName;
+              if (cleanLabel.includes('/')) {
+                cleanLabel = cleanLabel.split('/').pop() || cleanLabel;
+              }
+              
+              cleanLabel = cleanLabel
+                .replace(/-/g, ' ')
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+              
+              // Get model data from our central MODELS constant
+              const modelData = MODELS[shortName] || {};
+              const isPremium = model?.requires_subscription || modelData.tier === 'premium' || false;
+              
+              return {
+                id: shortName,
+                label: cleanLabel,
+                requiresSubscription: isPremium,
+                top: modelData.priority >= 90, // Mark high-priority models as "top"
+                priority: modelData.priority || 0,
+                lowQuality: modelData.lowQuality || false,
+                recommended: modelData.recommended || false
+              };
+            });
+          
+          console.log('useModelSelection: API models processed', {
+            totalModels: modelsData.models.length,
+            processedModels: models.length,
+            processedModelIds: Array.from(processedModelIds)
           });
+        }
       }
       
       // Add custom models if in local mode
-      if (customModels.length > 0) {
+      if (isLocalMode() && customModels.length > 0) {
         const customModelOptions = customModels.map(model => ({
           id: model.id,
           label: model.label || formatModelName(model.id),
@@ -393,6 +524,12 @@ export const useModelSelection = () => {
       // Finally by name
       return a.label.localeCompare(b.label);
     });
+    
+    console.log('useModelSelection: Final MODEL_OPTIONS', {
+      totalModels: sortedModels.length,
+      models: sortedModels.map(m => ({ id: m.id, label: m.label, priority: m.priority }))
+    });
+    
     return sortedModels;
   }, [modelsData, isLoadingModels, customModels]);
 
@@ -451,8 +588,8 @@ export const useModelSelection = () => {
       // Fallback to default model based on environment
       let defaultModel: string;
       if (isLocalMode()) {
-        // Local mode: use subscription-based default
-        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+        // Local mode: always use free model default
+        defaultModel = DEFAULT_FREE_MODEL_ID;
       } else {
         // Production mode: use Helio o1 as default
         defaultModel = PRODUCTION_MODELS['helio-o1'].id;
@@ -469,8 +606,8 @@ export const useModelSelection = () => {
       // Fallback to default model based on environment
       let defaultModel: string;
       if (isLocalMode()) {
-        // Local mode: use subscription-based default
-        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+        // Local mode: always use free model default
+        defaultModel = DEFAULT_FREE_MODEL_ID;
       } else {
         // Production mode: use Helio o1 as default
         defaultModel = PRODUCTION_MODELS['helio-o1'].id;
@@ -504,8 +641,8 @@ export const useModelSelection = () => {
       // Reset to default model when the selected model is not found
       let defaultModel: string;
       if (isLocalMode()) {
-        // Local mode: use subscription-based default
-        defaultModel = subscriptionStatus === 'active' ? DEFAULT_PREMIUM_MODEL_ID : DEFAULT_FREE_MODEL_ID;
+        // Local mode: always use free model default
+        defaultModel = DEFAULT_FREE_MODEL_ID;
       } else {
         // Production mode: use Helio o1 as default
         defaultModel = PRODUCTION_MODELS['helio-o1'].id;
@@ -554,6 +691,26 @@ export const useModelSelection = () => {
       return MODEL_OPTIONS.find(m => m.id === modelId)?.requiresSubscription || false;
     }
   };
+};
+
+// Function to get the actual model ID from Helio aliases (for backend routing)
+export const getActualModelId = (helioModelId: string): string => {
+  if (helioModelId === 'helio-o1') {
+    return 'openrouter/z-ai/glm-4.5';
+  }
+  return helioModelId;
+};
+
+// Function to get fallback models for a given Helio model
+export const getFallbackModels = (helioModelId: string): string[] => {
+  if (helioModelId === 'helio-o1') {
+    return [
+      'openrouter/z-ai/glm-4.5-air',
+      'moonshot/kimi-k2-turbo-preview',
+      'anthropic/claude-sonnet-4',
+    ];
+  }
+  return [];
 };
 
 // Export the hook but not any sorting logic - sorting is handled internally

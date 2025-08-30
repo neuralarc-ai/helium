@@ -247,7 +247,7 @@ export function SidebarLeft({
             </div>
           )}
 
-          {!flagsLoading && customAgentsEnabled && !isProductionMode() && (
+          {!flagsLoading && customAgentsEnabled && (
             <SidebarMenu>
               <Collapsible
                 defaultOpen={pathname?.includes('/agents')}
@@ -309,31 +309,6 @@ export function SidebarLeft({
               </Collapsible>
             </SidebarMenu>
           )}
-          {!flagsLoading && customAgentsEnabled && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/settings/credentials">
-                  <SidebarMenuButton
-                    className={cn(
-                      'cursor-pointer', // always cursor-pointer
-                      {
-                        'bg-accent text-accent-foreground font-medium':
-                          pathname === '/settings/credentials',
-                      }
-                    )}
-                  >
-                    <Plug className="h-4 w-4 mr-1" />
-                    <span className="flex items-center justify-between w-full">
-                      Integrations
-                    </span>
-                  </SidebarMenuButton>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                Integrations
-              </TooltipContent>
-            </Tooltip>
-          )}
         </SidebarGroup>
         <NavAgents />
       </SidebarContent>
@@ -345,6 +320,48 @@ export function SidebarLeft({
               : 'w-full flex flex-col items-start'
           }
         >
+          {/* Integrations button: show if custom agents feature is enabled */}
+          {!flagsLoading && customAgentsEnabled && (
+            <Tooltip>
+              <TooltipTrigger asChild className={state === 'collapsed' && !isMobile ? '' : 'w-full'}>
+                <Link href="/settings/credentials">
+                  <button
+                    className={cn(
+                      'h-fit cursor-pointer flex items-center rounded-md flex-shrink-0 transition-colors',
+                      {
+                        // Collapsed state styling
+                        'w-8 h-8 justify-center hover:bg-accent hover:text-accent-foreground mb-1': 
+                          state === 'collapsed' && !isMobile,
+                        // Expanded state styling
+                        'w-full py-1 px-2 hover:bg-accent justify-start mb-1': 
+                          state !== 'collapsed' || isMobile,
+                      }
+                    )}
+                    type="button"
+                    tabIndex={0}
+                    aria-label="Integrations"
+                  >
+                    <Plug className={cn(
+                      'w-4 h-4',
+                      {
+                        'mr-0': state === 'collapsed' && !isMobile,
+                        'mr-2': state !== 'collapsed' || isMobile,
+                      }
+                    )} />
+                    {(isMobile || state !== 'collapsed') && (
+                      <span className="text-sm font-medium whitespace-nowrap">
+                        Integrations
+                      </span>
+                    )}
+                  </button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                Integrations
+              </TooltipContent>
+            </Tooltip>
+          )}
+          
           {/* Knowledge Base button: always show if feature is enabled */}
           {!flagsLoading && knowledgeBaseEnabled && (
             <Tooltip>
@@ -354,10 +371,10 @@ export function SidebarLeft({
                     'h-fit cursor-pointer flex items-center rounded-md flex-shrink-0 transition-colors',
                     {
                       // Collapsed state styling
-                      'w-8 h-8 justify-center hover:bg-accent hover:text-accent-foreground my-1': 
+                      'w-8 h-8 justify-center hover:bg-accent hover:text-accent-foreground mb-2': 
                         state === 'collapsed' && !isMobile,
                       // Expanded state styling
-                      'w-full py-1 px-3 hover:bg-accent justify-start': 
+                      'w-full py-1 px-2 hover:bg-accent justify-start': 
                         state !== 'collapsed' || isMobile,
                     }
                   )}

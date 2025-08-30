@@ -43,7 +43,6 @@ instance_id = None # Global instance ID for this backend instance
 REDIS_RESPONSE_LIST_TTL = 3600 * 24
 
 
-
 class AgentStartRequest(BaseModel):
     model_name: Optional[str] = None  # Will be set from config.MODEL_TO_USE in the endpoint
     enable_thinking: Optional[bool] = False
@@ -2315,6 +2314,9 @@ async def update_pipedream_tools_for_agent(
     request: dict,
     user_id: str = Depends(get_current_user_id_from_jwt)
 ):
+    logger.info(f"Starting update_pipedream_tools_for_agent: agent_id={agent_id}, profile_id={profile_id}, user_id={user_id}")
+    logger.info(f"Request data: {request}")
+    
     try:
         client = await db.client
         agent_row = await client.table('agents')\
@@ -2323,64 +2325,157 @@ async def update_pipedream_tools_for_agent(
             .eq('account_id', user_id)\
             .maybe_single()\
             .execute()
+        
+        logger.info(f"Agent query result: {agent_row.data}")
+        
         if not agent_row.data:
             raise HTTPException(status_code=404, detail="Agent not found")
 
         agent_config = {}
-        if agent_row.data.get('current_version_id'):
+        current_version_id = agent_row.data.get('current_version_id')
+        
+        if current_version_id:
             version_result = await client.table('agent_versions')\
                 .select('config')\
-                .eq('version_id', agent_row.data['current_version_id'])\
+                .eq('version_id', current_version_id)\
                 .maybe_single()\
                 .execute()
             if version_result.data and version_result.data.get('config'):
                 agent_config = version_result.data['config']
+                logger.info(f"Found existing agent config: {agent_config}")
+                logger.info(f"Config keys: {list(agent_config.keys()) if isinstance(agent_config, dict) else 'Not a dict'}")
+                logger.info(f"Tools structure: {agent_config.get('tools', {})}")
+                logger.info(f"Custom MCPs: {len(agent_config.get('tools', {}).get('custom_mcp', []))}")
+            else:
+                logger.info("No existing agent config found, starting fresh")
+                agent_config = {'tools': {'custom_mcp': []}}
+        else:
+            logger.warning("Agent has no current_version_id")
+            agent_config = {'tools': {'custom_mcp': []}}
 
         tools = agent_config.get('tools', {})
         custom_mcps = tools.get('custom_mcp', []) or []
-
-        if any(mcp.get('config', {}).get('profile_id') == profile_id for mcp in custom_mcps):
-            raise HTTPException(status_code=400, detail="This profile is already added to this agent")
+        logger.info(f"Current custom_mcps: {len(custom_mcps)}")
 
         enabled_tools = request.get('enabled_tools', [])
+        logger.info(f"Requested enabled_tools: {enabled_tools}")
         
-        updated = False
-        for mcp in custom_mcps:
+        # Check if profile already exists in custom_mcps
+        existing_mcp_index = None
+        for i, mcp in enumerate(custom_mcps):
             mcp_profile_id = mcp.get('config', {}).get('profile_id')
+            logger.info(f"Checking MCP {i}: profile_id={mcp_profile_id}, matches={mcp_profile_id == profile_id}")
             if mcp_profile_id == profile_id:
-                mcp['enabledTools'] = enabled_tools
-                mcp['enabled_tools'] = enabled_tools
-                updated = True
-                logger.info(f"Updated enabled tools for profile {profile_id}: {enabled_tools}")
+                existing_mcp_index = i
                 break
         
-        if not updated:
-            logger.warning(f"Profile {profile_id} not found in agent {agent_id} custom_mcps configuration")
-            
+        updated = False
+        
+        if existing_mcp_index is not None:
+            # Update existing MCP configuration
+            logger.info(f"Updating existing MCP at index {existing_mcp_index}")
+            custom_mcps[existing_mcp_index]['enabledTools'] = enabled_tools
+            custom_mcps[existing_mcp_index]['enabled_tools'] = enabled_tools
+            updated = True
+            logger.info(f"Updated enabled tools for existing profile {profile_id}: {enabled_tools}")
+        else:
+            # Create new MCP configuration for this profile
+            logger.info(f"Creating new MCP configuration for profile {profile_id}")
+            try:
+                from pipedream import profile_service
+                from uuid import UUID
+                from datetime import datetime, timezone
+                
+                logger.info("Successfully imported pipedream modules")
+                
+                # Get profile details to create proper MCP config
+                profile = await profile_service.get_profile(UUID(user_id), UUID(profile_id))
+                logger.info(f"Retrieved profile: {profile}")
+                
+                if not profile:
+                    raise HTTPException(status_code=404, detail="Profile not found")
+                
+                if not profile.is_connected:
+                    raise HTTPException(status_code=400, detail="Profile is not connected")
+                
+                logger.info(f"Profile is connected, app_slug: {profile.app_slug}, app_name: {profile.app_name}")
+                
+                # Create new MCP configuration
+                new_mcp_config = {
+                    'name': profile.app_name,
+                    'type': 'pipedream',
+                    'customType': 'pipedream',
+                    'config': {
+                        'url': 'https://remote.mcp.pipedream.net',
+                        'headers': {
+                            'x-pd-app-slug': profile.app_slug
+                        },
+                        'profile_id': profile_id,
+                        'external_user_id': profile.external_user_id
+                    },
+                    'enabledTools': enabled_tools,
+                    'enabled_tools': enabled_tools,
+                    'selectedProfileId': profile_id
+                }
+                
+                logger.info(f"Created new MCP config: {new_mcp_config}")
+                
+                custom_mcps.append(new_mcp_config)
+                updated = True
+                logger.info(f"Created new MCP configuration for profile {profile_id}: {enabled_tools}")
+                
+            except Exception as e:
+                logger.error(f"Error creating new MCP configuration for profile {profile_id}: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail=f"Failed to create MCP configuration: {str(e)}")
+        
+        logger.info(f"Updated flag: {updated}")
+        
         if updated:
+            # Ensure tools structure exists
+            if 'tools' not in agent_config:
+                agent_config['tools'] = {}
             agent_config['tools']['custom_mcp'] = custom_mcps
             
-            await client.table('agent_versions')\
-                .update({'config': agent_config})\
-                .eq('version_id', agent_row.data['current_version_id'])\
-                .execute()
+            logger.info(f"About to update agent_versions table with config: {agent_config}")
+            logger.info(f"Current version ID: {agent_row.data.get('current_version_id')}")
             
-            logger.info(f"Successfully updated agent configuration for {agent_id}")
+            try:
+                update_result = await client.table('agent_versions')\
+                    .update({'config': agent_config})\
+                    .eq('version_id', agent_row.data['current_version_id'])\
+                    .execute()
+                
+                logger.info(f"Update result: {update_result}")
+                
+                if update_result.data:
+                    logger.info(f"Successfully updated agent configuration for {agent_id}")
+                    logger.info(f"Agent {agent_id} now has {len(custom_mcps)} custom MCP configurations")
+                else:
+                    logger.error(f"Update operation returned no data: {update_result}")
+                    updated = False
+                    
+            except Exception as e:
+                logger.error(f"Database update failed: {e}", exc_info=True)
+                updated = False
+        else:
+            logger.warning(f"Failed to update or create MCP configuration for profile {profile_id} in agent {agent_id}")
         
         result = {
             'success': updated,
             'enabled_tools': enabled_tools,
             'total_tools': len(enabled_tools),
-            'profile_id': profile_id
+            'profile_id': profile_id,
+            'is_new_configuration': existing_mcp_index is None,
+            'existing_mcp': existing_mcp_index is not None
         }
-        logger.info(f"Successfully updated Pipedream tools for agent {agent_id}, profile {profile_id}")
+        logger.info(f"Returning result: {result}")
         return result
         
     except ValueError as e:
-        logger.error(f"Validation error updating Pipedream tools: {e}")
+        logger.error(f"Validation error updating Pipedream tools: {e}", exc_info=True)
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"Error updating Pipedream tools for agent {agent_id}: {e}")
+        logger.error(f"Error updating Pipedream tools for agent {agent_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

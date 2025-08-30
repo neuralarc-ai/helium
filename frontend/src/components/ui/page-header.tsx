@@ -27,9 +27,9 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ icon: Icon, children, ba
       )}
       
       <div className="relative px-8 py-16 text-center z-10">
-        <div className="mx-auto max-w-3xl space-y-6">
-          <div className="inline-flex items-center justify-center rounded-full bg-muted/80 backdrop-blur-sm p-3">
-            <Icon className="h-8 w-8 text-primary" />
+        <div className="mx-auto max-w-3xl space-y-4">
+          <div className="inline-flex items-center justify-center rounded-full backdrop-blur-md p-3">
+            <Icon className="h-10 w-10 text-white stroke-[1.5]" />
           </div>
           <h1 className="text-4xl font-semibold tracking-tight text-foreground">
             {children}

@@ -293,7 +293,7 @@ export const AgentSelector: React.FC<AgentSelectorProps> = ({
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "px-2.5 py-1.5 text-sm font-normal hover:bg-accent transition-all duration-200 rounded-full ring-0 outline-0 ",
+                    "px-2.5 py-1.5 text-sm font-normal hover:bg-accent transition-all duration-200 rounded-full ring-0 outline-0 cursor-pointer",
                     "focus-visible:ring-0 focus:ring-0 focus:ring-offset-0 focus:outline-none",
                     isOpen && "bg-muted"
                   )}

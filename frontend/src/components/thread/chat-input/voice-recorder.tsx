@@ -153,11 +153,11 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     const getIcon = () => {
         switch (state) {
             case 'recording':
-                return <AudioLines className="h-4 w-4" />;
+                return <AudioLines className="h-5 w-5" />;
             case 'processing':
-                return <Loader2 className="h-4 w-4 animate-spin" />;
+                return <Loader2 className="h-5 w-5 animate-spin" />;
             default:
-                return <Mic className="h-4 w-4" />;
+                return <Mic className="h-5 w-5" />;
         }
     };
 
@@ -168,11 +168,11 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                     <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={handleClick}
                         onContextMenu={handleRightClick}
                         disabled={disabled || state === 'processing'}
-                        className={`h-fit p-2 bg-transparent border-0 rounded-full aspect-square text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-2 transition-colors cursor-pointer ${getButtonClass()}`}
+                        className={`h-fit p-1 bg-transparent border-0 rounded-full aspect-square text-muted-foreground hover:text-foreground hover:bg-accent flex items-center gap-2 transition-colors cursor-pointer ${getButtonClass()}`}
                     >
                         {getIcon()}
                     </Button>

@@ -20,7 +20,7 @@ import {
   ParsedContent,
   ParsedMetadata,
 } from '@/components/thread/types';
-import { FileAttachmentGrid } from '@/components/thread/file-attachment';
+import { ThreadFilesDisplay } from '@/components/thread/file-attachment';
 import { useFilePreloader } from '@/hooks/react-query/files';
 import { useAuth } from '@/components/AuthProvider';
 import { Project } from '@/lib/api';
@@ -30,7 +30,6 @@ import {
   getUserFriendlyToolName,
   safeJsonParse,
 } from '@/components/thread/utils';
-import { HeliumLogo } from '@/components/sidebar/helium-logo';
 import { AgentLoader } from './loader';
 import {
   parseXmlToolCalls,
@@ -38,13 +37,80 @@ import {
 } from '@/components/thread/tool-views/xml-parser';
 import { ShowToolStream } from './ShowToolStream';
 import { PipedreamUrlDetector } from './pipedream-url-detector';
+import { ThinkingAccordion } from './ThinkingAccordion';
+import { ThinkingAnimation } from '@/components/ui/ThinkingAnimation';
+import { HeliumLogo } from '@/components/sidebar/helium-logo';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+
+function getNodeText(node: any): string {
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map(getNodeText).join('');
+  if (typeof node === 'object' && node) return getNodeText(node.props.children);
+  return '';
+}
+
+const customTableComponents = {
+  table: function Table({ children, ...props }: any) {
+    return (
+      <div className="not-prose">
+        <div className="overflow-x-auto">
+          <table
+            className="w-full table-fixed border-collapse my-3 text-sm"
+            {...props}
+          >
+            {children}
+          </table>
+        </div>
+      </div>
+    );
+  },
+  th: function TableHeader({ children, ...props }: any) {
+    return (
+      <th
+        className="border border-slate-300 dark:border-zinc-700 px-3 py-2 sm:px-2 sm:py-1 text-left font-semibold bg-slate-100 dark:bg-zinc-800 text-sm sm:text-xs truncate"
+        {...props}
+      >
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>{children}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{getNodeText(children)}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </th>
+    );
+  },
+  td: function TableCell({ children, ...props }: any) {
+    return (
+      <td
+        className="border border-slate-300 dark:border-zinc-700 px-3 py-2 sm:px-2 sm:py-1 text-sm sm:text-xs truncate max-w-[120px] sm:max-w-[80px]"
+        {...props}
+      >
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>{children}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{getNodeText(children)}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </td>
+    );
+  },
+};
 
 const HIDE_STREAMING_XML_TAGS = new Set([
   'execute-command',
@@ -73,6 +139,7 @@ const HIDE_STREAMING_XML_TAGS = new Set([
   'crawl-webpage',
   'web-search',
   'see-image',
+  'think',
   'execute_data_provider_call',
   'execute_data_provider_endpoint',
 
@@ -80,30 +147,6 @@ const HIDE_STREAMING_XML_TAGS = new Set([
   'execute-data-provider-endpoint',
 ]);
 
-// Helper function to render attachments (keeping original implementation for now)
-export function renderAttachments(
-  attachments: string[],
-  fileViewerHandler?: (filePath?: string, filePathList?: string[]) => void,
-  sandboxId?: string,
-  project?: Project,
-) {
-  if (!attachments || attachments.length === 0) return null;
-
-  // Note: Preloading is now handled by React Query in the main ThreadContent component
-  // to avoid duplicate requests with different content types
-
-  return (
-    <FileAttachmentGrid
-      attachments={attachments}
-      onFileClick={fileViewerHandler}
-      showPreviews={true}
-      sandboxId={sandboxId}
-      project={project}
-    />
-  );
-}
-
-// Render Markdown content while preserving XML tags that should be displayed as tool calls
 export function renderMarkdownContent(
   content: string,
   handleToolClick: (
@@ -115,6 +158,8 @@ export function renderMarkdownContent(
   sandboxId?: string,
   project?: Project,
   debugMode?: boolean,
+  streamingTextContent?: string,
+  streamHookStatus?: string,
 ) {
   // If in debug mode, just display raw content in a pre tag
   if (debugMode) {
@@ -173,11 +218,15 @@ export function renderMarkdownContent(
                 content={askText}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
-              {renderAttachments(
-                attachmentArray,
-                fileViewerHandler,
-                sandboxId,
-                project,
+              {attachmentArray && attachmentArray.length > 0 && (
+                <ThreadFilesDisplay
+                  attachments={attachmentArray}
+                  onFileClick={fileViewerHandler}
+                  sandboxId={sandboxId}
+                  project={project}
+                  className="mt-3"
+                  rightAlignGrid={true}
+                />
               )}
             </div>,
           );
@@ -200,13 +249,40 @@ export function renderMarkdownContent(
                 content={completeText}
                 className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
               />
-              {renderAttachments(
-                attachmentArray,
-                fileViewerHandler,
-                sandboxId,
-                project,
+              {attachmentArray && attachmentArray.length > 0 && (
+                <ThreadFilesDisplay
+                  attachments={attachmentArray}
+                  onFileClick={fileViewerHandler}
+                  sandboxId={sandboxId}
+                  project={project}
+                  className="mt-3"
+                  rightAlignGrid={true}
+                />
               )}
             </div>,
+          );
+        } else if (toolName === 'think') {
+          // Handle think tool specially - extract text content
+          const thinkText =
+            toolCall.parameters.text || toolCall.parameters.content || '';
+
+          // Check if this think tag is currently streaming
+          const isCurrentlyStreaming =
+            streamingTextContent &&
+            streamingTextContent.includes('<think') &&
+            !streamingTextContent.includes('</think>');
+
+          // Render think tool content with thinking UI
+          contentParts.push(
+            <ThinkingAccordion
+              key={`think-${match.index}-${index}`}
+              content={thinkText}
+              isStreaming={isCurrentlyStreaming}
+              streamingContent={
+                isCurrentlyStreaming ? streamingTextContent : ''
+              }
+              streamHookStatus={streamHookStatus}
+            />,
           );
         } else {
           const IconComponent = getToolIcon(toolName);
@@ -227,10 +303,10 @@ export function renderMarkdownContent(
             <div key={`tool-${match.index}-${index}`} className="my-1">
               <button
                 onClick={() => handleToolClick(messageId, toolName)}
-                className="inline-flex items-center gap-1.5 py-1 px-1 pr-1.5 text-xs text-muted-foreground bg-muted hover:bg-muted/80 rounded-lg transition-colors cursor-pointer border border-neutral-200 dark:border-neutral-700/50"
+                className="inline-flex items-center gap-1.5 py-1.5 px-2.5 text-xs text-muted-foreground bg-muted/50 hover:bg-muted/80 rounded-full transition-colors cursor-pointer border border-neutral-200"
               >
-                <div className="border-2 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-700 dark:to-neutral-800 flex items-center justify-center p-0.5 rounded-sm border-neutral-400/20 dark:border-neutral-600">
-                  <IconComponent className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <div className="border-[1.5px] bg-muted flex items-center justify-center p-0.5 rounded-sm">
+                  <IconComponent className="h-3 w-3 text-black/70 flex-shrink-0 stroke-[2.5px]" />
                 </div>
                 <span className="text-xs text-foreground/80">
                   {getUserFriendlyToolName(toolName)}
@@ -289,6 +365,7 @@ export function renderMarkdownContent(
       <PipedreamUrlDetector
         content={content}
         className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words"
+        components={customTableComponents}
       />
     );
   }
@@ -328,11 +405,15 @@ export function renderMarkdownContent(
             content={askContent}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
           />
-          {renderAttachments(
-            attachments,
-            fileViewerHandler,
-            sandboxId,
-            project,
+          {attachments && attachments.length > 0 && (
+            <ThreadFilesDisplay
+              attachments={attachments}
+              onFileClick={fileViewerHandler}
+              sandboxId={sandboxId}
+              project={project}
+              className="mt-3"
+              rightAlignGrid={true}
+            />
           )}
         </div>,
       );
@@ -356,13 +437,38 @@ export function renderMarkdownContent(
             content={completeContent}
             className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none break-words [&>:first-child]:mt-0 prose-headings:mt-3"
           />
-          {renderAttachments(
-            attachments,
-            fileViewerHandler,
-            sandboxId,
-            project,
+          {attachments && attachments.length > 0 && (
+            <ThreadFilesDisplay
+              attachments={attachments}
+              onFileClick={fileViewerHandler}
+              sandboxId={sandboxId}
+              project={project}
+              className="mt-3"
+              rightAlignGrid={true}
+            />
           )}
         </div>,
+      );
+    } else if (toolName === 'think') {
+      // Extract content from the think tag
+      const contentMatch = rawXml.match(/<think[^>]*>([\s\S]*?)<\/think>/i);
+      const thinkContent = contentMatch ? contentMatch[1] : '';
+
+      // Check if this think tag is currently streaming
+      const isCurrentlyStreaming =
+        streamingTextContent &&
+        streamingTextContent.includes('<think') &&
+        !streamingTextContent.includes('</think>');
+
+      // Render <think> tag content with thinking UI
+      contentParts.push(
+        <ThinkingAccordion
+          key={`think-${match.index}`}
+          content={thinkContent}
+          isStreaming={isCurrentlyStreaming}
+          streamingContent={isCurrentlyStreaming ? streamingTextContent : ''}
+          streamHookStatus={streamHookStatus}
+        />,
       );
     } else {
       const IconComponent = getToolIcon(toolName);
@@ -436,6 +542,9 @@ export interface ThreadContentProps {
   threadMetadata?: any; // Add thread metadata prop
   // Align content to the left edge of the content area (useful when side panel is open)
   isSidePanelOpen?: boolean;
+  // Sidebar state for proper positioning
+  leftSidebarState?: 'collapsed' | 'expanded';
+  isLeftSidebarExpanded?: boolean;
   onSubmit?: (
     message: string,
     options?: { model_name?: string; enable_thinking?: boolean },
@@ -466,6 +575,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   emptyStateComponent,
   threadMetadata,
   isSidePanelOpen = false,
+  leftSidebarState = 'collapsed',
+  isLeftSidebarExpanded = false,
   onSubmit,
   isFloatingToolPreviewVisible = false,
   setInputValue,
@@ -474,7 +585,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const latestMessageRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [, setUserHasScrolled] = useState(false);
+  const [userHasScrolled, setUserHasScrolled] = useState(false);
   const { session } = useAuth();
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
@@ -588,17 +699,49 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
     const { scrollTop, scrollHeight, clientHeight } =
       messagesContainerRef.current;
     const isScrolledUp = scrollHeight - scrollTop - clientHeight > 100;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight <= 50;
+
     setShowScrollButton(isScrolledUp);
     setUserHasScrolled(isScrolledUp);
+
+    // Reset scroll state when user scrolls near bottom
+    if (isNearBottom && userHasScrolled) {
+      setUserHasScrolled(false);
+    }
   };
 
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior,
+        });
+        setUserHasScrolled(false);
+      }
+    }, 100);
   }, []);
+
+  // Check if the last assistant message is in view
+  const isLastAssistantMessageInView = useCallback(() => {
+    if (!messagesContainerRef.current) return true;
+    const { scrollTop, scrollHeight, clientHeight } =
+      messagesContainerRef.current;
+    const scrollBottom = scrollTop + clientHeight;
+    const threshold = 150; // Allow some buffer
+    return scrollHeight - scrollBottom <= threshold;
+  }, []);
+  
+  
 
   // Auto-scroll to bottom when new messages arrive or agent status changes
   React.useEffect(() => {
     if (agentStatus === 'running' || agentStatus === 'connecting') {
+      // Reset scroll state when agent starts working to allow auto-scroll
+      setUserHasScrolled(false);
       scrollToBottom('smooth');
     }
   }, [agentStatus, scrollToBottom]);
@@ -608,9 +751,122 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.type === 'user') {
         scrollToBottom('smooth');
+        // Reset scroll state for new user messages
+        setUserHasScrolled(false);
       }
     }
   }, [messages, scrollToBottom]);
+
+  // Auto-scroll behaviors for different streaming scenarios:
+  // - Only auto-scroll if user hasn't scrolled up or if last assistant message is in view
+  // - Use smooth ease-out animation for better user experience
+  // - Allow users to scroll up during streaming
+  React.useEffect(() => {
+    if (
+      streamingTextContent &&
+      (agentStatus === 'running' || agentStatus === 'connecting')
+    ) {
+      // Only auto-scroll if user hasn't scrolled up or if last message is in view
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
+    }
+  }, [
+    streamingTextContent,
+    agentStatus,
+    scrollToBottom,
+    userHasScrolled,
+    isLastAssistantMessageInView,
+  ]);
+
+  // Auto-scroll to bottom when streaming text changes in playback mode
+  React.useEffect(() => {
+    if (streamingText && isStreamingText && readOnly) {
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
+    }
+  }, [
+    streamingText,
+    isStreamingText,
+    readOnly,
+    scrollToBottom,
+    userHasScrolled,
+    isLastAssistantMessageInView,
+  ]);
+
+  // Auto-scroll to bottom when streaming tool calls change
+  React.useEffect(() => {
+    if (
+      streamingToolCall &&
+      (agentStatus === 'running' || agentStatus === 'connecting')
+    ) {
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
+    }
+  }, [
+    streamingToolCall,
+    agentStatus,
+    scrollToBottom,
+    userHasScrolled,
+    isLastAssistantMessageInView,
+  ]);
+
+  // Auto-scroll to bottom when new tool calls are added
+  React.useEffect(() => {
+    if (
+      currentToolCall &&
+      (agentStatus === 'running' || agentStatus === 'connecting')
+    ) {
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
+    }
+  }, [
+    currentToolCall,
+    agentStatus,
+    scrollToBottom,
+    userHasScrolled,
+    isLastAssistantMessageInView,
+  ]);
+
+  // Auto-scroll to bottom when streaming starts
+  React.useEffect(() => {
+    if (streamHookStatus === 'streaming') {
+      // Reset scroll state when streaming starts to allow auto-scroll
+      setUserHasScrolled(false);
+      if (!userHasScrolled || isLastAssistantMessageInView()) {
+        scrollToBottom('smooth');
+      }
+    }
+  }, [
+    streamHookStatus,
+    scrollToBottom,
+    userHasScrolled,
+    isLastAssistantMessageInView,
+  ]);
+
+  // Auto-scroll when response generation completes or when chat history loads
+  React.useEffect(() => {
+    // Scroll when agent status changes from 'running' to 'idle' (completed)
+    // or when messages first load and user hasn't scrolled up
+    const shouldScroll = 
+      (agentStatus === 'idle' && messages.some(m => m.type === 'assistant')) || 
+      (messages.length > 0 && 
+       (!messagesContainerRef.current?.scrollTop || 
+        messagesContainerRef.current.scrollHeight - messagesContainerRef.current.clientHeight < 100));
+    
+    if (shouldScroll) {
+      scrollToBottom('smooth');
+    }
+  }, [agentStatus, messages, scrollToBottom]);
+
+  // Complete auto-scroll strategy:
+  // 1. Smooth scroll for user interactions (new messages, status changes)
+  // 2. Conditional auto-scroll during streaming - only if user hasn't scrolled up
+  // 3. Allow users to scroll up during streaming for better UX
+  // 4. Use smooth ease-out animation for all auto-scrolls
 
   // Preload all message attachments when messages change or sandboxId is provided
   React.useEffect(() => {
@@ -676,7 +932,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
           <div
             className={
               isSidePanelOpen
-                ? 'mx-auto max-w-2xl md:px-8 min-w-0'
+                ? 'mx-auto max-w-3xl md:px-8 min-w-0'
                 : 'mx-auto max-w-3xl md:px-8 min-w-0'
             }
           >
@@ -897,19 +1153,17 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                     return (
                       <div
                         key={group.key}
-                        className="flex justify-end group transition-all duration-300 ease-in-out"
+                        className="flex justify-end group transition-all duration-300 ease-in-out w-full"
                         data-message-id={group.key}
                       >
-                        <div className="flex flex-col gap-1">
-                          <div
-                            className={cn('flex ml-auto max-w-[85%]')}
-                          >
+                        <div className="flex flex-col gap-1 items-end max-w-[85%]">
+                          <div className={cn('flex w-fit')}>
                             <div
                               style={{
                                 background: '#FFFFFF',
                                 color: 'black',
                               }}
-                              className="break-words overflow-hidden border border-black/10 rounded-l-2xl rounded-tr-2xl rounded-br-sm px-4 py-2"
+                              className="break-words overflow-hidden border border-black/5 rounded-l-2xl rounded-tr-2xl rounded-br-sm px-4 py-2 w-full"
                             >
                               <div className="space-y-4 min-w-0 flex-1">
                                 {cleanContent && (
@@ -949,114 +1203,30 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                     />
                                   </div>
                                 )}
-                                {renderAttachments(
-                                  attachments as string[],
-                                  handleOpenFileViewer,
-                                  sandboxId,
-                                  project,
-                                )}
                               </div>
                             </div>
                           </div>
+
+                          {/* Files Display - Below the message content */}
+                          {attachments && attachments.length > 0 && (
+                            <div className="w-full flex justify-end">
+                              <div className="max-w-[85%]">
+                                <ThreadFilesDisplay
+                                  attachments={attachments as string[]}
+                                  onFileClick={handleOpenFileViewer}
+                                  sandboxId={sandboxId}
+                                  project={project}
+                                  className="mt-1"
+                                  rightAlignGrid={false}
+                                />
+                              </div>
+                            </div>
+                          )}
+
                           {/* Copy and Edit buttons for user prompt - OUTSIDE the message box */}
                           {!readOnly && (
-                            <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(
-                                        cleanContent,
-                                      );
-                                      setCopiedPromptIdx(groupIndex);
-                                      toast.success('Copied to clipboard');
-                                      setTimeout(
-                                        () => setCopiedPromptIdx(null),
-                                        1500,
-                                      );
-                                    }}
-                                  >
-                                    {copiedPromptIdx === groupIndex ? (
-                                      <Check className="h-4 w-4" />
-                                    ) : (
-                                      <Copy className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Copy prompt</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              {editingMessageId === group.key ? (
-                                // Send and Cancel buttons when editing
-                                <>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-foreground/80"
-                                        onClick={() => {
-                                          const messageElement =
-                                            document.querySelector(
-                                              `[data-message-id="${group.key}"] .message-content`,
-                                            ) as HTMLElement;
-
-                                          if (messageElement && onSubmit) {
-                                            const newContent =
-                                              messageElement.textContent || '';
-                                            messageElement.contentEditable =
-                                              'false';
-                                            setEditingMessageId(null);
-                                            setOriginalDimensions(null);
-                                            onSubmit(newContent);
-                                            toast.success('Message sent');
-                                          }
-                                        }}
-                                        disabled={editValue.trim() === ''}
-                                      >
-                                        <Check className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Send edit</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
-                                        onClick={() => {
-                                          // Cancel editing and restore original content
-                                          const messageElement =
-                                            document.querySelector(
-                                              `[data-message-id="${group.key}"] .message-content`,
-                                            ) as HTMLElement;
-                                          if (messageElement) {
-                                            messageElement.textContent =
-                                              cleanContent;
-                                            messageElement.contentEditable =
-                                              'false';
-                                            setEditingMessageId(null);
-                                            setOriginalDimensions(null);
-                                            toast.info('Edit cancelled');
-                                          }
-                                        }}
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Cancel edit</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </>
-                              ) : (
+                            <div className="w-full flex justify-end opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out">
+                              <div className="max-w-[85%] flex justify-end">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button
@@ -1064,46 +1234,145 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                       size="sm"
                                       className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
                                       onClick={() => {
-                                        // Start editing mode
-                                        setEditingMessageId(group.key);
-                                        setEditValue(cleanContent);
-                                        const messageElement =
-                                          document.querySelector(
-                                            `[data-message-id="${group.key}"] .message-content`,
-                                          ) as HTMLElement;
-                                        if (messageElement) {
-                                          // Capture original dimensions before making editable
-                                          const rect =
-                                            messageElement.getBoundingClientRect();
-                                          setOriginalDimensions({
-                                            width: rect.width,
-                                            height: rect.height,
-                                          });
-
-                                          messageElement.contentEditable =
-                                            'true';
-                                          messageElement.focus();
-                                          // Select all text
-                                          const range = document.createRange();
-                                          range.selectNodeContents(
-                                            messageElement,
-                                          );
-                                          const selection =
-                                            window.getSelection();
-                                          selection?.removeAllRanges();
-                                          selection?.addRange(range);
-                                          toast.info('Edit mode enabled');
-                                        }
+                                        navigator.clipboard.writeText(
+                                          cleanContent,
+                                        );
+                                        setCopiedPromptIdx(groupIndex);
+                                        toast.success('Copied to clipboard');
+                                        setTimeout(
+                                          () => setCopiedPromptIdx(null),
+                                          1500,
+                                        );
                                       }}
                                     >
-                                      <Pencil className="h-4 w-4" />
+                                      {copiedPromptIdx === groupIndex ? (
+                                        <Check className="h-4 w-4" />
+                                      ) : (
+                                        <Copy className="h-4 w-4" />
+                                      )}
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Edit prompt</p>
+                                    <p>Copy prompt</p>
                                   </TooltipContent>
                                 </Tooltip>
-                              )}
+                                {editingMessageId === group.key ? (
+                                  // Send and Cancel buttons when editing
+                                  <>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-foreground/80"
+                                          onClick={() => {
+                                            const messageElement =
+                                              document.querySelector(
+                                                `[data-message-id="${group.key}"] .message-content`,
+                                              ) as HTMLElement;
+
+                                            if (messageElement && onSubmit) {
+                                              const newContent =
+                                                messageElement.textContent ||
+                                                '';
+                                              messageElement.contentEditable =
+                                                'false';
+                                              setEditingMessageId(null);
+                                              setOriginalDimensions(null);
+                                              onSubmit(newContent);
+                                              toast.success('Message sent');
+                                            }
+                                          }}
+                                          disabled={editValue.trim() === ''}
+                                        >
+                                          <Check className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Send edit</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
+                                          onClick={() => {
+                                            // Cancel editing and restore original content
+                                            const messageElement =
+                                              document.querySelector(
+                                                `[data-message-id="${group.key}"] .message-content`,
+                                              ) as HTMLElement;
+                                            if (messageElement) {
+                                              messageElement.textContent =
+                                                cleanContent;
+                                              messageElement.contentEditable =
+                                                'false';
+                                              setEditingMessageId(null);
+                                              setOriginalDimensions(null);
+                                              toast.info('Edit cancelled');
+                                            }
+                                          }}
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Cancel edit</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </>
+                                ) : (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0 hover:bg-accent cursor-pointer text-foreground/80"
+                                        onClick={() => {
+                                          // Start editing mode
+                                          setEditingMessageId(group.key);
+                                          setEditValue(cleanContent);
+                                          const messageElement =
+                                            document.querySelector(
+                                              `[data-message-id="${group.key}"] .message-content`,
+                                            ) as HTMLElement;
+                                          if (messageElement) {
+                                            // Capture original dimensions before making editable
+                                            const rect =
+                                              messageElement.getBoundingClientRect();
+                                            setOriginalDimensions({
+                                              width: rect.width,
+                                              height: rect.height,
+                                            });
+
+                                            messageElement.contentEditable =
+                                              'true';
+                                            messageElement.focus();
+                                            // Select all text
+                                            const range =
+                                              document.createRange();
+                                            range.selectNodeContents(
+                                              messageElement,
+                                            );
+                                            const selection =
+                                              window.getSelection();
+                                            selection?.removeAllRanges();
+                                            selection?.addRange(range);
+                                            toast.info('Edit mode enabled');
+                                          }
+                                        }}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Edit prompt</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1119,18 +1388,7 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                             : null
                         }
                       >
-                        <div className="flex flex-col gap-4 -mt-8">
-                          <div className="flex items-center gap-2">
-                            <div className="h-fit w-fit flex items-center justify-center">
-                              {getAgentInfo().avatar}
-                            </div>
-                            <div className="flex flex-col">
-                              <p className="text-sm md:text-base xl:text-xl font-semibold text-foreground">
-                                {getAgentInfo().name}
-                              </p>
-                            </div>
-                          </div>
-
+                        <div className="flex flex-col gap-3">
                           {/* Message content - ALL messages in the group */}
                           <div className="flex max-w-[90%] text-sm break-words overflow-hidden">
                             <div className="space-y-4 min-w-0 flex-1">
@@ -1220,6 +1478,8 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                         sandboxId,
                                         project,
                                         debugMode,
+                                        streamingTextContent,
+                                        streamHookStatus,
                                       );
 
                                     elements.push(
@@ -1263,186 +1523,201 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                 group.messages.some(
                                   (msg) => msg.type === 'assistant',
                                 ) && (
-                                  <div className="flex items-center justify-end pt-3 gap-1 border-t border-border/50 px-4 pb-0">
-                                    {/* Copy Button */}
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
-                                          onClick={() => {
-                                            const el =
-                                              groupContentRefs.current[
-                                                groupIndex
-                                              ];
-                                            if (el) {
-                                              const text = el.textContent || '';
-                                              navigator.clipboard.writeText(
-                                                text,
-                                              );
-                                              setCopied(true);
-                                              toast.success(
-                                                'Copied to clipboard',
-                                              );
-                                              setTimeout(
-                                                () => setCopied(false),
-                                                1500,
-                                              );
-                                            }
-                                          }}
-                                        >
-                                          {copied ? (
-                                            <Check className="h-4 w-4" />
-                                          ) : (
-                                            <Copy className="h-4 w-4" />
-                                          )}
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Copy</p>
-                                      </TooltipContent>
-                                    </Tooltip>
+                                  <div className="flex items-center justify-between pt-2 gap-1 border-t border-border/50 px-3 pb-0">
+                                    {/* Left side - Agent info */}
+                                    <div className="flex items-center gap-1.5">
+                                      <HeliumLogo size={20} />
+                                      <span className="text-base font-semibold text-foreground/80">
+                                        Helium
+                                      </span>
+                                    </div>
 
-                                    {/* Thumbs Up */}
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className={cn(
-                                            'h-8 w-8 p-0 cursor-pointer',
-                                            feedback === 'down' &&
-                                              'opacity-50 pointer-events-none',
-                                          )}
-                                          onClick={() => {
-                                            setFeedback(
-                                              feedback === 'up' ? null : 'up',
-                                            );
-                                            toast.success(
-                                              feedback === 'up'
-                                                ? 'Feedback removed'
-                                                : 'Good response',
-                                            );
-                                          }}
-                                        >
-                                          {feedback === 'up' ? (
-                                            <ThumbsUpFilled
-                                              fill="currentColor"
-                                              className="h-4 w-4"
-                                            />
-                                          ) : (
-                                            <ThumbsUp className="h-4 w-4" />
-                                          )}
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Good response</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-
-                                    {/* Thumbs Down */}
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className={cn(
-                                            'h-8 w-8 p-0 cursor-pointer',
-                                            feedback === 'up' &&
-                                              'opacity-50 pointer-events-none',
-                                          )}
-                                          onClick={() => {
-                                            setFeedback(
-                                              feedback === 'down'
-                                                ? null
-                                                : 'down',
-                                            );
-                                            toast.success(
-                                              feedback === 'down'
-                                                ? 'Feedback removed'
-                                                : 'Bad response',
-                                            );
-                                          }}
-                                        >
-                                          {feedback === 'down' ? (
-                                            <ThumbsDownFilled
-                                              fill="currentColor"
-                                              className="h-4 w-4"
-                                            />
-                                          ) : (
-                                            <ThumbsDown className="h-4 w-4" />
-                                          )}
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Bad response</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-
-                                    {/* Retry Button */}
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-8 px-2 hover:bg-accent cursor-pointer"
-                                          onClick={() => {
-                                            if (!onSubmit) return;
-                                            // Find the user group just before this assistant group
-                                            const userGroup =
-                                              finalGroupedMessages
-                                                .slice(0, groupIndex)
-                                                .reverse()
-                                                .find((g) => g.type === 'user');
-                                            if (!userGroup) return;
-                                            const userMessage =
-                                              userGroup.messages[0];
-                                            let prompt =
-                                              typeof userMessage.content ===
-                                              'string'
-                                                ? userMessage.content
-                                                : '';
-                                            try {
-                                              const parsed = JSON.parse(prompt);
-                                              if (
-                                                parsed &&
-                                                typeof parsed.content ===
-                                                  'string'
-                                              ) {
-                                                prompt = parsed.content;
+                                    {/* Right side - Action buttons */}
+                                    <div className="flex items-center gap-1">
+                                      {/* Copy Button */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 hover:bg-accent cursor-pointer"
+                                            onClick={() => {
+                                              const el =
+                                                groupContentRefs.current[
+                                                  groupIndex
+                                                ];
+                                              if (el) {
+                                                const text =
+                                                  el.textContent || '';
+                                                navigator.clipboard.writeText(
+                                                  text,
+                                                );
+                                                setCopied(true);
+                                                toast.success(
+                                                  'Copied to clipboard',
+                                                );
+                                                setTimeout(
+                                                  () => setCopied(false),
+                                                  1500,
+                                                );
                                               }
-                                            } catch (e) {}
-                                            // Remove attachment info from prompt
-                                            prompt = prompt
-                                              .replace(
-                                                /\[Uploaded File: .*?\]/g,
-                                                '',
+                                            }}
+                                          >
+                                            {copied ? (
+                                              <Check className="h-4 w-4" />
+                                            ) : (
+                                              <Copy className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Copy</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Thumbs Up */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className={cn(
+                                              'h-8 w-8 p-0 cursor-pointer',
+                                              feedback === 'down' &&
+                                                'opacity-50 pointer-events-none',
+                                            )}
+                                            onClick={() => {
+                                              setFeedback(
+                                                feedback === 'up' ? null : 'up',
+                                              );
+                                              toast.success(
+                                                feedback === 'up'
+                                                  ? 'Feedback removed'
+                                                  : 'Good response',
+                                              );
+                                            }}
+                                          >
+                                            {feedback === 'up' ? (
+                                              <ThumbsUpFilled
+                                                fill="currentColor"
+                                                className="h-4 w-4"
+                                              />
+                                            ) : (
+                                              <ThumbsUp className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Good response</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Thumbs Down */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className={cn(
+                                              'h-8 w-8 p-0 cursor-pointer',
+                                              feedback === 'up' &&
+                                                'opacity-50 pointer-events-none',
+                                            )}
+                                            onClick={() => {
+                                              setFeedback(
+                                                feedback === 'down'
+                                                  ? null
+                                                  : 'down',
+                                              );
+                                              toast.success(
+                                                feedback === 'down'
+                                                  ? 'Feedback removed'
+                                                  : 'Bad response',
+                                              );
+                                            }}
+                                          >
+                                            {feedback === 'down' ? (
+                                              <ThumbsDownFilled
+                                                fill="currentColor"
+                                                className="h-4 w-4"
+                                              />
+                                            ) : (
+                                              <ThumbsDown className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Bad response</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+
+                                      {/* Retry Button */}
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 px-2 hover:bg-accent cursor-pointer"
+                                            onClick={() => {
+                                              if (!onSubmit) return;
+                                              // Find the user group just before this assistant group
+                                              const userGroup =
+                                                finalGroupedMessages
+                                                  .slice(0, groupIndex)
+                                                  .reverse()
+                                                  .find(
+                                                    (g) => g.type === 'user',
+                                                  );
+                                              if (!userGroup) return;
+                                              const userMessage =
+                                                userGroup.messages[0];
+                                              let prompt =
+                                                typeof userMessage.content ===
+                                                'string'
+                                                  ? userMessage.content
+                                                  : '';
+                                              try {
+                                                const parsed =
+                                                  JSON.parse(prompt);
+                                                if (
+                                                  parsed &&
+                                                  typeof parsed.content ===
+                                                    'string'
+                                                ) {
+                                                  prompt = parsed.content;
+                                                }
+                                              } catch (e) {}
+                                              // Remove attachment info from prompt
+                                              prompt = prompt
+                                                .replace(
+                                                  /\[Uploaded File: .*?\]/g,
+                                                  '',
+                                                )
+                                                .trim();
+                                              if (
+                                                typeof setInputValue ===
+                                                'function'
                                               )
-                                              .trim();
-                                            if (
-                                              typeof setInputValue ===
-                                              'function'
-                                            )
-                                              setInputValue(prompt);
-                                            toast.success(
-                                              'Retrying previous prompt...',
-                                            );
-                                            onSubmit(prompt);
-                                            // Auto-scroll to bottom after retry
-                                            setTimeout(
-                                              () => scrollToBottom('smooth'),
-                                              100,
-                                            );
-                                          }}
-                                        >
-                                          <RotateCcw className="h-4 w-4 mr-1" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Retry</p>
-                                      </TooltipContent>
-                                    </Tooltip>
+                                                setInputValue(prompt);
+                                              toast.success(
+                                                'Retrying previous prompt...',
+                                              );
+                                              onSubmit(prompt);
+                                              // Auto-scroll to bottom after retry
+                                              setTimeout(
+                                                () => scrollToBottom('smooth'),
+                                                100,
+                                              );
+                                            }}
+                                          >
+                                            <RotateCcw className="h-4 w-4 mr-1" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Retry</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
                                   </div>
                                 )}
 
@@ -1463,6 +1738,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
 
                                       let detectedTag: string | null = null;
                                       let tagStartIndex = -1;
+                                      let thinkTagEndIndex = -1;
+                                      let hasThinkTag = false;
+
                                       if (streamingTextContent) {
                                         // First check for new format
                                         const functionCallsIndex =
@@ -1473,17 +1751,39 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                           detectedTag = 'function_calls';
                                           tagStartIndex = functionCallsIndex;
                                         } else {
-                                          // Fall back to old format detection
-                                          for (const tag of HIDE_STREAMING_XML_TAGS) {
-                                            const openingTagPattern = `<${tag}`;
-                                            const index =
+                                          // Check for think tag specifically
+                                          const thinkStartIndex =
+                                            streamingTextContent.indexOf(
+                                              '<think',
+                                            );
+                                          if (thinkStartIndex !== -1) {
+                                            hasThinkTag = true;
+                                            detectedTag = 'think';
+                                            tagStartIndex = thinkStartIndex;
+
+                                            // Find the end of think tag
+                                            const thinkEndIndex =
                                               streamingTextContent.indexOf(
-                                                openingTagPattern,
+                                                '</think>',
                                               );
-                                            if (index !== -1) {
-                                              detectedTag = tag;
-                                              tagStartIndex = index;
-                                              break;
+                                            if (thinkEndIndex !== -1) {
+                                              thinkTagEndIndex =
+                                                thinkEndIndex + 7; // +7 for '</think>'
+                                            }
+                                          } else {
+                                            // Fall back to old format detection for other tags
+                                            for (const tag of HIDE_STREAMING_XML_TAGS) {
+                                              if (tag === 'think') continue; // Skip think as we already handled it
+                                              const openingTagPattern = `<${tag}`;
+                                              const index =
+                                                streamingTextContent.indexOf(
+                                                  openingTagPattern,
+                                                );
+                                              if (index !== -1) {
+                                                detectedTag = tag;
+                                                tagStartIndex = index;
+                                                break;
+                                              }
                                             }
                                           }
                                         }
@@ -1497,10 +1797,20 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                             tagStartIndex,
                                           )
                                         : textToRender;
+
+                                      // If think tag is complete, show content after it
+                                      const textAfterThink =
+                                        hasThinkTag && thinkTagEndIndex > 0
+                                          ? textToRender.substring(
+                                              thinkTagEndIndex,
+                                            )
+                                          : '';
+
                                       const showCursor =
                                         (streamHookStatus === 'streaming' ||
                                           streamHookStatus === 'connecting') &&
-                                        !detectedTag;
+                                        !detectedTag &&
+                                        !textAfterThink;
 
                                       return (
                                         <>
@@ -1510,26 +1820,53 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                               className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                             />
                                           )}
-                                          {showCursor && (
-                                            <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
-                                          )}
+                                          {showCursor && <ThinkingAnimation />}
 
-                                          {detectedTag && (
-                                            <ShowToolStream
-                                              content={textToRender.substring(
+                                          {detectedTag &&
+                                          detectedTag === 'think' ? (
+                                            <ThinkingAccordion
+                                              content=""
+                                              isStreaming={
+                                                streamHookStatus ===
+                                                  'streaming' &&
+                                                !textToRender.includes(
+                                                  '</think>',
+                                                )
+                                              } // Only streaming if actively streaming and no closing tag
+                                              streamingContent={textToRender.substring(
                                                 tagStartIndex,
                                               )}
-                                              messageId={
-                                                visibleMessages &&
-                                                visibleMessages.length > 0
-                                                  ? visibleMessages[
-                                                      visibleMessages.length - 1
-                                                    ].message_id
-                                                  : 'playback-streaming'
+                                              streamHookStatus={
+                                                streamHookStatus
                                               }
-                                              onToolClick={handleToolClick}
-                                              showExpanded={true}
-                                              startTime={Date.now()}
+                                            />
+                                          ) : (
+                                            detectedTag && (
+                                              <ShowToolStream
+                                                content={textToRender.substring(
+                                                  tagStartIndex,
+                                                )}
+                                                messageId={
+                                                  visibleMessages &&
+                                                  visibleMessages.length > 0
+                                                    ? visibleMessages[
+                                                        visibleMessages.length -
+                                                          1
+                                                      ].message_id
+                                                    : 'playback-streaming'
+                                                }
+                                                onToolClick={handleToolClick}
+                                                showExpanded={true}
+                                                startTime={Date.now()}
+                                              />
+                                            )
+                                          )}
+
+                                          {/* Show content after think tag if it exists */}
+                                          {textAfterThink && (
+                                            <PipedreamUrlDetector
+                                              content={textAfterThink}
+                                              className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                             />
                                           )}
                                         </>
@@ -1547,6 +1884,9 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                     {(() => {
                                       let detectedTag: string | null = null;
                                       let tagStartIndex = -1;
+                                      let thinkTagEndIndex = -1;
+                                      let hasThinkTag = false;
+
                                       if (streamingText) {
                                         // First check for new format
                                         const functionCallsIndex =
@@ -1557,17 +1897,35 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                           detectedTag = 'function_calls';
                                           tagStartIndex = functionCallsIndex;
                                         } else {
-                                          // Fall back to old format detection
-                                          for (const tag of HIDE_STREAMING_XML_TAGS) {
-                                            const openingTagPattern = `<${tag}`;
-                                            const index =
-                                              streamingText.indexOf(
-                                                openingTagPattern,
-                                              );
-                                            if (index !== -1) {
-                                              detectedTag = tag;
-                                              tagStartIndex = index;
-                                              break;
+                                          // Check for think tag specifically
+                                          const thinkStartIndex =
+                                            streamingText.indexOf('<think');
+                                          if (thinkStartIndex !== -1) {
+                                            hasThinkTag = true;
+                                            detectedTag = 'think';
+                                            tagStartIndex = thinkStartIndex;
+
+                                            // Find the end of think tag
+                                            const thinkEndIndex =
+                                              streamingText.indexOf('</think>');
+                                            if (thinkEndIndex !== -1) {
+                                              thinkTagEndIndex =
+                                                thinkEndIndex + 7; // +7 for '</think>'
+                                            }
+                                          } else {
+                                            // Fall back to old format detection for other tags
+                                            for (const tag of HIDE_STREAMING_XML_TAGS) {
+                                              if (tag === 'think') continue; // Skip think as we already handled it
+                                              const openingTagPattern = `<${tag}`;
+                                              const index =
+                                                streamingText.indexOf(
+                                                  openingTagPattern,
+                                                );
+                                              if (index !== -1) {
+                                                detectedTag = tag;
+                                                tagStartIndex = index;
+                                                break;
+                                              }
                                             }
                                           }
                                         }
@@ -1580,8 +1938,19 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                             tagStartIndex,
                                           )
                                         : textToRender;
+
+                                      // If think tag is complete, show content after it
+                                      const textAfterThink =
+                                        hasThinkTag && thinkTagEndIndex > 0
+                                          ? textToRender.substring(
+                                              thinkTagEndIndex,
+                                            )
+                                          : '';
+
                                       const showCursor =
-                                        isStreamingText && !detectedTag;
+                                        isStreamingText &&
+                                        !detectedTag &&
+                                        !textAfterThink;
 
                                       return (
                                         <>
@@ -1599,18 +1968,44 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                                                 />
                                               )}
                                               {showCursor && (
-                                                <span className="inline-block h-4 w-0.5 bg-primary ml-0.5 -mb-1 animate-pulse" />
+                                                <ThinkingAnimation />
                                               )}
 
-                                              {detectedTag && (
-                                                <ShowToolStream
-                                                  content={textToRender.substring(
+                                              {detectedTag &&
+                                              detectedTag === 'think' ? (
+                                                <ThinkingAccordion
+                                                  content=""
+                                                  isStreaming={
+                                                    !textToRender.includes(
+                                                      '</think>',
+                                                    )
+                                                  } // Only streaming if no closing tag
+                                                  streamingContent={textToRender.substring(
                                                     tagStartIndex,
                                                   )}
-                                                  messageId="streamingTextContent"
-                                                  onToolClick={handleToolClick}
-                                                  showExpanded={true}
-                                                  startTime={Date.now()} // Tool just started now
+                                                  streamHookStatus="streaming"
+                                                />
+                                              ) : (
+                                                detectedTag && (
+                                                  <ShowToolStream
+                                                    content={textToRender.substring(
+                                                      tagStartIndex,
+                                                    )}
+                                                    messageId="streamingTextContent"
+                                                    onToolClick={
+                                                      handleToolClick
+                                                    }
+                                                    showExpanded={true}
+                                                    startTime={Date.now()} // Tool just started now
+                                                  />
+                                                )
+                                              )}
+
+                                              {/* Show content after think tag if it exists */}
+                                              {textAfterThink && (
+                                                <PipedreamUrlDetector
+                                                  content={textAfterThink}
+                                                  className="text-sm xl:text-base leading-tight prose prose-sm dark:prose-invert chat-markdown max-w-none [&>:first-child]:mt-0 prose-headings:mt-3 break-words overflow-wrap-anywhere"
                                                 />
                                               )}
                                             </>
@@ -1634,44 +2029,29 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 !readOnly &&
                 (messages.length === 0 ||
                   messages[messages.length - 1].type === 'user') && (
-                  <div ref={latestMessageRef} className="w-full h-22 rounded">
+                  <div ref={latestMessageRef} className="w-full h-fit">
                     <div className="flex flex-col gap-4">
-                      {/* Logo positioned above the loader */}
+                      {/* Helium Logo and text above the loader for initial loading */}
                       <div className="flex items-center gap-2">
-                        <div className="h-8 w-fit rounded-xl flex items-center justify-center">
-                          {getAgentInfo().avatar}
-                        </div>
-                        <div className="flex flex-col">
-                          <p className="text-lg font-semibold text-foreground/80">
-                            {getAgentInfo().name}
-                          </p>
-                        </div>
+                        <HeliumLogo size={20} />
+                        <span className="text-lg font-semibold text-black">
+                          Helium
+                        </span>
                       </div>
 
                       {/* Loader content */}
-                                              <div className="space-y-4 w-full h-12">
+                      <div className="space-y-4 w-full h-12">
                         <AgentLoader />
                       </div>
                     </div>
                   </div>
                 )}
+
+              {/* Tool call content (without thinking animation) */}
               {readOnly && currentToolCall && (
                 <div ref={latestMessageRef}>
-                  <div className="flex flex-col gap-4">
-                    {/* Logo positioned above the tool call */}
-                    <div className="flex items-center gap-2">
-                      <div className="h-12 w-fit rounded-xl flex items-center justify-center">
-                        {getAgentInfo().avatar}
-                      </div>
-                      <div className="flex flex-col">
-                        <p className="text-sm font-semibold text-foreground/80">
-                          {getAgentInfo().name}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Tool call content */}
-                                            <div className="space-y-4">
+                  <div className="flex flex-col gap-2">
+                    <div className="space-y-2">
                       <div className="animate-shimmer inline-flex items-center gap-1.5 py-1.5 px-3 text-xs font-medium text-primary bg-primary/10 rounded-md border border-primary/20">
                         <CircleDashed className="h-3.5 w-3.5 text-primary flex-shrink-0 animate-spin animation-duration-2000" />
                         <span className="font-mono text-xs text-primary">
@@ -1683,31 +2063,19 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
                 </div>
               )}
 
-              {/* For playback mode - Show streaming indicator if no messages yet */}
+              {/* For playback mode - Show streaming indicator if no messages yet (without thinking animation) */}
               {readOnly &&
                 visibleMessages &&
                 visibleMessages.length === 0 &&
                 isStreamingText && (
                   <div ref={latestMessageRef}>
-                    <div className="flex flex-col gap-4">
-                      {/* Logo positioned above the streaming indicator */}
-                      <div className="flex items-center gap-2">
-                        <div className="h-12 w-fit rounded-xl flex items-center justify-center">
-                          {getAgentInfo().avatar}
-                        </div>
-                        <div className="flex flex-col">
-                          <p className="text-sm font-semibold text-foreground/80">
-                            {getAgentInfo().name}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Streaming indicator content */}
+                    <div className="flex flex-col gap-2">
                       <div className="max-w-[90%] px-4 py-3 text-sm">
                         <div className="flex items-center gap-1.5 py-1">
                           <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse" />
                           <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-150" />
-                          <div className="h-1.5 w-1.5 rounded-full bg-primary/50 animate-pulse delay-300" />
+                          <div className="h-1.5 w-3.5 rounded-full bg-primary/50 animate-pulse delay-300" />
+
                         </div>
                       </div>
                     </div>
@@ -1722,12 +2090,23 @@ export const ThreadContent: React.FC<ThreadContentProps> = ({
       {/* Scroll to bottom button */}
       {showScrollButton && (
         <Button
-          variant="outline"
           size="icon"
-          className="fixed bottom-24 right-6 z-10 h-8 w-8 rounded-full shadow-md"
+          className={cn(
+            'fixed z-50 h-8 w-8 bg-white hover:bg-white/50 backdrop-blur-3xl border border-black/10 cursor-pointer rounded-full shadow-xs transition-all duration-300 ease-in-out',
+            // Position above chat input (pt-16 = 4rem, plus some buffer)
+            'bottom-50',
+            // Right positioning based on all possible sidebar states
+            leftSidebarState === 'expanded' && !isSidePanelOpen
+              ? 'right-[calc(50vw-156px)] bottom-62' // Left sidebar open, right side panel closed
+              : leftSidebarState === 'expanded' && isSidePanelOpen
+                ? 'right-[calc(46vw+2rem)] bottom-52' // Left sidebar open, right side panel open
+                : leftSidebarState === 'collapsed' && !isSidePanelOpen
+                  ? 'right-[calc(50vw-2rem)] bottom-62' // Left sidebar closed, right side panel closed
+                  : 'right-[calc(52vw+2rem)] bottom-52', // Left sidebar closed, right side panel open (default)
+          )}
           onClick={() => scrollToBottom('smooth')}
         >
-          <ArrowDown className="h-4 w-4" />
+          <ArrowDown className="h-4 w-4 text-black" />
         </Button>
       )}
     </>

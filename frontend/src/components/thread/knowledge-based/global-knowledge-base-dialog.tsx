@@ -32,7 +32,7 @@ export const GlobalKnowledgeBaseDialog = ({
           <div className="flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
             <Info className="h-4 w-4 mt-0.5" />
             <span>
-              You can add files in PDF, DOCX, CSV, or TXT format. During the beta, up to 15 files can be attached per knowledge base.
+              You can add files in PDF, DOCX, CSV, or TXT format. During the beta, up to 14 files can be attached per knowledge base.
             </span>
           </div>
           <GlobalKnowledgeBaseManager />

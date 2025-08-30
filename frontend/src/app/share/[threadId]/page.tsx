@@ -882,6 +882,9 @@ export default function ThreadPage({
           sandboxId={sandboxId || ''}
           project={project}
           emptyStateComponent={<div />}
+          isSidePanelOpen={isSidePanelOpen}
+          leftSidebarState="collapsed"
+          isLeftSidebarExpanded={false}
         />
         {renderWelcomeOverlay()}
         {renderFloatingControls()}

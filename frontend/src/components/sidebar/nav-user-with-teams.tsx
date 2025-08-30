@@ -2,24 +2,10 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
-  BadgeCheck,
-  Bell,
-  ChevronDown,
   ChevronsUpDown,
   Command,
-  CreditCard,
-  Key,
-  LogOut,
-  Plus,
-  Settings,
-  User,
   AudioWaveform,
-  Sun,
-  Moon,
-  KeyRound,
-  Pencil,
 } from 'lucide-react';
 import { useAccounts } from '@/hooks/use-accounts';
 import NewTeamForm from '@/components/basejump/new-team-form';
@@ -28,7 +14,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -47,7 +32,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from 'next-themes';
@@ -84,7 +68,8 @@ export function NavUserWithTeams({
   const { enabled: customAgentsEnabled, loading: flagLoading } =
     useFeatureFlag('custom_agents');
   const { refreshUser } = useAuth();
-  const { usedCredits, totalCredits, usagePercent, isLoading, error } = useSubscriptionUsage();
+  const { usedCredits, totalCredits, usagePercent, isLoading, error } =
+    useSubscriptionUsage();
 
   // Prepare personal account and team accounts
   const personalAccount = React.useMemo(
@@ -259,18 +244,23 @@ export function NavUserWithTeams({
                 sideOffset={4}
               >
                 <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1.5 py-1.5 text-left text-sm">
-                    <Avatar className="h-8 w-8 rounded-lg">
+                  <div className="flex items-center gap-2 px-1.5 py-1.5 text-left text-md ">
+                    <Avatar className="h-9 w-9 rounded-sm ">
                       <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback className="rounded-lg">
+                      <AvatarFallback className="rounded-sm bg-[#7BC3BF] text-white font-bold text-[19px]">
                         {getInitials(user.name)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium flex items-center gap-1">
-                        {user.name}
-                        <Pencil
-                          className="w-3 h-3 cursor-pointer text-muted-foreground/80 hover:text-foreground"
+                      <span className="truncate font-medium text-[15px] flex items-center gap-1">
+                        {user?.name
+                          ? user.name.replace(/\b\w/g, (char) =>
+                              char.toUpperCase(),
+                            )
+                          : ''}
+                        <img
+                          src="/settings/edit.svg"
+                          className="w-3.5 h-3.5 cursor-pointer text-muted-foreground/80 hover:text-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditName(user.name);
@@ -282,13 +272,49 @@ export function NavUserWithTeams({
                       <span className="truncate text-xs">{user.email}</span>
                     </div>
                   </div>
+                  {/* Token Usage Section */}
+                  <div className="px-2 py-2 text-sm space-y-3">
+                    <div className="text-foreground font-medium text-left">
+                      {isLoading
+                        ? 'Loading usage...'
+                        : error
+                          ? 'Unable to load usage'
+                          : `You have used ${usagePercent}% of your credits`}
+                    </div>
+                    <div className="text-muted-foreground text-xs text-left">
+                      {isLoading
+                        ? '0 / 0'
+                        : error
+                          ? '— / —'
+                          : `${usedCredits} / ${totalCredits}`}
+                    </div>
+                    {/* Progress Bar */}
+                    <div className="w-full">
+                      <div className="w-full bg-muted/30 rounded-full h-2 overflow-hidden border border-border/20 group hover:bg-muted/40 transition-colors duration-200">
+                        {isLoading ? (
+                          <div className="h-full bg-gradient-to-r from-muted to-muted/60 animate-pulse" />
+                        ) : error ? (
+                          <div className="h-full bg-destructive/20 animate-pulse" />
+                        ) : (
+                          <div
+                            className="h-full transition-all duration-500 ease-out shadow-sm group-hover:shadow-md"
+                            style={{
+                              width: `${Math.max(usagePercent, 2)}%`,
+                              background: '#7BC3BF',
+                              boxShadow: '0 0 8px rgba(0, 0, 0, 0.1)',
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
                 {/* Teams Section */}
                 {personalAccount && (
                   <>
-                    <DropdownMenuLabel className="text-muted-foreground text-xs">
+                    <DropdownMenuLabel className="text-muted-foreground text-sm">
                       Personal Account
                     </DropdownMenuLabel>
                     <DropdownMenuItem
@@ -305,20 +331,47 @@ export function NavUserWithTeams({
                       }
                       className="gap-2 p-2"
                     >
-                      <div className="flex size-6 items-center justify-center rounded-xs border">
-                        <Command className="size-4 shrink-0" />
+                      <div className="flex size-6 items-center justify-center">
+                        <img
+                          src="/settings/personal-account.svg"
+                          className="size-6 shrink-0"
+                        />
                       </div>
-                      {personalAccount.name}
-                      <DropdownMenuShortcut>⌘1</DropdownMenuShortcut>
+                      {personalAccount?.name
+                        ? personalAccount.name.replace(/\b\w/g, (char) =>
+                            char.toUpperCase(),
+                          )
+                        : ''}
+                      <DropdownMenuShortcut>
+                        <img
+                          src="/neuralarc/Settings.png"
+                          className="size-4 shrink-0"
+                        />
+                      </DropdownMenuShortcut>
                     </DropdownMenuItem>
                   </>
                 )}
 
+                <DropdownMenuSeparator />
+
+                {/* Create Team Option */}
+                <DropdownMenuLabel className="text-muted-foreground text-sm">
+                  Team Accounts
+                </DropdownMenuLabel>
+                {teamAccounts?.length === 0 && (
+                  <DropdownMenuItem
+                    onClick={() => setShowNewTeamDialog(true)}
+                    className="gap-2 p-2"
+                  >
+                    <img
+                      src="/neuralarc/createTeam.png"
+                      className="size-5 shrink-0"
+                    />
+                    Create Team
+                  </DropdownMenuItem>
+                )}
                 {teamAccounts?.length > 0 && (
                   <>
-                    <DropdownMenuLabel className="text-muted-foreground text-xs mt-2">
-                      Teams
-                    </DropdownMenuLabel>
                     {teamAccounts.map((team, index) => (
                       <DropdownMenuItem
                         key={team.account_id}
@@ -334,67 +387,28 @@ export function NavUserWithTeams({
                         }
                         className="gap-2 p-2"
                       >
-                        <div className="flex size-6 items-center justify-center rounded-xs border">
-                          <AudioWaveform className="size-4 shrink-0" />
+                        <div className="flex size-6 items-center justify-center">
+                          <img
+                            src="/settings/team-account.svg"
+                            className="size-6 shrink-0"
+                          />
                         </div>
                         {team.name}
-                        <DropdownMenuShortcut>
+                        {/* <DropdownMenuShortcut>
                           ⌘{index + 2}
-                        </DropdownMenuShortcut>
+                        </DropdownMenuShortcut> */}
                       </DropdownMenuItem>
                     ))}
                   </>
                 )}
-
-                <DropdownMenuSeparator />
-
-                {/* Create Team Option */}
-                <DropdownMenuItem
-                  onClick={() => setShowNewTeamDialog(true)}
-                  className="gap-2 p-2"
-                >
-                  <Plus className="size-4 shrink-0" />
-                  Create Team
-                </DropdownMenuItem>
-
                 {/* Token Usage Section */}
                 <DropdownMenuSeparator />
-          
-                <div className="px-2 py-2 text-sm space-y-3">
-                  <div className="text-foreground font-medium text-left">
-                    {isLoading ? 'Loading usage...' : error ? 'Unable to load usage' : `Credit Usage (${usagePercent}%)`}
-                  </div>
-                  
-                  {/* Progress Bar */}
-                  <div className="w-full">
-                    <div className="w-full bg-muted/30 rounded-full h-2 overflow-hidden border border-border/20 group hover:bg-muted/40 transition-colors duration-200">
-                      {isLoading ? (
-                        <div className="h-full bg-gradient-to-r from-muted to-muted/60 animate-pulse" />
-                      ) : error ? (
-                        <div className="h-full bg-destructive/20 animate-pulse" />
-                      ) : (
-                        <div 
-                          className="h-full transition-all duration-500 ease-out shadow-sm group-hover:shadow-md"
-                          style={{
-                            width: `${Math.max(usagePercent, 2)}%`,
-                            background: 'linear-gradient(90deg, var(--color-helium-pink) 0%, var(--color-helium-teal) 100%)',
-                            boxShadow: '0 0 8px rgba(0, 0, 0, 0.1)'
-                          }}
-                        />
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="text-muted-foreground text-xs text-left">
-                    {isLoading ? '0 / 0' : error ? '— / —' : `${usedCredits} / ${totalCredits}`}
-                  </div>
-                </div>
-                
-                <DropdownMenuSeparator />
+
+                {/* <DropdownMenuSeparator /> */}
 
                 {/* User Settings Section */}
-                <DropdownMenuGroup>
-                  {/* <DropdownMenuItem asChild>
+                {/* <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
                     <Link href="/settings/billing">
                       <CreditCard className="h-4 w-4" />
                       Billing
@@ -407,7 +421,7 @@ export function NavUserWithTeams({
                         API Keys
                       </Link>
                     </DropdownMenuItem>
-                  )} */}
+                  )}
                   {isLocalMode() && (
                     <DropdownMenuItem asChild>
                       <Link href="/settings/env-manager">
@@ -416,7 +430,7 @@ export function NavUserWithTeams({
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  {/* <DropdownMenuItem
+                  <DropdownMenuItem
                     onClick={() =>
                       setTheme(theme === 'light' ? 'dark' : 'light')
                     }
@@ -426,14 +440,17 @@ export function NavUserWithTeams({
                       <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                       <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
                     </div>
-                  </DropdownMenuItem> */}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
+                  </DropdownMenuItem>
+                </DropdownMenuGroup> */}
+                {/* <DropdownMenuSeparator /> */}
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive focus:bg-destructive/10"
                   onClick={handleLogout}
                 >
-                  <LogOut className="h-4 w-4 text-destructive" />
+                  <img
+                    src="/settings/logout.svg"
+                    className="h-4 w-4 text-destructive"
+                  />
                   Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -441,7 +458,7 @@ export function NavUserWithTeams({
           </SidebarMenuItem>
         </SidebarMenu>
 
-        <DialogContent className="sm:max-w-[425px] border-subtle dark:border-white/10 bg-card-bg dark:bg-background-secondary rounded-2xl shadow-custom">
+        <DialogContent className="sm:max-w-[425px] border-subtle dark:border-white/10 bg-white rounded-2xl shadow-custom">
           <DialogHeader>
             <DialogTitle className="text-foreground">
               Create a new team

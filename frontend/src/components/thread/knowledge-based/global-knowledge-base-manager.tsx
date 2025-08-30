@@ -123,6 +123,7 @@ const GlobalKnowledgeBaseSkeleton = () => (
 );
 
 export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) => {
+  const ENTRY_LIMIT = 14;
   const [editDialog, setEditDialog] = useState<EditDialogData>({ isOpen: false });
   const [detailsDialog, setDetailsDialog] = useState<DetailsDialogData>({ isOpen: false, entry: null });
   const [searchTerm, setSearchTerm] = useState('');
@@ -132,6 +133,9 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
   const [previewFiles, setPreviewFiles] = useState<Array<{ file: File; content?: string; status: 'pending' | 'processing' | 'ready' | 'error'; error?: string }>>([]);
   const [isUploading, setIsUploading] = useState(false);
   const formFileInputRef = useRef<HTMLInputElement>(null);
+  const [isMultiSelect, setIsMultiSelect] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   // Global knowledge base queries
   const {
@@ -142,11 +146,37 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
   } = useGlobalKnowledgeBaseEntries({ includeInactive: showInactive });
 
   const globalEntries = globalEntriesResponse?.entries || [];
+  const atLimit = (globalEntries?.length || 0) >= ENTRY_LIMIT;
 
   const createGlobalMutation = useCreateGlobalKnowledgeBaseEntry();
   const updateGlobalMutation = useUpdateGlobalKnowledgeBaseEntry();
   const deleteGlobalMutation = useDeleteGlobalKnowledgeBaseEntry();
   const uploadFileMutation = useUploadGlobalFile();
+  const toggleSelect = (entryId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(entryId)) next.delete(entryId); else next.add(entryId);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleBulkDelete = async () => {
+    try {
+      const ids = Array.from(selectedIds);
+      for (const id of ids) {
+        await deleteGlobalMutation.mutateAsync(id);
+      }
+      clearSelection();
+      setIsMultiSelect(false);
+      setIsBulkDeleteOpen(false);
+      refetchGlobal();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
 
   // Filter entries based on search term
   const filteredEntries = globalEntries.filter(entry =>
@@ -156,6 +186,10 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
   );
 
   const handleOpenCreateDialog = () => {
+    if (atLimit) {
+      toast.error(`Limit reached: maximum ${ENTRY_LIMIT} files in beta`);
+      return;
+    }
     setEditDialog({ isOpen: true });
   };
 
@@ -293,6 +327,10 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
 
   const handleFileUpload = async (file: File) => {
     try {
+      if (atLimit) {
+        toast.error(`Limit reached: maximum ${ENTRY_LIMIT} files in beta`);
+        return;
+      }
       // Add file to preview list first
       const fileId = Math.random().toString(36).substr(2, 9);
       // Prevent duplicates across preview and uploaded
@@ -430,6 +468,11 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
   const handleUploadFileFromPreview = async (file: File) => {
     try {
       setIsUploading(true);
+      if (atLimit) {
+        toast.error(`Limit reached: maximum ${ENTRY_LIMIT} files in beta`);
+        setIsUploading(false);
+        return;
+      }
       
       // Get the current name from the form field
       const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
@@ -570,7 +613,20 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
           >
             {showInactive ? "Hide Inactive" : "Show Inactive"}
           </Button>
-          <Button onClick={handleOpenCreateDialog} size="sm" className="rounded-md cursor-pointer bg-[#0ac5b2]">
+          <Button
+            variant={isMultiSelect ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setIsMultiSelect(v => !v); if (isMultiSelect) clearSelection(); }}
+            className="rounded-md cursor-pointer"
+          >
+            {isMultiSelect ? "Cancel Select" : "Select"}
+          </Button>
+          {isMultiSelect && selectedIds.size > 0 && (
+            <Button size="sm" className="bg-red-600 text-white rounded-md" onClick={() => setIsBulkDeleteOpen(true)}>
+              Delete ({selectedIds.size})
+            </Button>
+          )}
+          <Button onClick={handleOpenCreateDialog} size="sm" className="rounded-md cursor-pointer bg-[#0ac5b2]" disabled={atLimit}>
             <Plus className="h-4 w-4 mr-2" />
             Add Knowledge
           </Button>
@@ -613,12 +669,21 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
                         ? "border-border bg-card hover:border-border/80" 
                         : "border-border/50 bg-muted/30 opacity-70"
                     )}
-                    onClick={() => handleOpenDetailsDialog(entry)}
+                    onClick={() => isMultiSelect ? toggleSelect(entry.entry_id) : handleOpenDetailsDialog(entry)}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0 space-y-2">
                         <div className="flex items-center gap-2">
                          {/* <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" /> */}
+                          {isMultiSelect && (
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4"
+                              checked={selectedIds.has(entry.entry_id)}
+                              onChange={() => toggleSelect(entry.entry_id)}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
                           <h3 className="font-medium truncate">{entry.name}</h3>
                           <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
                             <Globe className="h-3 w-3 mr-1" />
@@ -1036,19 +1101,19 @@ export const GlobalKnowledgeBaseManager = ({}: GlobalKnowledgeBaseManagerProps) 
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog>
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={isBulkDeleteOpen} onOpenChange={(open) => { if (!open) setIsBulkDeleteOpen(false); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Knowledge Entry</AlertDialogTitle>
+            <AlertDialogTitle>Delete Selected Entries</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this global knowledge base entry? This action cannot be undone.
+              This will permanently delete {selectedIds.size} selected entr{selectedIds.size === 1 ? 'y' : 'ies'}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleDelete(editDialog.entry?.entry_id || '')}>
-              Delete
+            <AlertDialogCancel onClick={() => setIsBulkDeleteOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-red-600 text-white">
+              Delete ({selectedIds.size})
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -68,6 +68,17 @@ MODELS = {
         "tier_availability": ["free"]
     },
     
+    # Google Gemini Models
+    "gemini/gemini-2.5-pro": {
+        "aliases": ["gemini-2.5-pro", "google/gemini-2.5-pro"],
+        "pricing": {
+            "input_cost_per_million_tokens": 3.50,
+            "output_cost_per_million_tokens": 10.50
+        },
+        "tier_availability": ["free", "paid"],
+        "features": ["reasoning", "code-generation", "multimodal", "128k-context"]
+    },
+    
     # "openrouter/qwen/qwen3-235b-a22b": {
     #     "aliases": ["qwen3"],
     #     "pricing": {
@@ -86,6 +97,14 @@ MODELS = {
     },
     "openrouter/deepseek/deepseek-chat-v3-0324:free": {
         "aliases": ["deepseek/deepseek-chat-v3-0324:free"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.0,
+            "output_cost_per_million_tokens": 0.0
+        },
+        "tier_availability": ["free", "paid"]
+    },
+    "openrouter/qwen/qwen3-235b-a22b:free": {
+        "aliases": ["qwen/qwen3-235b-a22b:free", "Helio T1"],
         "pricing": {
             "input_cost_per_million_tokens": 0.0,
             "output_cost_per_million_tokens": 0.0
@@ -188,11 +207,64 @@ MODELS = {
     #     },
     #     "tier_availability": ["paid"]
     # },   
+    
+    # Z.AI GLM Models from OpenRouter
+    "openrouter/z-ai/glm-4.5v": {
+        "aliases": ["glm-4.5v", "z-ai-glm-4.5v"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.60,
+            "output_cost_per_million_tokens": 1.80
+        },
+        "tier_availability": ["free"],
+        "features": ["vision", "multimodal", "reasoning", "agent-focused"]
+    },
+    "openrouter/z-ai/glm-4.5": {
+        "aliases": ["glm-4.5", "z-ai-glm-4.5"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.60,
+            "output_cost_per_million_tokens": 2.20
+        },
+        "tier_availability": ["free"],
+        "features": ["reasoning", "code-generation", "agent-alignment", "128k-context"]
+    },
+    "openrouter/z-ai/glm-4.5-air": {
+        "aliases": ["glm-4.5-air", "z-ai-glm-4.5-air"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.20,
+            "output_cost_per_million_tokens": 1.10
+        },
+        "tier_availability": ["free"],
+        "features": ["lightweight", "reasoning", "real-time", "cost-effective"]
+    },
+    "openrouter/z-ai/glm-4-32b": {
+        "aliases": ["glm-4-32b", "z-ai-glm-4-32b"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.10,
+            "output_cost_per_million_tokens": 0.10
+        },
+        "tier_availability": ["free"],
+        "features": ["cost-effective", "tool-use", "online-search", "code-tasks"]
+    },
+    
+    # Mistral Models from OpenRouter
+    "openrouter/mistralai/mistral-small-3.2-24b-instruct": {
+        "aliases": ["mistral-small-3.2", "mistral-small-3.2-24b", "mistral-small"],
+        "pricing": {
+            "input_cost_per_million_tokens": 0.02,
+            "output_cost_per_million_tokens": 0.08
+        },
+        "tier_availability": ["free"],
+        "features": ["instruction-following", "function-calling", "coding", "stem", "vision", "structured-output", "131k-context"]
+    }
 }
 
 # Derived structures (auto-generated from MODELS)
 def _generate_model_structures():
     """Generate all model structures from the master MODELS dictionary."""
+    
+    # Check environment directly to avoid circular imports
+    import os
+    env_mode = os.getenv("ENV_MODE", "local").lower()
     
     # Generate tier lists
     free_models = []
@@ -204,37 +276,43 @@ def _generate_model_structures():
     # Generate pricing
     pricing = {}
     
-    for model_name, config in MODELS.items():
+    for model_name, config_data in MODELS.items():
         # Add to tier lists
-        if "free" in config["tier_availability"]:
+        if "free" in config_data["tier_availability"]:
             free_models.append(model_name)
-        if "paid" in config["tier_availability"]:
+        if "paid" in config_data["tier_availability"]:
             paid_models.append(model_name)
         
-        # Add aliases
-        for alias in config["aliases"]:
-            aliases[alias] = model_name
+        # Add aliases with environment-specific logic
+        for alias in config_data["aliases"]:
+            # Special handling for "Helio T1" - only add in production
+            if alias == "Helio T1":
+                if env_mode == "production":
+                    aliases[alias] = model_name
+            else:
+                # Add all other aliases normally
+                aliases[alias] = model_name
         
         # Add pricing
-        pricing[model_name] = config["pricing"]
+        pricing[model_name] = config_data["pricing"]
         
         # Also add pricing for legacy model name variations
         if model_name.startswith("openrouter/deepseek/"):
             legacy_name = model_name.replace("openrouter/", "")
-            pricing[legacy_name] = config["pricing"]
+            pricing[legacy_name] = config_data["pricing"]
         elif model_name.startswith("openrouter/qwen/"):
             legacy_name = model_name.replace("openrouter/", "")
-            pricing[legacy_name] = config["pricing"]
+            pricing[legacy_name] = config_data["pricing"]
         elif model_name.startswith("gemini/"):
             legacy_name = model_name.replace("gemini/", "")
-            pricing[legacy_name] = config["pricing"]
+            pricing[legacy_name] = config_data["pricing"]
         elif model_name.startswith("anthropic/"):
             # Legacy pricing mapping removed - using Bedrock models now
             pass
         elif model_name.startswith("xai/"):
             # Add pricing for OpenRouter x-ai models
             openrouter_name = model_name.replace("xai/", "openrouter/x-ai/")
-            pricing[openrouter_name] = config["pricing"]
+            pricing[openrouter_name] = config_data["pricing"]
     
     return free_models, paid_models, aliases, pricing
 
